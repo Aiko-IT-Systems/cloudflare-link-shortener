@@ -285,7 +285,7 @@ function page(title: string, body: string, status = 200): Response {
 
 export function homepage(): Response {
 	return page("Private link shortener", `
-		<p>A small link redirector by Lulalaby for AITSYS projects, release posts, docs, and community links.</p>
+		<p>A small link redirector for AITSYS projects, release posts, docs, and community links.</p>
 		<p>Short links show the destination before leaving this site, who added the link, and when it was created. No click analytics, no cookies, no tracking pixels.</p>
 	`);
 }
@@ -336,4 +336,3 @@ export function robots(): Response {
 		}
 	});
 }
-
