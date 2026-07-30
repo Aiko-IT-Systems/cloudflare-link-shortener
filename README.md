@@ -42,6 +42,31 @@ Content-Type: application/json
 }
 ```
 
+When a link is created, the Worker fetches the destination once and stores normal embed metadata (`og:title`, description, image, site name) so `go.aitsys.dev/<slug>` unfurls cleanly in chat apps while still showing the splash page.
+
+Optional embed fields can also be supplied manually:
+
+```json
+{
+  "embedTitle": "Custom preview title",
+  "embedDescription": "Custom preview text",
+  "embedImageUrl": "https://aitsys.dev/preview.png",
+  "embedSiteName": "AITSYS"
+}
+```
+
+Read a link:
+
+```http
+GET /api/v1/links/aitsys
+```
+
+Refresh stored embed metadata:
+
+```http
+POST /api/v1/links/aitsys/refresh-metadata
+```
+
 Disable a link:
 
 ```http

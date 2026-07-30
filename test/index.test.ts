@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import app from "../src";
 import { LinkRecord } from "../src/types";
 
@@ -102,6 +102,24 @@ async function create(envValue: Env, payload: Record<string, unknown>): Promise<
 }
 
 describe("link shortener", () => {
+	beforeEach(() => {
+		vi.stubGlobal("fetch", vi.fn(async () => new Response(`<!doctype html>
+			<html>
+				<head>
+					<meta property="og:title" content="Target Embed Title">
+					<meta property="og:description" content="Target embed description.">
+					<meta property="og:image" content="/preview.png">
+					<meta property="og:site_name" content="Target Site">
+				</head>
+			</html>`, {
+			headers: { "Content-Type": "text/html; charset=utf-8" }
+		})));
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
 	test("creates a link with a custom slug", async () => {
 		const envValue = env();
 		const response = await create(envValue, {
@@ -115,6 +133,8 @@ describe("link shortener", () => {
 		expect(response.status).toBe(201);
 		expect(body.result.slug).toBe("pycord");
 		expect(body.result.creator).toBe("Lulalaby");
+		expect(body.result.embedTitle).toBe("Target Embed Title");
+		expect(body.result.embedImageUrl).toBe("https://pycord.dev/preview.png");
 	});
 
 	test("creates a link with an 8 character generated slug", async () => {
@@ -207,9 +227,39 @@ describe("link shortener", () => {
 
 		expect(splashResponse.status).toBe(200);
 		expect(splashHtml).toContain("Continue to destination");
+		expect(splashHtml).toContain('<meta property="og:title" content="Target Embed Title">');
+		expect(splashHtml).toContain('<meta property="og:image" content="https://aitsys.dev/preview.png">');
 		expect(disableResponse.status).toBe(200);
 		expect(disabledResponse.status).toBe(410);
 		expect(disabledHtml).not.toContain("Continue to destination");
+	});
+
+	test("refreshes target embed metadata", async () => {
+		const envValue = env();
+		await create(envValue, {
+			slug: "refresh-me",
+			destinationUrl: "https://aitsys.dev",
+			creator: "Lulalaby"
+		});
+
+		vi.mocked(fetch).mockResolvedValueOnce(new Response(`<!doctype html>
+			<html>
+				<head>
+					<meta property="og:title" content="Refreshed Title">
+					<meta name="description" content="Refreshed description.">
+				</head>
+			</html>`, {
+			headers: { "Content-Type": "text/html; charset=utf-8" }
+		}));
+
+		const response = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links/refresh-me/refresh-metadata", authed({
+			method: "POST"
+		})), envValue);
+		const body = await response.json() as { result: LinkRecord };
+
+		expect(response.status).toBe(200);
+		expect(body.result.embedTitle).toBe("Refreshed Title");
+		expect(body.result.embedDescription).toBe("Refreshed description.");
 	});
 });
 

@@ -21,6 +21,11 @@ export async function createLink(env: Env, input: {
 	destinationUrl: string;
 	creator: string;
 	title?: string;
+	embedTitle?: string;
+	embedDescription?: string;
+	embedImageUrl?: string;
+	embedSiteName?: string;
+	metadataFetchedAt?: string;
 	slug?: string;
 }): Promise<LinkRecord | "duplicate" | "reserved"> {
 	const requestedSlug = input.slug ? normalizeSlug(input.slug) : undefined;
@@ -73,17 +78,46 @@ export async function disableLink(env: Env, slug: string, reason?: string): Prom
 	return disabledRecord;
 }
 
+export async function refreshLinkMetadata(env: Env, slug: string, metadata: Partial<Pick<LinkRecord, "embedTitle" | "embedDescription" | "embedImageUrl" | "embedSiteName" | "metadataFetchedAt">>): Promise<LinkRecord | null> {
+	const record = await getLink(env, slug);
+	if (!record) {
+		return null;
+	}
+
+	const refreshedRecord: LinkRecord = {
+		...record,
+		embedTitle: metadata.embedTitle,
+		embedDescription: metadata.embedDescription,
+		embedImageUrl: metadata.embedImageUrl,
+		embedSiteName: metadata.embedSiteName,
+		metadataFetchedAt: metadata.metadataFetchedAt ?? new Date().toISOString()
+	};
+
+	await putLink(env, refreshedRecord);
+	return refreshedRecord;
+}
+
 function toRecord(input: {
 	slug: string;
 	destinationUrl: string;
 	creator: string;
 	title?: string;
+	embedTitle?: string;
+	embedDescription?: string;
+	embedImageUrl?: string;
+	embedSiteName?: string;
+	metadataFetchedAt?: string;
 }): LinkRecord {
 	return {
 		slug: input.slug,
 		destinationUrl: input.destinationUrl,
 		creator: input.creator,
 		title: input.title,
+		embedTitle: input.embedTitle,
+		embedDescription: input.embedDescription,
+		embedImageUrl: input.embedImageUrl,
+		embedSiteName: input.embedSiteName,
+		metadataFetchedAt: input.metadataFetchedAt,
 		createdAt: new Date().toISOString()
 	};
 }

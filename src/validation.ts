@@ -21,7 +21,11 @@ export const createLinkSchema = z.object({
 	destinationUrl: httpsUrlSchema,
 	creator: z.string().trim().min(1).max(80),
 	slug: z.string().trim().regex(SLUG_PATTERN).optional(),
-	title: z.string().trim().min(1).max(120).optional()
+	title: z.string().trim().min(1).max(120).optional(),
+	embedTitle: z.string().trim().min(1).max(120).optional(),
+	embedDescription: z.string().trim().min(1).max(240).optional(),
+	embedImageUrl: httpsUrlSchema.optional(),
+	embedSiteName: z.string().trim().min(1).max(80).optional()
 });
 
 export const disableLinkSchema = z.object({

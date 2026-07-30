@@ -4,6 +4,11 @@ export type LinkRecord = {
 	creator: string;
 	createdAt: string;
 	title?: string;
+	embedTitle?: string;
+	embedDescription?: string;
+	embedImageUrl?: string;
+	embedSiteName?: string;
+	metadataFetchedAt?: string;
 	disabledAt?: string;
 	disabledReason?: string;
 };

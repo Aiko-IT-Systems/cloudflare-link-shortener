@@ -2,6 +2,13 @@ import { LinkRecord } from "./types";
 
 const SITE_NAME = "AITSYS Go";
 
+type PageMeta = {
+	description?: string;
+	imageUrl?: string;
+	pageUrl?: string;
+	siteName?: string;
+};
+
 function escapeHtml(value: string): string {
 	return value
 		.replace(/&/g, "&amp;")
@@ -11,13 +18,41 @@ function escapeHtml(value: string): string {
 		.replace(/'/g, "&#39;");
 }
 
-function page(title: string, body: string, status = 200): Response {
+function metaTags(title: string, meta: PageMeta = {}): string {
+	const description = meta.description ?? "Transparent AITSYS GO short link preview. No click analytics, cookies, or tracking pixels.";
+	const siteName = meta.siteName ?? SITE_NAME;
+	const tags = [
+		["property", "og:type", "website"],
+		["property", "og:title", title],
+		["property", "og:description", description],
+		["property", "og:site_name", siteName],
+		["name", "twitter:card", meta.imageUrl ? "summary_large_image" : "summary"],
+		["name", "twitter:title", title],
+		["name", "twitter:description", description]
+	];
+
+	if (meta.pageUrl) {
+		tags.push(["property", "og:url", meta.pageUrl]);
+	}
+
+	if (meta.imageUrl) {
+		tags.push(["property", "og:image", meta.imageUrl]);
+		tags.push(["name", "twitter:image", meta.imageUrl]);
+	}
+
+	return tags
+		.map(([attribute, name, content]) => `<meta ${attribute}="${escapeHtml(name)}" content="${escapeHtml(content)}">`)
+		.join("\n\t\t");
+}
+
+function page(title: string, body: string, status = 200, meta: PageMeta = {}): Response {
 	return new Response(`<!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<meta name="robots" content="noindex, nofollow">
+		${metaTags(title, meta)}
 		<title>${escapeHtml(title)} · ${SITE_NAME}</title>
 		<style>
 			:root {
@@ -290,8 +325,10 @@ export function homepage(): Response {
 	`);
 }
 
-export function splash(record: LinkRecord): Response {
-	const label = record.title ?? record.destinationUrl;
+export function splash(record: LinkRecord, pageUrl: string): Response {
+	const label = record.embedTitle ?? record.title ?? record.destinationUrl;
+	const description = record.embedDescription
+		?? `Short link to ${record.destinationUrl}. No click analytics, cookies, or tracking pixels.`;
 	return page(label, `
 		<h1>Leaving <span class="accent">GO</span></h1>
 		<p>This short link points to the destination below. Nothing is tracked here: no click counter, no cookies, and no analytics storage.</p>
@@ -310,7 +347,12 @@ export function splash(record: LinkRecord): Response {
 			</div>
 		</dl>
 		<a class="button" href="${escapeHtml(record.destinationUrl)}" rel="noreferrer">Continue to destination</a>
-	`);
+	`, 200, {
+		description,
+		imageUrl: record.embedImageUrl,
+		pageUrl,
+		siteName: record.embedSiteName
+	});
 }
 
 export function unavailable(record: LinkRecord): Response {

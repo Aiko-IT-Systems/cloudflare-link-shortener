@@ -1,8 +1,9 @@
 import { Hono } from "hono";
 import { requireApiKey } from "./auth";
 import { homepage, notFound, robots, splash, unavailable } from "./html";
+import { fetchTargetMetadata } from "./metadata";
 import { jsonError, jsonSuccess } from "./responses";
-import { createLink, disableLink, getLink } from "./store";
+import { createLink, disableLink, getLink, refreshLinkMetadata } from "./store";
 import { createLinkSchema, disableLinkSchema, isReservedSlug, normalizeSlug, SLUG_PATTERN } from "./validation";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -24,7 +25,15 @@ app.post("/api/v1/links", async (c) => {
 		return jsonError("That slug is reserved.", "reserved_slug", 400);
 	}
 
-	const result = await createLink(c.env, parsed.data);
+	const fetchedMetadata = await fetchTargetMetadata(parsed.data.destinationUrl);
+	const result = await createLink(c.env, {
+		...parsed.data,
+		embedTitle: parsed.data.embedTitle ?? fetchedMetadata.embedTitle,
+		embedDescription: parsed.data.embedDescription ?? fetchedMetadata.embedDescription,
+		embedImageUrl: parsed.data.embedImageUrl ?? fetchedMetadata.embedImageUrl,
+		embedSiteName: parsed.data.embedSiteName ?? fetchedMetadata.embedSiteName,
+		metadataFetchedAt: fetchedMetadata.metadataFetchedAt
+	});
 	if (result === "duplicate") {
 		return jsonError("That slug already exists.", "duplicate_slug", 409);
 	}
@@ -72,6 +81,27 @@ app.post("/api/v1/links/:slug/disable", async (c) => {
 	return jsonSuccess(record);
 });
 
+app.post("/api/v1/links/:slug/refresh-metadata", async (c) => {
+	const slug = normalizeSlug(c.req.param("slug"));
+
+	if (!SLUG_PATTERN.test(slug) || isReservedSlug(slug)) {
+		return jsonError("Invalid slug.", "invalid_slug", 400);
+	}
+
+	const record = await getLink(c.env, slug);
+	if (!record) {
+		return jsonError("Link not found.", "not_found", 404);
+	}
+
+	const metadata = await fetchTargetMetadata(record.destinationUrl);
+	const refreshedRecord = await refreshLinkMetadata(c.env, slug, metadata);
+	if (!refreshedRecord) {
+		return jsonError("Link not found.", "not_found", 404);
+	}
+
+	return jsonSuccess(refreshedRecord);
+});
+
 app.get("/:slug", async (c) => {
 	const slug = normalizeSlug(c.req.param("slug"));
 
@@ -88,7 +118,7 @@ app.get("/:slug", async (c) => {
 		return unavailable(record);
 	}
 
-	return splash(record);
+	return splash(record, c.req.url);
 });
 
 app.notFound(() => notFound());
