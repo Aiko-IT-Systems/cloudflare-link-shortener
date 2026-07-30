@@ -5,3 +5,4 @@ dist/
 .dev.vars
 .env
 scripts/local-admin.ps1
+local-bin/
