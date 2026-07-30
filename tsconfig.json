@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"target": "es2022",
+		"verbatimModuleSyntax": false,
+		"allowJs": true,
+		"resolveJsonModule": true,
+		"moduleDetection": "force",
+		"noImplicitAny": false,
+		"noImplicitThis": true,
+		"strictNullChecks": false,
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"forceConsistentCasingInFileNames": true,
+		"moduleResolution": "Bundler",
+		"module": "es2022",
+		"noEmit": true,
+		"lib": ["es2022"],
+		"types": [
+			"./worker-configuration.d.ts",
+			"@types/node"
+		]
+	},
+	"exclude": ["node_modules", "dist", "test"],
+	"include": ["src", "worker-configuration.d.ts"]
+}

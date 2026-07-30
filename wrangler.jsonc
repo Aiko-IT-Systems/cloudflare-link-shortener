@@ -1,0 +1,46 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "cloudflare-link-shortener",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-07-30",
+	"compatibility_flags": ["nodejs_compat"],
+	"assets": {
+		"directory": "./public",
+		"binding": "ASSETS"
+	},
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	},
+	"workers_dev": false,
+	"preview_urls": true,
+	"route": {
+		"pattern": "go.aitsys.dev",
+		"custom_domain": true,
+		"zone_id": "e9e86e9cc4298b9666b01b5cd3795099"
+	},
+	"dev": {
+		"enable_containers": false,
+		"ip": "127.0.0.1",
+		"port": 8787,
+		"local_protocol": "http",
+		"upstream_protocol": "https"
+	},
+	"account_id": "ba6a46b16b99f5f74858beafc22187c7",
+	"keep_names": true,
+	"keep_vars": true,
+	"minify": true,
+	"kv_namespaces": [
+		{
+			"binding": "LINKS",
+			"id": "54872d4a38e6486e8f6cc053364d6f64"
+		}
+	],
+	"secrets_store_secrets": [
+		{
+			"binding": "LINK_SHORTENER_API_KEY",
+			"secret_name": "LINK_SHORTENER_API_KEY",
+			"store_id": "766810d8e2c04f1ca24dcc45253af39e"
+		}
+	]
+}

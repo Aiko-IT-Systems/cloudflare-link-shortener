@@ -1,0 +1,215 @@
+import { describe, expect, test } from "vitest";
+import app from "../src";
+import { LinkRecord } from "../src/types";
+
+class MemoryKV {
+	private readonly values = new Map<string, string>();
+
+	get(key: string, options?: Partial<KVNamespaceGetOptions<undefined>>): Promise<string | null>;
+	get(key: string, type: "text"): Promise<string | null>;
+	get<T = unknown>(key: string, type: "json"): Promise<T | null>;
+	get(key: string, type: "arrayBuffer"): Promise<ArrayBuffer | null>;
+	get(key: string, type: "stream"): Promise<ReadableStream | null>;
+	get(key: string, options?: KVNamespaceGetOptions<"text">): Promise<string | null>;
+	get<T = unknown>(key: string, options?: KVNamespaceGetOptions<"json">): Promise<T | null>;
+	get(key: string, options?: KVNamespaceGetOptions<"arrayBuffer">): Promise<ArrayBuffer | null>;
+	get(key: string, options?: KVNamespaceGetOptions<"stream">): Promise<ReadableStream | null>;
+	async get<T>(key: string, typeOrOptions?: "json" | "text" | "arrayBuffer" | "stream" | Partial<KVNamespaceGetOptions<undefined>>): Promise<T | string | ArrayBuffer | ReadableStream | null> {
+		const value = this.values.get(key);
+		if (value === undefined) {
+			return null;
+		}
+
+		const type = typeof typeOrOptions === "string" ? typeOrOptions : typeOrOptions?.type;
+
+		if (type === "json") {
+			return JSON.parse(value) as T;
+		}
+
+		return value;
+	}
+
+	async put(key: string, value: string | ArrayBuffer | ArrayBufferView | ReadableStream): Promise<void> {
+		if (typeof value === "string") {
+			this.values.set(key, value);
+			return;
+		}
+
+		throw new Error("MemoryKV test mock only supports string values.");
+	}
+
+	async delete(key: string): Promise<void> {
+		this.values.delete(key);
+	}
+
+	async list<Metadata = unknown>(options?: KVNamespaceListOptions): Promise<KVNamespaceListResult<Metadata, string>> {
+		const prefix = options?.prefix ?? "";
+		const keys = Array.from(this.values.keys())
+			.filter((key) => key.startsWith(prefix))
+			.map((name) => ({ name }));
+
+		return {
+			keys,
+			list_complete: true,
+			cacheStatus: null
+		};
+	}
+
+	getWithMetadata<Metadata = unknown>(key: string, options?: Partial<KVNamespaceGetOptions<undefined>>): Promise<KVNamespaceGetWithMetadataResult<string, Metadata>>;
+	getWithMetadata<Metadata = unknown>(key: string, type: "text"): Promise<KVNamespaceGetWithMetadataResult<string, Metadata>>;
+	getWithMetadata<T = unknown, Metadata = unknown>(key: string, type: "json"): Promise<KVNamespaceGetWithMetadataResult<T, Metadata>>;
+	getWithMetadata<Metadata = unknown>(key: string, type: "arrayBuffer"): Promise<KVNamespaceGetWithMetadataResult<ArrayBuffer, Metadata>>;
+	getWithMetadata<Metadata = unknown>(key: string, type: "stream"): Promise<KVNamespaceGetWithMetadataResult<ReadableStream, Metadata>>;
+	getWithMetadata<Metadata = unknown>(key: string, options: KVNamespaceGetOptions<"text">): Promise<KVNamespaceGetWithMetadataResult<string, Metadata>>;
+	getWithMetadata<T = unknown, Metadata = unknown>(key: string, options: KVNamespaceGetOptions<"json">): Promise<KVNamespaceGetWithMetadataResult<T, Metadata>>;
+	getWithMetadata<Metadata = unknown>(key: string, options: KVNamespaceGetOptions<"arrayBuffer">): Promise<KVNamespaceGetWithMetadataResult<ArrayBuffer, Metadata>>;
+	getWithMetadata<Metadata = unknown>(key: string, options: KVNamespaceGetOptions<"stream">): Promise<KVNamespaceGetWithMetadataResult<ReadableStream, Metadata>>;
+	async getWithMetadata<T, Metadata = unknown>(key: string, typeOrOptions?: "json" | "text" | "arrayBuffer" | "stream" | Partial<KVNamespaceGetOptions<undefined>>): Promise<KVNamespaceGetWithMetadataResult<T | string | ArrayBuffer | ReadableStream, Metadata>> {
+		const value = await this.get<T>(key, typeOrOptions);
+		return {
+			value: value as T | string | null,
+			metadata: null,
+			cacheStatus: null
+		};
+	}
+}
+
+function env(): Env {
+	return {
+		LINKS: new MemoryKV() as KVNamespace,
+		LINK_SHORTENER_API_KEY: {
+			get: async () => "test-secret"
+		}
+	};
+}
+
+function authed(init: RequestInit = {}): RequestInit {
+	return {
+		...init,
+		headers: {
+			"Authorization": "Bearer test-secret",
+			"Content-Type": "application/json",
+			...init.headers
+		}
+	};
+}
+
+async function create(envValue: Env, payload: Record<string, unknown>): Promise<Response> {
+	return app.fetch(new Request("https://go.aitsys.dev/api/v1/links", authed({
+		method: "POST",
+		body: JSON.stringify(payload)
+	})), envValue);
+}
+
+describe("link shortener", () => {
+	test("creates a link with a custom slug", async () => {
+		const envValue = env();
+		const response = await create(envValue, {
+			slug: "pycord",
+			destinationUrl: "https://pycord.dev",
+			creator: "Lulalaby",
+			title: "Pycord"
+		});
+		const body = await response.json() as { result: LinkRecord };
+
+		expect(response.status).toBe(201);
+		expect(body.result.slug).toBe("pycord");
+		expect(body.result.creator).toBe("Lulalaby");
+	});
+
+	test("creates a link with an 8 character generated slug", async () => {
+		const envValue = env();
+		const response = await create(envValue, {
+			destinationUrl: "https://aitsys.dev",
+			creator: "Lulalaby"
+		});
+		const body = await response.json() as { result: LinkRecord };
+
+		expect(response.status).toBe(201);
+		expect(body.result.slug).toMatch(/^[A-Za-z0-9]{8}$/);
+	});
+
+	test("rejects missing and bad auth", async () => {
+		const envValue = env();
+		const missing = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", {
+			method: "POST"
+		}), envValue);
+		const bad = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", {
+			method: "POST",
+			headers: { Authorization: "Bearer wrong" }
+		}), envValue);
+
+		expect(missing.status).toBe(401);
+		expect(bad.status).toBe(401);
+	});
+
+	test("rejects invalid URLs, duplicate slugs, and reserved slugs", async () => {
+		const envValue = env();
+		const invalidUrl = await create(envValue, {
+			slug: "bad-url",
+			destinationUrl: "http://example.com",
+			creator: "Lulalaby"
+		});
+		const first = await create(envValue, {
+			slug: "dupe",
+			destinationUrl: "https://example.com",
+			creator: "Lulalaby"
+		});
+		const duplicate = await create(envValue, {
+			slug: "dupe",
+			destinationUrl: "https://example.org",
+			creator: "Lulalaby"
+		});
+		const reserved = await create(envValue, {
+			slug: "api",
+			destinationUrl: "https://example.com",
+			creator: "Lulalaby"
+		});
+
+		expect(invalidUrl.status).toBe(400);
+		expect(first.status).toBe(201);
+		expect(duplicate.status).toBe(409);
+		expect(reserved.status).toBe(400);
+	});
+
+	test("reads link metadata", async () => {
+		const envValue = env();
+		await create(envValue, {
+			slug: "readme",
+			destinationUrl: "https://aitsys.dev",
+			creator: "Lulalaby"
+		});
+
+		const response = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links/readme", authed()), envValue);
+		const body = await response.json() as { result: LinkRecord };
+
+		expect(response.status).toBe(200);
+		expect(body.result.destinationUrl).toBe("https://aitsys.dev");
+	});
+
+	test("renders splash page and disables public access", async () => {
+		const envValue = env();
+		await create(envValue, {
+			slug: "hello",
+			destinationUrl: "https://aitsys.dev",
+			creator: "Lulalaby"
+		});
+
+		const splashResponse = await app.fetch(new Request("https://go.aitsys.dev/hello"), envValue);
+		const splashHtml = await splashResponse.text();
+
+		const disableResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links/hello/disable", authed({
+			method: "POST",
+			body: JSON.stringify({ reason: "No longer needed" })
+		})), envValue);
+		const disabledResponse = await app.fetch(new Request("https://go.aitsys.dev/hello"), envValue);
+		const disabledHtml = await disabledResponse.text();
+
+		expect(splashResponse.status).toBe(200);
+		expect(splashHtml).toContain("Continue to destination");
+		expect(disableResponse.status).toBe(200);
+		expect(disabledResponse.status).toBe(410);
+		expect(disabledHtml).not.toContain("Continue to destination");
+	});
+});
+

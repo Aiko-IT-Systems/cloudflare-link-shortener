@@ -1,0 +1,339 @@
+import { LinkRecord } from "./types";
+
+const SITE_NAME = "AITSYS Go";
+
+function escapeHtml(value: string): string {
+	return value
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#39;");
+}
+
+function page(title: string, body: string, status = 200): Response {
+	return new Response(`<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="robots" content="noindex, nofollow">
+		<title>${escapeHtml(title)} · ${SITE_NAME}</title>
+		<style>
+			:root {
+				color-scheme: dark;
+				font-family: Bahnschrift, "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+				background: #020711;
+				color: #f6f8fb;
+				--bg: #020711;
+				--panel: rgba(39, 39, 39, .82);
+				--line: rgba(255, 255, 255, .14);
+				--soft-line: rgba(255, 255, 255, .08);
+				--text-muted: #c7d4e3;
+				--text-dim: #8495a8;
+				--cyan: #45c8ff;
+				--cyan-soft: rgba(69, 200, 255, .2);
+				--pink: #fc0fc0;
+				--pink-soft: rgba(252, 15, 192, .2);
+			}
+			* { box-sizing: border-box; }
+			body {
+				margin: 0;
+				min-height: 100vh;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 2rem 1rem;
+				background:
+					linear-gradient(115deg, rgba(69, 200, 255, .14), transparent 32rem),
+					linear-gradient(245deg, rgba(252, 15, 192, .18), transparent 34rem),
+					linear-gradient(145deg, #020711 0%, #272727 52%, #120915 100%);
+				overflow-x: hidden;
+			}
+			main {
+				position: relative;
+				width: min(72rem, 100%);
+				min-height: 34rem;
+				padding: 3.25rem;
+				border: 1px solid var(--line);
+				border-radius: 1.25rem;
+				background:
+					linear-gradient(90deg, rgba(2, 7, 17, .94), rgba(39, 39, 39, .72) 58%, rgba(18, 9, 21, .74)),
+					var(--panel);
+				box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, .35);
+				overflow: hidden;
+			}
+			main::before {
+				content: "";
+				position: absolute;
+				inset: 0;
+				background:
+					linear-gradient(90deg, transparent 0 48%, rgba(69, 200, 255, .08) 48% 49%, transparent 49% 100%),
+					linear-gradient(0deg, transparent 0 64%, rgba(252, 15, 192, .12) 64% 65%, transparent 65% 100%),
+					repeating-linear-gradient(115deg, transparent 0 3.5rem, rgba(255, 255, 255, .035) 3.5rem 3.56rem);
+				opacity: .7;
+				pointer-events: none;
+			}
+			main::after {
+				content: "";
+				position: absolute;
+				right: -8rem;
+				top: 3rem;
+				width: 34rem;
+				height: 28rem;
+				border: 1px solid rgba(252, 15, 192, .22);
+				border-radius: 4rem;
+				transform: rotate(-18deg);
+				background:
+					linear-gradient(135deg, rgba(252, 15, 192, .14), transparent 50%),
+					repeating-linear-gradient(90deg, rgba(255, 255, 255, .06) 0 .08rem, transparent .08rem 2rem);
+				pointer-events: none;
+			}
+			.content {
+				position: relative;
+				z-index: 1;
+				width: min(43rem, 100%);
+			}
+			.brand {
+				display: flex;
+				align-items: center;
+				gap: 1rem;
+				margin-bottom: 2.4rem;
+			}
+			.brand-lockup {
+				display: inline-flex;
+				align-items: center;
+				gap: 1.1rem;
+			}
+			.brand-logo {
+				width: 9.5rem;
+				height: auto;
+				display: block;
+			}
+			.brand-go {
+				color: var(--pink);
+				font-size: 3.6rem;
+				font-weight: 800;
+				line-height: .85;
+				text-transform: uppercase;
+			}
+			.mascot {
+				position: absolute;
+				z-index: 1;
+				right: 5.1rem;
+				top: 9rem;
+				width: 14rem;
+				height: auto;
+				filter: drop-shadow(0 1.8rem 2.4rem rgba(0, 0, 0, .45));
+				pointer-events: none;
+			}
+			h1 {
+				margin: 0 0 1.05rem;
+				font-size: 4.1rem;
+				line-height: .96;
+				letter-spacing: 0;
+				text-transform: uppercase;
+				text-wrap: balance;
+			}
+			h1 .accent {
+				color: var(--pink);
+				display: inline;
+				white-space: nowrap;
+			}
+			.one-line {
+				white-space: nowrap;
+			}
+			p {
+				margin: 0 0 1rem;
+				color: var(--text-muted);
+				line-height: 1.7;
+				font-size: 1.05rem;
+			}
+			dl {
+				margin: 1.5rem 0;
+				display: grid;
+				border: 1px solid var(--soft-line);
+				border-radius: .75rem;
+				background: rgba(3, 8, 16, .58);
+			}
+			.meta {
+				padding: .95rem 1rem;
+				border-top: 1px solid var(--soft-line);
+			}
+			.meta:first-child {
+				border-top: 0;
+			}
+			dt {
+				margin-bottom: .25rem;
+				color: var(--text-dim);
+				font-size: .82rem;
+				text-transform: uppercase;
+				letter-spacing: 0;
+			}
+			dd {
+				margin: 0;
+				overflow-wrap: anywhere;
+			}
+			a.button {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				margin-top: .5rem;
+				min-height: 2.9rem;
+				padding: .78rem 1.15rem;
+				border: 1px solid rgba(252, 15, 192, .46);
+				border-radius: .38rem;
+				background:
+					linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02)),
+					rgba(3, 8, 16, .72);
+				color: #f6f8fb;
+				font-weight: 700;
+				text-decoration: none;
+				box-shadow:
+					inset 0 -2px 0 rgba(252, 15, 192, .42),
+					0 .85rem 2.2rem rgba(0, 0, 0, .2);
+				transition: border-color .15s ease, background .15s ease, transform .15s ease;
+			}
+			a.button:hover {
+				border-color: rgba(69, 200, 255, .75);
+				background:
+					linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .03)),
+					#272727;
+				transform: translateY(-1px);
+			}
+			code {
+				padding: .15rem .35rem;
+				border-radius: .3rem;
+				background: rgba(255, 255, 255, .09);
+				color: #eef9f7;
+			}
+			.note {
+				margin-top: 1.25rem;
+				font-size: .95rem;
+				color: #aebdcb;
+			}
+			@media (max-width: 52rem) {
+				body {
+					align-items: flex-start;
+				}
+				main {
+					min-height: auto;
+					padding: 2rem 1.25rem;
+				}
+				main::after {
+					opacity: .28;
+					right: -18rem;
+				}
+				.mascot {
+					right: -1.5rem;
+					top: 2.6rem;
+					width: 9rem;
+					opacity: .38;
+				}
+				h1 {
+					font-size: 2.75rem;
+				}
+				.brand {
+					margin-bottom: 1.7rem;
+				}
+				.brand-go {
+					font-size: 2.9rem;
+				}
+			}
+			@media (max-width: 30rem) {
+				h1 {
+					font-size: 2.15rem;
+				}
+				.brand-logo {
+					width: 7.2rem;
+				}
+				.brand-lockup {
+					gap: .75rem;
+				}
+				.brand-go {
+					font-size: 2.25rem;
+				}
+				.mascot {
+					display: none;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<img class="mascot" src="/brand/lulalaby-cat.png" alt="" aria-hidden="true">
+			<div class="content">
+				<div class="brand">
+					<div class="brand-lockup">
+						<img class="brand-logo" src="/brand/aitsys-logo.png" alt="Aiko IT Systems">
+						<span class="brand-go">GO</span>
+					</div>
+				</div>
+				${body}
+			</div>
+		</main>
+	</body>
+</html>`, {
+		status,
+		headers: {
+			"Content-Type": "text/html; charset=utf-8",
+			"Referrer-Policy": "no-referrer",
+			"X-Content-Type-Options": "nosniff"
+		}
+	});
+}
+
+export function homepage(): Response {
+	return page("Private link shortener", `
+		<p>A small link redirector by Lulalaby for AITSYS projects, release posts, docs, and community links.</p>
+		<p>Short links show the destination before leaving this site, who added the link, and when it was created. No click analytics, no cookies, no tracking pixels.</p>
+	`);
+}
+
+export function splash(record: LinkRecord): Response {
+	const label = record.title ?? record.destinationUrl;
+	return page(label, `
+		<h1>Leaving <span class="accent">GO</span></h1>
+		<p>This short link points to the destination below. Nothing is tracked here: no click counter, no cookies, and no analytics storage.</p>
+		<dl>
+			<div class="meta">
+				<dt>Destination</dt>
+				<dd>${escapeHtml(record.destinationUrl)}</dd>
+			</div>
+			<div class="meta">
+				<dt>Added by</dt>
+				<dd>${escapeHtml(record.creator)}</dd>
+			</div>
+			<div class="meta">
+				<dt>Created</dt>
+				<dd>${escapeHtml(new Date(record.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }))} UTC</dd>
+			</div>
+		</dl>
+		<a class="button" href="${escapeHtml(record.destinationUrl)}" rel="noreferrer">Continue to destination</a>
+	`);
+}
+
+export function unavailable(record: LinkRecord): Response {
+	return page("Link unavailable", `
+		<h1 class="one-line">Link <span class="accent">disabled</span></h1>
+		<p>The short link <code>/${escapeHtml(record.slug)}</code> exists, but it is no longer available.</p>
+		${record.disabledReason ? `<p class="note">${escapeHtml(record.disabledReason)}</p>` : ""}
+	`, 410);
+}
+
+export function notFound(): Response {
+	return page("Link not found", `
+		<h1 class="one-line">Link <span class="accent">not found</span></h1>
+		<p>That short link does not exist, or it was typed with an extra character hiding somewhere.</p>
+		<a class="button" href="/">Back home</a>
+	`, 404);
+}
+
+export function robots(): Response {
+	return new Response("User-agent: *\nDisallow: /\n", {
+		headers: {
+			"Content-Type": "text/plain; charset=utf-8"
+		}
+	});
+}
+
