@@ -9,6 +9,9 @@ export type LinkRecord = {
 	embedImageUrl?: string;
 	embedSiteName?: string;
 	metadataFetchedAt?: string;
+	password?: string;
+	expiresAt?: string;
+	suppressSocialPreview?: boolean;
 	disabledAt?: string;
 	disabledReason?: string;
 };

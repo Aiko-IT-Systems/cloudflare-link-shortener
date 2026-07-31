@@ -1,12 +1,16 @@
 import { Hono } from "hono";
 import { requireApiKey } from "./auth";
-import { homepage, notFound, robots, splash, unavailable } from "./html";
+import { expired, homepage, notFound, passwordPrompt, robots, splash, unavailable } from "./html";
 import { fetchTargetMetadata } from "./metadata";
 import { jsonError, jsonSuccess } from "./responses";
 import { createLink, disableLink, getLink, refreshLinkMetadata } from "./store";
 import { createLinkSchema, disableLinkSchema, isReservedSlug, normalizeSlug, SLUG_PATTERN } from "./validation";
 
 const app = new Hono<{ Bindings: Env }>();
+
+function isExpired(record: { expiresAt?: string }): boolean {
+	return record.expiresAt ? Date.parse(record.expiresAt) <= Date.now() : false;
+}
 
 app.get("/", () => homepage());
 app.get("/robots.txt", () => robots());
@@ -32,7 +36,10 @@ app.post("/api/v1/links", async (c) => {
 		embedDescription: parsed.data.embedDescription ?? fetchedMetadata.embedDescription,
 		embedImageUrl: parsed.data.embedImageUrl ?? fetchedMetadata.embedImageUrl,
 		embedSiteName: parsed.data.embedSiteName ?? fetchedMetadata.embedSiteName,
-		metadataFetchedAt: fetchedMetadata.metadataFetchedAt
+		metadataFetchedAt: fetchedMetadata.metadataFetchedAt,
+		password: parsed.data.password,
+		expiresAt: parsed.data.expiresAt,
+		suppressSocialPreview: parsed.data.suppressSocialPreview
 	});
 	if (result === "duplicate") {
 		return jsonError("That slug already exists.", "duplicate_slug", 409);
@@ -116,6 +123,47 @@ app.get("/:slug", async (c) => {
 
 	if (record.disabledAt) {
 		return unavailable(record);
+	}
+
+	if (isExpired(record)) {
+		return expired(record);
+	}
+
+	if (record.password) {
+		return passwordPrompt(record);
+	}
+
+	return splash(record, c.req.url);
+});
+
+app.post("/:slug", async (c) => {
+	const slug = normalizeSlug(c.req.param("slug"));
+
+	if (!SLUG_PATTERN.test(slug) || isReservedSlug(slug)) {
+		return notFound();
+	}
+
+	const record = await getLink(c.env, slug);
+	if (!record) {
+		return notFound();
+	}
+
+	if (record.disabledAt) {
+		return unavailable(record);
+	}
+
+	if (isExpired(record)) {
+		return expired(record);
+	}
+
+	if (!record.password) {
+		return splash(record, c.req.url);
+	}
+
+	const body = await c.req.parseBody().catch(() => ({})) as Record<string, string | File>;
+	const password = typeof body.password === "string" ? body.password : "";
+	if (password !== record.password) {
+		return passwordPrompt(record, true);
 	}
 
 	return splash(record, c.req.url);

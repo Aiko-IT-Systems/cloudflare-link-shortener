@@ -7,6 +7,7 @@ type PageMeta = {
 	imageUrl?: string;
 	pageUrl?: string;
 	siteName?: string;
+	suppressSocialPreview?: boolean;
 };
 
 function escapeHtml(value: string): string {
@@ -19,6 +20,10 @@ function escapeHtml(value: string): string {
 }
 
 function metaTags(title: string, meta: PageMeta = {}): string {
+	if (meta.suppressSocialPreview) {
+		return "";
+	}
+
 	const description = meta.description ?? "Transparent AITSYS GO short link preview. No click analytics, cookies, or tracking pixels.";
 	const siteName = meta.siteName ?? SITE_NAME;
 	const tags = [
@@ -229,6 +234,33 @@ function page(title: string, body: string, status = 200, meta: PageMeta = {}): R
 					0 .85rem 2.2rem rgba(0, 0, 0, .2);
 				transition: border-color .15s ease, background .15s ease, transform .15s ease;
 			}
+			form {
+				display: grid;
+				gap: .85rem;
+				width: min(24rem, 100%);
+				margin-top: 1.4rem;
+			}
+			input {
+				min-height: 2.9rem;
+				padding: .78rem .9rem;
+				border: 1px solid rgba(255, 255, 255, .18);
+				border-radius: .38rem;
+				background: rgba(3, 8, 16, .72);
+				color: #f6f8fb;
+				font: inherit;
+			}
+			button {
+				min-height: 2.9rem;
+				padding: .78rem 1.15rem;
+				border: 1px solid rgba(252, 15, 192, .46);
+				border-radius: .38rem;
+				background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02)), rgba(3, 8, 16, .72);
+				color: #f6f8fb;
+				font: inherit;
+				font-weight: 700;
+				cursor: pointer;
+				box-shadow: inset 0 -2px 0 rgba(252, 15, 192, .42), 0 .85rem 2.2rem rgba(0, 0, 0, .2);
+			}
 			a.button:hover {
 				border-color: rgba(69, 200, 255, .75);
 				background:
@@ -322,7 +354,12 @@ export function homepage(): Response {
 	return page("Private link shortener", `
 		<p>A small link redirector for AITSYS projects, release posts, docs, and community links.</p>
 		<p>Short links show the destination before leaving this site, who added the link, and when it was created. No click analytics, no cookies, no tracking pixels.</p>
-	`);
+	`, 200, {
+		description: "Transparent AITSYS GO short links with a privacy-first splash page.",
+		imageUrl: "https://go.aitsys.dev/brand/aitsys-logo.png",
+		pageUrl: "https://go.aitsys.dev/",
+		siteName: SITE_NAME
+	});
 }
 
 export function splash(record: LinkRecord, pageUrl: string): Response {
@@ -351,7 +388,8 @@ export function splash(record: LinkRecord, pageUrl: string): Response {
 		description,
 		imageUrl: record.embedImageUrl,
 		pageUrl,
-		siteName: record.embedSiteName
+		siteName: record.embedSiteName,
+		suppressSocialPreview: record.suppressSocialPreview
 	});
 }
 
@@ -361,6 +399,26 @@ export function unavailable(record: LinkRecord): Response {
 		<p>The short link <code>/${escapeHtml(record.slug)}</code> exists, but it is no longer available.</p>
 		${record.disabledReason ? `<p class="note">${escapeHtml(record.disabledReason)}</p>` : ""}
 	`, 410);
+}
+
+export function expired(record: LinkRecord): Response {
+	return page("Link expired", `
+		<h1 class="one-line">Link <span class="accent">expired</span></h1>
+		<p>The short link <code>/${escapeHtml(record.slug)}</code> exists, but its expiry time has passed.</p>
+		${record.expiresAt ? `<p class="note">Expired at ${escapeHtml(new Date(record.expiresAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }))} UTC.</p>` : ""}
+	`, 410, { suppressSocialPreview: record.suppressSocialPreview });
+}
+
+export function passwordPrompt(record: LinkRecord, invalid = false): Response {
+	return page("Password required", `
+		<h1 class="one-line">Password <span class="accent">required</span></h1>
+		<p>The short link <code>/${escapeHtml(record.slug)}</code> is protected. Enter the password to view the destination splash.</p>
+		${invalid ? `<p class="note">That password did not match.</p>` : ""}
+		<form method="post" action="/${escapeHtml(record.slug)}">
+			<input type="password" name="password" placeholder="Password" autocomplete="current-password" required>
+			<button type="submit">Unlock link</button>
+		</form>
+	`, invalid ? 401 : 200, { suppressSocialPreview: true });
 }
 
 export function notFound(): Response {

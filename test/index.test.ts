@@ -261,5 +261,73 @@ describe("link shortener", () => {
 		expect(body.result.embedTitle).toBe("Refreshed Title");
 		expect(body.result.embedDescription).toBe("Refreshed description.");
 	});
+
+	test("requires a password before rendering the destination splash", async () => {
+		const envValue = env();
+		await create(envValue, {
+			slug: "secret",
+			destinationUrl: "https://aitsys.dev",
+			creator: "Lulalaby",
+			password: "meow"
+		});
+
+		const promptResponse = await app.fetch(new Request("https://go.aitsys.dev/secret"), envValue);
+		const promptHtml = await promptResponse.text();
+		const badResponse = await app.fetch(new Request("https://go.aitsys.dev/secret", {
+			method: "POST",
+			headers: { "Content-Type": "application/x-www-form-urlencoded" },
+			body: "password=wrong"
+		}), envValue);
+		const goodResponse = await app.fetch(new Request("https://go.aitsys.dev/secret", {
+			method: "POST",
+			headers: { "Content-Type": "application/x-www-form-urlencoded" },
+			body: "password=meow"
+		}), envValue);
+		const goodHtml = await goodResponse.text();
+
+		expect(promptResponse.status).toBe(200);
+		expect(promptHtml).toContain("Password");
+		expect(promptHtml).not.toContain("Continue to destination");
+		expect(badResponse.status).toBe(401);
+		expect(goodResponse.status).toBe(200);
+		expect(goodHtml).toContain("Continue to destination");
+	});
+
+	test("renders expired links without the destination button", async () => {
+		const envValue = env();
+		await create(envValue, {
+			slug: "old",
+			destinationUrl: "https://aitsys.dev",
+			creator: "Lulalaby",
+			expiresAt: "2020-01-01T00:00:00.000Z"
+		});
+
+		const response = await app.fetch(new Request("https://go.aitsys.dev/old"), envValue);
+		const html = await response.text();
+
+		expect(response.status).toBe(410);
+		expect(html).toContain("expired");
+		expect(html).not.toContain("Continue to destination");
+	});
+
+	test("suppresses social preview tags for marked links and exposes homepage preview", async () => {
+		const envValue = env();
+		await create(envValue, {
+			slug: "quiet",
+			destinationUrl: "https://aitsys.dev",
+			creator: "Lulalaby",
+			suppressSocialPreview: true
+		});
+
+		const quietResponse = await app.fetch(new Request("https://go.aitsys.dev/quiet"), envValue);
+		const quietHtml = await quietResponse.text();
+		const homeResponse = await app.fetch(new Request("https://go.aitsys.dev/"), envValue);
+		const homeHtml = await homeResponse.text();
+
+		expect(quietHtml).not.toContain('property="og:title"');
+		expect(quietHtml).not.toContain('name="twitter:card"');
+		expect(homeHtml).toContain('<meta property="og:title" content="Private link shortener">');
+		expect(homeHtml).toContain('<meta property="og:image" content="https://go.aitsys.dev/brand/aitsys-logo.png">');
+	});
 });
 

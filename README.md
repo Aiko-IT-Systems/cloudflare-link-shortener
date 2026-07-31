@@ -38,7 +38,10 @@ Content-Type: application/json
   "destinationUrl": "https://aitsys.dev",
   "creator": "Lulalaby",
   "slug": "aitsys",
-  "title": "AITSYS"
+  "title": "AITSYS",
+  "password": "optional-password",
+  "expiresAt": "2026-08-01T00:00:00.000Z",
+  "suppressSocialPreview": false
 }
 ```
 
@@ -66,6 +69,8 @@ Refresh stored embed metadata:
 ```http
 POST /api/v1/links/aitsys/refresh-metadata
 ```
+
+Password-protected links show a password prompt before the splash page. Expired links are checked at request time and render an expired page without needing a cron. `suppressSocialPreview: true` omits OpenGraph/Twitter tags for that short link.
 
 Disable a link:
 

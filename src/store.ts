@@ -26,6 +26,9 @@ export async function createLink(env: Env, input: {
 	embedImageUrl?: string;
 	embedSiteName?: string;
 	metadataFetchedAt?: string;
+	password?: string;
+	expiresAt?: string;
+	suppressSocialPreview?: boolean;
 	slug?: string;
 }): Promise<LinkRecord | "duplicate" | "reserved"> {
 	const requestedSlug = input.slug ? normalizeSlug(input.slug) : undefined;
@@ -107,6 +110,9 @@ function toRecord(input: {
 	embedImageUrl?: string;
 	embedSiteName?: string;
 	metadataFetchedAt?: string;
+	password?: string;
+	expiresAt?: string;
+	suppressSocialPreview?: boolean;
 }): LinkRecord {
 	return {
 		slug: input.slug,
@@ -118,6 +124,9 @@ function toRecord(input: {
 		embedImageUrl: input.embedImageUrl,
 		embedSiteName: input.embedSiteName,
 		metadataFetchedAt: input.metadataFetchedAt,
+		password: input.password,
+		expiresAt: input.expiresAt,
+		suppressSocialPreview: input.suppressSocialPreview,
 		createdAt: new Date().toISOString()
 	};
 }

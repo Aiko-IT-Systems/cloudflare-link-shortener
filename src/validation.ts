@@ -25,7 +25,10 @@ export const createLinkSchema = z.object({
 	embedTitle: z.string().trim().min(1).max(120).optional(),
 	embedDescription: z.string().trim().min(1).max(240).optional(),
 	embedImageUrl: httpsUrlSchema.optional(),
-	embedSiteName: z.string().trim().min(1).max(80).optional()
+	embedSiteName: z.string().trim().min(1).max(80).optional(),
+	password: z.string().trim().min(1).max(200).optional(),
+	expiresAt: z.string().datetime({ offset: true }).optional(),
+	suppressSocialPreview: z.boolean().optional()
 });
 
 export const disableLinkSchema = z.object({
