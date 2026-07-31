@@ -1,0 +1,54 @@
+name: Tools Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "tools/**"
+      - ".github/workflows/tools-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate PowerShell scripts
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Path tools -Filter *.ps1
+          foreach ($file in $files) {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref] $null, [ref] $errors) | Out-Null
+            if ($errors) {
+              $errors | Format-List *
+              throw "PowerShell syntax check failed for $($file.FullName)"
+            }
+          }
+
+      - name: Package tools
+        shell: pwsh
+        run: |
+          $version = "tools-$($env:GITHUB_RUN_NUMBER)-$($env:GITHUB_SHA.Substring(0, 7))"
+          $archive = "aitsys-go-tools-$version.zip"
+          Compress-Archive -Path tools/* -DestinationPath $archive -Force
+          "TOOLS_VERSION=$version" >> $env:GITHUB_ENV
+          "TOOLS_ARCHIVE=$archive" >> $env:GITHUB_ENV
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TOOLS_VERSION }}
+          name: AITSYS GO Tools ${{ env.TOOLS_VERSION }}
+          body: |
+            Automated release for the AITSYS GO quick creation and admin tools.
+
+            Set `AITSYS_SHORT_API_KEY` in your environment before using them.
+          files: ${{ env.TOOLS_ARCHIVE }}

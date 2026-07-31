@@ -85,3 +85,13 @@ Content-Type: application/json
 
 This service intentionally does not store click analytics, counters, cookies, or tracking data.
 
+## CLI Tools
+
+Release ZIPs contain `aitsys-short` and `aitsys-short-admin` without hardcoded secrets. Set the API key before using them:
+
+```powershell
+[Environment]::SetEnvironmentVariable("AITSYS_SHORT_API_KEY", "<api-key>", "User")
+```
+
+Tool releases are published automatically when files under `tools/` change.
+
