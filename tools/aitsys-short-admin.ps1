@@ -221,6 +221,10 @@ function Show-Help {
 	Write-Host "Commands:"
 	Write-Host "  aitsys-short-admin -List [-ProjectRoot <repo>]"
 	Write-Host "  aitsys-short-admin -Help"
+	Write-Host ""
+	Write-Host "Note:"
+	Write-Host "  -List requires Wrangler access to the Cloudflare KV namespace."
+	Write-Host "  With only AITSYS_SHORT_API_KEY, you can operate on slugs you already know."
 }
 
 if ($Help) { Show-Help; exit 0 }

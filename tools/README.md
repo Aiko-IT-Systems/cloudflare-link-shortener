@@ -41,3 +41,5 @@ List links:
 ```powershell
 aitsys-short-admin -List
 ```
+
+`-List` requires Wrangler access to the Cloudflare account/KV namespace. Coworkers using only `AITSYS_SHORT_API_KEY` can create links and operate on slugs they already know, but they cannot enumerate every stored link.
