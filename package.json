@@ -1,7 +1,7 @@
 {
 	"name": "cloudflare-link-shortener",
 	"description": "Transparent AITSYS link shortener on Cloudflare Workers",
-	"version": "1.2.0",
+	"version": "2.0.0",
 	"author": {
 		"name": "Lulalaby",
 		"email": "aiko@aitsys.dev",
@@ -21,7 +21,12 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"typecheck": "tsc --noEmit",
-		"cf-typegen": "wrangler types --strict-vars false"
+		"cf-typegen": "wrangler types --strict-vars false",
+		"extensions:build:chrome": "vite build --config extensions/vite.config.ts --mode chrome",
+		"extensions:build:firefox": "vite build --config extensions/vite.config.ts --mode firefox",
+		"extensions:build": "npm run extensions:build:chrome && npm run extensions:build:firefox",
+		"extensions:check": "node scripts/check-extensions.mjs",
+		"discord:register": "node scripts/register-discord-commands.mjs"
 	},
 	"dependencies": {
 		"hono": "^4.6.20",
@@ -31,7 +36,8 @@
 	"devDependencies": {
 		"@types/node": "22.17.2",
 		"typescript": "5.9.2",
+		"vite": "7.3.6",
 		"vitest": "^3.0.7",
-		"wrangler": "4.116.0"
+		"wrangler": "4.126.0"
 	}
 }

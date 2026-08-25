@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import app from "../src";
+import { createLink as createStoredLink } from "../src/store";
 import { LinkRecord } from "../src/types";
 
 class MemoryKV {
@@ -44,14 +45,19 @@ class MemoryKV {
 
 	async list<Metadata = unknown>(options?: KVNamespaceListOptions): Promise<KVNamespaceListResult<Metadata, string>> {
 		const prefix = options?.prefix ?? "";
-		const keys = Array.from(this.values.keys())
+		const matching = Array.from(this.values.keys())
 			.filter((key) => key.startsWith(prefix))
 			.map((name) => ({ name }));
+		const start = options?.cursor ? Number.parseInt(options.cursor, 10) : 0;
+		const limit = options?.limit ?? matching.length;
+		const end = Math.min(start + limit, matching.length);
+		const keys = matching.slice(start, end);
 
 		return {
 			keys,
-			list_complete: true,
-			cacheStatus: null
+			list_complete: end >= matching.length,
+			cacheStatus: null,
+			...(end < matching.length ? { cursor: `${end}` } : {})
 		};
 	}
 
@@ -80,6 +86,9 @@ function env(overrides: Partial<Env> = {}): Env {
 		LINK_SHORTENER_API_KEY: {
 			get: async () => "test-secret"
 		},
+		DISCORD_PUBLIC_KEY: {
+			get: async () => "0".repeat(64)
+		},
 		ASSETS: {
 			fetch: async () => new Response("Not found", { status: 404 })
 		} as Fetcher,
@@ -87,6 +96,9 @@ function env(overrides: Partial<Env> = {}): Env {
 		BRAND_LOGO_URL: "/logo.png",
 		BRAND_LOGO_ALT: "Aiko IT Systems",
 		FAVICON_URL: "/favicon.png",
+		BRAND_COLOR: "#fc0fc0",
+		DISCORD_APPLICATION_ID: "",
+		DISCORD_ADMIN_USER_ID: "",
 		...overrides
 	};
 }
@@ -107,6 +119,18 @@ async function create(envValue: Env, payload: Record<string, unknown>): Promise<
 		method: "POST",
 		body: JSON.stringify(payload)
 	})), envValue);
+}
+
+function hex(bytes: ArrayBuffer): string {
+	return Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function discordRequest(body: Record<string, unknown>, privateKey: CryptoKey): Promise<Request> {
+	const timestamp = `${Math.floor(Date.now() / 1000)}`;
+	const json = JSON.stringify(body);
+	const data = new TextEncoder().encode(timestamp + json);
+	const signature = await crypto.subtle.sign({ name: "Ed25519" }, privateKey, data);
+	return new Request("https://go.aitsys.dev/discord/interactions", { method: "POST", headers: { "Content-Type": "application/json", "X-Signature-Ed25519": hex(signature), "X-Signature-Timestamp": timestamp }, body: json });
 }
 
 describe("link shortener", () => {
@@ -355,6 +379,127 @@ describe("link shortener", () => {
 		expect(html).toContain('<link rel="icon" href="/custom/favicon.svg?pink=1&amp;small=1">');
 		expect(html).toContain('<meta property="og:image" content="https://short.example/custom/logo.svg?light=1&amp;wide=1">');
 		expect(html).toContain('<meta property="og:site_name" content="Cats &amp; Code">');
+	});
+
+	test("issues revocable account tokens and isolates owned links", async () => {
+		const envValue = env();
+		const admin = authed({ method: "POST", body: JSON.stringify({ id: "friend", creatorName: "Friendly Cat" }) });
+		const accountResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts", admin), envValue);
+		expect(accountResponse.status).toBe(201);
+		const accountList = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts", authed()), envValue);
+		expect((await accountList.json() as { result: { items: Array<{ id: string }> } }).result.items.map((account) => account.id)).toEqual(["friend"]);
+
+		const tokenResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts/friend/tokens", authed({ method: "POST", body: JSON.stringify({ label: "Firefox" }) })), envValue);
+		const issued = await tokenResponse.json() as { result: { token: string; tokenId: string } };
+		expect(issued.result.token).toMatch(/^aig_/);
+
+		const userHeaders = { Authorization: `Bearer ${issued.result.token}`, "Content-Type": "application/json" };
+		const ownResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", { method: "POST", headers: userHeaders, body: JSON.stringify({ destinationUrl: "https://example.com", creator: "Pretend Admin", slug: "friend-link" }) }), envValue);
+		const own = await ownResponse.json() as { result: LinkRecord };
+		expect(ownResponse.status).toBe(201);
+		expect(own.result.creator).toBe("Friendly Cat");
+		expect(own.result.owner).toEqual({ kind: "account", id: "friend" });
+
+		await create(envValue, { destinationUrl: "https://aitsys.dev", creator: "Lulalaby", slug: "admin-link" });
+		const hidden = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links/admin-link", { headers: userHeaders }), envValue);
+		expect(hidden.status).toBe(404);
+
+		const listed = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", { headers: userHeaders }), envValue);
+		const page = await listed.json() as { result: { items: LinkRecord[] } };
+		expect(page.result.items.map((link) => link.slug)).toEqual(["friend-link"]);
+
+		const update = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links/friend-link", { method: "PATCH", headers: userHeaders, body: JSON.stringify({ title: "Edited" }) }), envValue);
+		expect(update.status).toBe(200);
+
+		const revoke = await app.fetch(new Request(`https://go.aitsys.dev/api/v1/tokens/${issued.result.tokenId}/revoke`, authed({ method: "POST" })), envValue);
+		expect(revoke.status).toBe(200);
+		const revoked = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", { headers: userHeaders }), envValue);
+		expect(revoked.status).toBe(401);
+
+		const secondTokenResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts/friend/tokens", authed({ method: "POST", body: JSON.stringify({ label: "Chrome" }) })), envValue);
+		const secondIssued = await secondTokenResponse.json() as { result: { token: string } };
+		const removal = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts/friend", authed({ method: "DELETE" })), envValue);
+		const removed = await removal.json() as { result: { revokedTokenCount: number } };
+		expect(removal.status).toBe(200);
+		expect(removed.result.revokedTokenCount).toBe(1);
+		const removedToken = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", { headers: { Authorization: `Bearer ${secondIssued.result.token}` } }), envValue);
+		expect(removedToken.status).toBe(401);
+		const emptyAccountList = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts", authed()), envValue);
+		expect((await emptyAccountList.json() as { result: { items: unknown[] } }).result.items).toEqual([]);
+	});
+
+	test("verifies Discord interactions and queues multiple message links", async () => {
+		const keys = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+		const publicKey = hex(await crypto.subtle.exportKey("raw", keys.publicKey));
+		const envValue = env({ DISCORD_APPLICATION_ID: "discord-app", DISCORD_PUBLIC_KEY: { get: async () => publicKey } as SecretsStoreSecret });
+		const user = { id: "234567890123456789", username: "DiscordCat" };
+		const invalid = await app.fetch(new Request("https://go.aitsys.dev/discord/interactions", { method: "POST", body: "{}" }), envValue);
+		expect(invalid.status).toBe(401);
+		const unlinked = await app.fetch(await discordRequest({ type: 2, application_id: "discord-app", user, data: { name: "manage" } }, keys.privateKey), envValue);
+		expect(JSON.stringify(await unlinked.json())).toContain("not linked to an active shortener account");
+		const account = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts", authed({ method: "POST", body: JSON.stringify({ id: "discord-cat", creatorName: "Discord Cat", discordUserId: user.id }) })), envValue);
+		expect(account.status).toBe(201);
+
+		const messageCommand = {
+			type: 2,
+			application_id: "discord-app",
+			user,
+			data: { name: "Shorten link", target_id: "message", resolved: { messages: { message: { content: "https://first.example and https://second.example" } } } }
+		};
+		const start = await app.fetch(await discordRequest(messageCommand, keys.privateKey), envValue);
+		const modal = await start.json() as { type: number; data: { custom_id: string } };
+		expect(modal.type).toBe(9);
+
+		const submitted = await app.fetch(await discordRequest({ type: 5, application_id: "discord-app", user, data: { custom_id: modal.data.custom_id, components: [{ type: 18, component: { custom_id: "slug", value: "first" } }] } }, keys.privateKey), envValue);
+		const next = await submitted.json() as { type: number; data: { components: Array<{ components?: Array<{ content?: string }> }> } };
+		expect(next.type).toBe(4);
+		expect(JSON.stringify(next.data.components)).toContain("Fill next URL");
+		expect(JSON.stringify(next.data.components)).toContain("https://go.aitsys.dev/first");
+	});
+
+	test("bootstraps one administrator profile and migrates every link", async () => {
+		const keys = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+		const publicKey = hex(await crypto.subtle.exportKey("raw", keys.publicKey));
+		const user = { id: "123456789012345678", username: "Admin Cat" };
+		const envValue = env({ DISCORD_APPLICATION_ID: "discord-app", DISCORD_ADMIN_USER_ID: user.id, DISCORD_PUBLIC_KEY: { get: async () => publicKey } as SecretsStoreSecret });
+		await create(envValue, { destinationUrl: "https://example.com", creator: "Legacy Cat", slug: "legacy-link" });
+		await createStoredLink(envValue, { slug: "legacy-discord-admin", destinationUrl: "https://example.org", creator: "Old Admin Cat", owner: { kind: "discord", id: user.id } });
+		await create(envValue, { destinationUrl: "https://example.net", creator: "Legacy Cat", slug: "legacy-link-two" });
+		await create(envValue, { destinationUrl: "https://example.edu", creator: "Legacy Cat", slug: "legacy-link-three" });
+		await create(envValue, { destinationUrl: "https://example.dev", creator: "Legacy Cat", slug: "legacy-link-four" });
+		await createStoredLink(envValue, { slug: "disabled-link", destinationUrl: "https://disabled.example", creator: "Legacy Cat", disabledAt: "2026-08-25T00:00:00.000Z" });
+		const begin = await app.fetch(await discordRequest({ type: 2, application_id: "discord-app", user, data: { name: "manage" } }, keys.privateKey), envValue);
+		const setup = await begin.json() as { type: number; data: { custom_id: string } };
+		expect(setup.type).toBe(9);
+		expect(setup.data.custom_id).toBe("short:admin-setup");
+		const complete = await app.fetch(await discordRequest({ type: 5, application_id: "discord-app", user, data: { custom_id: setup.data.custom_id, components: [{ type: 18, component: { custom_id: "creatorName", value: "Gremlin Lala" } }] } }, keys.privateKey), envValue);
+		expect(JSON.stringify(await complete.json())).toContain("Administrator profile");
+		const manage = await app.fetch(await discordRequest({ type: 2, application_id: "discord-app", user, data: { name: "manage" } }, keys.privateKey), envValue);
+		const body = await manage.json() as { data: { components: Array<{ type: number; components: Array<{ type: number }> }> } };
+		expect(JSON.stringify(body)).toContain("All links (admin)");
+		expect(JSON.stringify(body)).toContain("legacy-link");
+		expect(JSON.stringify(body)).toContain("https://go.aitsys.dev/legacy-link");
+		expect(JSON.stringify(body)).toContain('"type":9');
+		expect(JSON.stringify(body)).toContain('"style":5');
+		expect(JSON.stringify(body)).not.toContain("disabled-link");
+		expect(body.data.components).toHaveLength(6);
+		expect(body.data.components.every((component) => component.type === 17 && component.components.every((child) => child.type !== 17))).toBe(true);
+		const owned = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", authed()), envValue);
+		expect((await owned.json() as { result: { items: LinkRecord[] } }).result.items.map((link) => link.slug).sort()).toEqual(["disabled-link", "legacy-discord-admin", "legacy-link", "legacy-link-four", "legacy-link-three", "legacy-link-two"]);
+		const removeProfile = await app.fetch(new Request(`https://go.aitsys.dev/api/v1/accounts/admin-${user.id}`, authed({ method: "DELETE" })), envValue);
+		expect(removeProfile.status).toBe(409);
+	});
+
+	test("migrates legacy Discord links into a newly linked account", async () => {
+		const envValue = env();
+		const discordUserId = "345678901234567890";
+		await createStoredLink(envValue, { slug: "legacy-discord", destinationUrl: "https://example.com", creator: "Discord Cat", owner: { kind: "discord", id: discordUserId } });
+		const account = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts", authed({ method: "POST", body: JSON.stringify({ id: "discord-owner", creatorName: "Discord Cat", discordUserId }) })), envValue);
+		expect(account.status).toBe(201);
+		const token = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts/discord-owner/tokens", authed({ method: "POST", body: JSON.stringify({ label: "Shell" }) })), envValue);
+		const issued = await token.json() as { result: { token: string } };
+		const links = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", { headers: { Authorization: `Bearer ${issued.result.token}` } }), envValue);
+		expect((await links.json() as { result: { items: LinkRecord[] } }).result.items.map((link) => link.slug)).toEqual(["legacy-discord"]);
 	});
 });
 

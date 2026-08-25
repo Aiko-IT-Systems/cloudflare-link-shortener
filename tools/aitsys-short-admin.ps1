@@ -19,7 +19,7 @@ if ([string]::IsNullOrWhiteSpace($ApiToken)) {
 function Invoke-LinkApi {
 	param(
 		[Parameter(Mandatory = $true)]
-		[ValidateSet("GET", "POST")]
+		[ValidateSet("GET", "POST", "DELETE")]
 		[string] $Method,
 
 		[Parameter(Mandatory = $true)]
@@ -189,6 +189,80 @@ function Refresh-ShortLinkMetadata {
 	}
 }
 
+function New-ShortLinkAccount {
+	$accountId = Read-Required "Account ID (letters, numbers, _ or -)"
+	$creatorName = Read-Required "Public creator name"
+	$discordUserId = Read-Host "Discord user ID (optional; links Discord commands to this account)"
+	$body = @{ id = $accountId; creatorName = $creatorName }
+	if (-not [string]::IsNullOrWhiteSpace($discordUserId)) { $body.discordUserId = $discordUserId.Trim() }
+	$result = Invoke-LinkApi -Method POST -Path "/api/v1/accounts" -Body $body
+	if ($result -and $result.success) {
+		Write-Host "Created account $($result.result.id) for $($result.result.creatorName)." -ForegroundColor Green
+	}
+}
+
+function Set-ShortLinkAccountDiscordUser {
+	$accountId = Read-Required "Account ID"
+	$discordUserId = Read-Required "Discord user ID"
+	$result = Invoke-LinkApi -Method PUT -Path "/api/v1/accounts/$accountId/discord-user" -Body @{ discordUserId = $discordUserId }
+	if ($result -and $result.success) {
+		Write-Host "Linked Discord user $($result.result.discordUserId) to account $($result.result.id)." -ForegroundColor Green
+	}
+}
+
+function New-ShortLinkUserToken {
+	$accountId = Read-Required "Account ID"
+	$label = Read-Host "Token label (optional, e.g. Firefox)"
+	$body = @{}
+	if (-not [string]::IsNullOrWhiteSpace($label)) { $body.label = $label.Trim() }
+	$result = Invoke-LinkApi -Method POST -Path "/api/v1/accounts/$accountId/tokens" -Body $body
+	if ($result -and $result.success) {
+		Write-Host ""
+		Write-Host "Issued token $($result.result.tokenId). Copy it now; it cannot be retrieved again." -ForegroundColor Yellow
+		Write-Host $result.result.token -ForegroundColor Cyan
+	}
+}
+
+function Revoke-ShortLinkUserToken {
+	$tokenId = Read-Required "Token ID"
+	$result = Invoke-LinkApi -Method POST -Path "/api/v1/tokens/$tokenId/revoke" -Body @{}
+	if ($result -and $result.success) {
+		Write-Host "Revoked token $($result.result.tokenId)." -ForegroundColor Yellow
+	}
+}
+
+function Get-ShortLinkAccounts {
+	$result = Invoke-LinkApi -Method GET -Path "/api/v1/accounts?limit=100"
+	if (-not $result -or -not $result.success) { return }
+
+	if (-not $result.result.items -or $result.result.items.Count -eq 0) {
+		Write-Host "No active user accounts found." -ForegroundColor Yellow
+		return
+	}
+
+	Write-Host ""
+	Write-Host "User accounts" -ForegroundColor Cyan
+	foreach ($account in $result.result.items) {
+		$discord = if ($account.discordUserId) { "; Discord $($account.discordUserId)" } else { "" }
+		Write-Host "$($account.id) -> $($account.creatorName)$discord (created $($account.createdAt))"
+	}
+	if ($result.result.cursor) { Write-Host "More accounts exist; use the API cursor to continue." -ForegroundColor DarkGray }
+}
+
+function Remove-ShortLinkAccount {
+	$accountId = Read-Required "Account ID to remove"
+	$confirmation = Read-Host "Type REMOVE to revoke its tokens and remove the account"
+	if ($confirmation -cne "REMOVE") {
+		Write-Host "Account removal cancelled." -ForegroundColor DarkGray
+		return
+	}
+
+	$result = Invoke-LinkApi -Method DELETE -Path "/api/v1/accounts/$accountId" -Body $null
+	if ($result -and $result.success) {
+		Write-Host "Removed account $($result.result.accountId) and revoked $($result.result.revokedTokenCount) active token(s)." -ForegroundColor Yellow
+	}
+}
+
 function Get-ShortLinks {
 	Write-Host ""
 	Write-Host "Fetching remote KV link keys..." -ForegroundColor DarkGray
@@ -227,6 +301,7 @@ function Show-Help {
 	Write-Host "Note:"
 	Write-Host "  -List requires Wrangler access to the Cloudflare KV namespace."
 	Write-Host "  With only AITSYS_SHORT_API_KEY, you can operate on slugs you already know."
+	Write-Host "  User account and token actions require the master AITSYS_SHORT_API_KEY."
 }
 
 if ($Help) { Show-Help; exit 0 }
@@ -241,6 +316,12 @@ while ($running) {
 	Write-Host "3. Disable link"
 	Write-Host "4. Refresh embed metadata"
 	Write-Host "5. List links"
+	Write-Host "6. Create user account"
+	Write-Host "7. Issue user token"
+	Write-Host "8. Revoke user token"
+	Write-Host "9. List user accounts"
+	Write-Host "10. Remove user account"
+	Write-Host "11. Link Discord user to account"
 	Write-Host "0. Exit"
 
 	$choice = Read-Host "Choose"
@@ -250,7 +331,13 @@ while ($running) {
 		"3" { Disable-ShortLink }
 		"4" { Refresh-ShortLinkMetadata }
 		"5" { Get-ShortLinks }
+		"6" { New-ShortLinkAccount }
+		"7" { New-ShortLinkUserToken }
+		"8" { Revoke-ShortLinkUserToken }
+		"9" { Get-ShortLinkAccounts }
+		"10" { Remove-ShortLinkAccount }
+		"11" { Set-ShortLinkAccountDiscordUser }
 		"0" { $running = $false }
-		default { Write-Host "Pick 1, 2, 3, 4, 5, or 0." -ForegroundColor DarkYellow }
+		default { Write-Host "Pick 1 through 11, or 0." -ForegroundColor DarkYellow }
 	}
 }

@@ -2,6 +2,7 @@ node_modules/
 .wrangler/
 .wrangler-dev*.log
 dist/
+extensions/dist/
 .dev.vars
 .env
 scripts/local-admin.ps1

@@ -1,0 +1,49 @@
+name: Browser Extensions Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "extensions/**"
+      - "scripts/check-extensions.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/extensions-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run extensions:build
+      - run: npm run extensions:check
+      - id: package-extensions
+        run: |
+          version="extensions-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
+          chrome_archive="aitsys-go-chrome-${version}.zip"
+          firefox_archive="aitsys-go-firefox-${version}.zip"
+          (cd extensions/dist/chrome && zip -r "../../../${chrome_archive}" .)
+          (cd extensions/dist/firefox && zip -r "../../../${firefox_archive}" .)
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "chrome_archive=${chrome_archive}" >> "$GITHUB_OUTPUT"
+          echo "firefox_archive=${firefox_archive}" >> "$GITHUB_OUTPUT"
+      - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: ${{ steps.package-extensions.outputs.version }}
+          name: AITSYS Go Browser Extensions ${{ steps.package-extensions.outputs.version }}
+          body: |
+            Automated unsigned Chrome and Firefox extension packages.
+
+            Configure each extension with a revocable issued user token; never use the master administrator token.
+          files: |
+            ${{ steps.package-extensions.outputs.chrome_archive }}
+            ${{ steps.package-extensions.outputs.firefox_archive }}
