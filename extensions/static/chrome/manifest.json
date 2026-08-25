@@ -2,10 +2,10 @@
   "manifest_version": 3,
   "name": "AITSYS Go",
   "description": "Create transparent AITSYS Go short links from the current page.",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "action": { "default_title": "AITSYS Go", "default_popup": "index.html", "default_icon": { "16": "icons/icon.svg", "32": "icons/icon.svg" } },
   "options_page": "options.html",
   "permissions": ["activeTab", "storage", "clipboardWrite"],
-  "optional_host_permissions": ["https://*/*"],
+  "host_permissions": ["https://*/*"],
   "icons": { "16": "icons/icon.svg", "32": "icons/icon.svg", "48": "icons/icon.svg", "128": "icons/icon.svg" }
 }

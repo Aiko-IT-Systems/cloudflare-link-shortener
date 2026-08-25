@@ -150,7 +150,7 @@ npm run extensions:build
 npm run extensions:check
 ```
 
-Each popup pre-fills the active HTTPS tab and can create a short link with an optional custom slug, fallback title, password, expiry, preview suppression, and manual embed metadata. It displays the resulting full short URL and provides copy and open actions. Open its settings page first and enter the shortener base URL plus an **issued user token**. The extension asks for permission only for the exact HTTPS API origin you save.
+Each popup pre-fills the active HTTPS tab and can create a short link with an optional custom slug, fallback title, password, expiry, preview suppression, and manual embed metadata. It displays the resulting full short URL and provides copy and open actions. Open its settings page first and enter the shortener base URL plus an **issued user token**. The extension declares access to all HTTPS hosts at installation time, so any HTTPS shortener endpoint can be used without a later permission prompt.
 
 The current extension UI is deliberately creation-focused: it does **not** yet list, edit, refresh, or disable existing links. Both target builds and their manifests are validated locally by the commands above. They still need normal manual smoke-testing after loading the generated packages in Chrome and Firefox; no browser-store signing, submission, GitHub release, or store publication is performed by this repository.
 

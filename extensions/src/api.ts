@@ -12,11 +12,6 @@ export async function getSettings(): Promise<Settings> {
 export async function saveSettings(settings: Settings): Promise<void> {
 	const url = new URL(settings.apiBase);
 	if (url.protocol !== "https:") throw new Error("The API base URL must use HTTPS.");
-	const originPattern = `${url.origin}/*`;
-	if (extension.permissions?.request && !(await extension.permissions.contains({ origins: [originPattern] }))) {
-		const granted = await extension.permissions.request({ origins: [originPattern] });
-		if (!granted) throw new Error("Permission for that API origin was not granted.");
-	}
 	await extension.storage.local.set({ apiBase: url.origin, apiToken: settings.apiToken.trim() });
 }
 
