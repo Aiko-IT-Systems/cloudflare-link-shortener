@@ -15,7 +15,7 @@
 	"workers_dev": false,
 	"preview_urls": true,
 	"route": {
-		"pattern": "go.aitsys.dev",
+		"pattern": "go.aitsys.dev", // replace with your domain
 		"custom_domain": true,
 		"zone_id": "e9e86e9cc4298b9666b01b5cd3795099"
 	},
@@ -33,14 +33,14 @@
 	"kv_namespaces": [
 		{
 			"binding": "LINKS",
-			"id": "54872d4a38e6486e8f6cc053364d6f64"
+			"id": "54872d4a38e6486e8f6cc053364d6f64" // replace with your KV namespace ID
 		}
 	],
 	"secrets_store_secrets": [
 		{
 			"binding": "LINK_SHORTENER_API_KEY",
 			"secret_name": "LINK_SHORTENER_API_KEY",
-			"store_id": "766810d8e2c04f1ca24dcc45253af39e"
+			"store_id": "766810d8e2c04f1ca24dcc45253af39e" // replace with your secrets store ID
 		}
 	]
 }

@@ -7,6 +7,7 @@ PowerShell helpers for creating and managing AITSYS GO short links.
 Set your API key in the system or user environment:
 
 ```powershell
+[Environment]::SetEnvironmentVariable("AITSYS_SHORT_API_BASE", "https://go.aitsys.dev", "User")
 [Environment]::SetEnvironmentVariable("AITSYS_SHORT_API_KEY", "<api-key>", "User")
 ```
 

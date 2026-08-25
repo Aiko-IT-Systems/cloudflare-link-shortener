@@ -6,7 +6,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ApiBase = "https://go.aitsys.dev"
+Set-Location (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+
+$ApiBase = $env:AITSYS_SHORT_API_BASE
 $ApiToken = $env:AITSYS_SHORT_API_KEY
 
 if ([string]::IsNullOrWhiteSpace($ApiToken)) {
