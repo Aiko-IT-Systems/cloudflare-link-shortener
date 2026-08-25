@@ -31,19 +31,28 @@ jobs:
           version="extensions-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
           chrome_archive="aitsys-go-chrome-${version}.zip"
           firefox_archive="aitsys-go-firefox-${version}.zip"
+          source_archive="aitsys-go-extension-source-${version}.zip"
           (cd extensions/dist/chrome && zip -r "../../../${chrome_archive}" .)
           (cd extensions/dist/firefox && zip -r "../../../${firefox_archive}" .)
+          zip -r "${source_archive}" extensions -x "extensions/dist/*"
+          unzip -Z1 "${source_archive}" | grep -qx "extensions/vite.config.ts"
+          if unzip -Z1 "${source_archive}" | grep -q "^extensions/dist/"; then
+            echo "::error::Source archive must not include generated extensions/dist output."
+            exit 1
+          fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "chrome_archive=${chrome_archive}" >> "$GITHUB_OUTPUT"
           echo "firefox_archive=${firefox_archive}" >> "$GITHUB_OUTPUT"
+          echo "source_archive=${source_archive}" >> "$GITHUB_OUTPUT"
       - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           tag_name: ${{ steps.package-extensions.outputs.version }}
           name: AITSYS Go Browser Extensions ${{ steps.package-extensions.outputs.version }}
           body: |
-            Automated unsigned Chrome ZIP and Firefox ZIP extension packages.
+            Automated unsigned Chrome and Firefox ZIP packages, plus editable extension source.
 
             Configure each extension with a revocable issued user token; never use the master administrator token.
           files: |
             ${{ steps.package-extensions.outputs.chrome_archive }}
             ${{ steps.package-extensions.outputs.firefox_archive }}
+            ${{ steps.package-extensions.outputs.source_archive }}
