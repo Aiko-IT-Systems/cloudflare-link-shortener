@@ -73,7 +73,7 @@ function page(config: SiteConfig, title: string, body: string, status = 200, met
 				--text-dim: #8495a8;
 				--cyan: #45c8ff;
 				--cyan-soft: rgba(69, 200, 255, .2);
-				--pink: #fc0fc0;
+				--go: ${config.brandColor ?? "#fc0fc0"};
 				--pink-soft: rgba(252, 15, 192, .2);
 			}
 			* { box-sizing: border-box; }
@@ -107,10 +107,6 @@ function page(config: SiteConfig, title: string, body: string, status = 200, met
 				content: "";
 				position: absolute;
 				inset: 0;
-				background:
-					linear-gradient(90deg, transparent 0 48%, rgba(69, 200, 255, .08) 48% 49%, transparent 49% 100%),
-					linear-gradient(0deg, transparent 0 64%, rgba(252, 15, 192, .12) 64% 65%, transparent 65% 100%),
-					repeating-linear-gradient(115deg, transparent 0 3.5rem, rgba(255, 255, 255, .035) 3.5rem 3.56rem);
 				opacity: .7;
 				pointer-events: none;
 			}
@@ -151,7 +147,7 @@ function page(config: SiteConfig, title: string, body: string, status = 200, met
 				display: block;
 			}
 			.brand-go {
-				color: var(--pink);
+				color: var(--go);
 				font-size: 3.6rem;
 				font-weight: 800;
 				line-height: .85;

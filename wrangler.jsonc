@@ -37,7 +37,8 @@
 		"SITE_NAME": "AITSYS Go",
 		"BRAND_LOGO_URL": "/logo.png",
 		"BRAND_LOGO_ALT": "Aiko IT Systems",
-		"FAVICON_URL": "/favicon.png"
+		"FAVICON_URL": "/favicon.png",
+		"BRAND_COLOR": "#fc0fc0"
 	},
 	"kv_namespaces": [
 		{

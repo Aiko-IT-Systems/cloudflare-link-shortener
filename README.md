@@ -30,6 +30,7 @@ Public site branding is configured through the non-secret `vars` in `wrangler.js
 | `BRAND_LOGO_URL` | `/logo.png` | The page header logo and homepage social-preview image |
 | `BRAND_LOGO_ALT` | `Aiko IT Systems` | Accessible alternative text for the header logo |
 | `FAVICON_URL` | `/favicon.png` | The favicon linked from every generated page |
+| `BRAND_COLOR` | `#fc0fc0` | The primary accent color |
 
 Root-relative URLs such as `/logo.png` are served from `public/`. Absolute URLs can be used for externally hosted assets. A relative `BRAND_LOGO_URL` is resolved against the current request origin when it is emitted as the homepage Open Graph image, so preview and custom domains produce an absolute social-preview URL.
 
