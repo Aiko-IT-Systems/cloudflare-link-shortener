@@ -11,6 +11,11 @@ for (const target of ["chrome", "firefox"]) {
 	if (!manifest.host_permissions?.includes("https://*/*")) throw new Error(`${target}: all HTTPS host access is required.`);
 	if (manifest.optional_host_permissions?.length) throw new Error(`${target}: host access must be declared at install time.`);
 	if (!manifest.permissions?.includes("storage") || !manifest.permissions?.includes("activeTab")) throw new Error(`${target}: required minimum permissions are missing.`);
+	if (target === "firefox") {
+		const collected = manifest.browser_specific_settings?.gecko?.data_collection_permissions?.required ?? [];
+		if (!collected.includes("authenticationInfo") || !collected.includes("browsingActivity")) throw new Error("firefox: data-collection declarations must cover the issued token and submitted page URL.");
+		if (manifest.browser_specific_settings?.gecko?.strict_min_version !== "140.0" || manifest.browser_specific_settings?.gecko_android?.strict_min_version !== "142.0") throw new Error("firefox: built-in data consent requires Firefox 140+ and Android 142+.");
+	}
 }
 
 console.log("Chrome and Firefox extension manifests are valid.");

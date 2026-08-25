@@ -30,7 +30,7 @@ jobs:
         run: |
           version="extensions-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
           chrome_archive="aitsys-go-chrome-${version}.zip"
-          firefox_archive="aitsys-go-firefox-${version}.xpi"
+          firefox_archive="aitsys-go-firefox-${version}.zip"
           (cd extensions/dist/chrome && zip -r "../../../${chrome_archive}" .)
           (cd extensions/dist/firefox && zip -r "../../../${firefox_archive}" .)
           echo "version=${version}" >> "$GITHUB_OUTPUT"
@@ -41,7 +41,7 @@ jobs:
           tag_name: ${{ steps.package-extensions.outputs.version }}
           name: AITSYS Go Browser Extensions ${{ steps.package-extensions.outputs.version }}
           body: |
-            Automated unsigned Chrome ZIP and Firefox XPI extension packages.
+            Automated unsigned Chrome ZIP and Firefox ZIP extension packages.
 
             Configure each extension with a revocable issued user token; never use the master administrator token.
           files: |

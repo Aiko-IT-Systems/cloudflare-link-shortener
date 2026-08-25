@@ -156,6 +156,8 @@ The current extension UI is deliberately creation-focused: it does **not** yet l
 
 Browser extension storage is **not encrypted**. Never put `LINK_SHORTENER_API_KEY` in an extension; use a revocable `aig_…` user token and revoke it if a browser profile/device is compromised. The `Browser Extensions Release` workflow packages a versioned Chrome ZIP and Firefox XPI (an XPI is a ZIP archive with Firefox's expected extension); browser-store submission/signing is intentionally separate.
 
+For Firefox submission, the manifest accurately declares the data required for the chosen operation: the issued token (**authentication information**) and the selected destination URL (**browsing activity**) are sent only to the shortener API base URL you configure when you create a link. The extension has no analytics, telemetry, or third-party data destination. Firefox's built-in consent requires Firefox 140+ on desktop and 142+ on Android.
+
 ### Extension branding metadata
 
 `GET /api/v1/metadata` is a public, unauthenticated endpoint for extension and client presentation. It returns only the branding configured through Wrangler—no account, link, or token information:
