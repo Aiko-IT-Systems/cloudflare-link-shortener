@@ -154,7 +154,7 @@ Each popup pre-fills the active HTTPS tab and can create a short link with an op
 
 The current extension UI is deliberately creation-focused: it does **not** yet list, edit, refresh, or disable existing links. Both target builds and their manifests are validated locally by the commands above. They still need normal manual smoke-testing after loading the generated packages in Chrome and Firefox; no browser-store signing, submission, GitHub release, or store publication is performed by this repository.
 
-Browser extension storage is **not encrypted**. Never put `LINK_SHORTENER_API_KEY` in an extension; use a revocable `aig_…` user token and revoke it if a browser profile/device is compromised. The `Browser Extensions Release` workflow packages versioned Chrome and Firefox ZIPs; browser-store submission/signing is intentionally separate.
+Browser extension storage is **not encrypted**. Never put `LINK_SHORTENER_API_KEY` in an extension; use a revocable `aig_…` user token and revoke it if a browser profile/device is compromised. The `Browser Extensions Release` workflow packages a versioned Chrome ZIP and Firefox XPI (an XPI is a ZIP archive with Firefox's expected extension); browser-store submission/signing is intentionally separate.
 
 ## Discord user app
 
