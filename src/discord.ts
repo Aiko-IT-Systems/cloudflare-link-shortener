@@ -6,7 +6,7 @@ import { fetchTargetMetadata } from "./metadata";
 const EPHEMERAL = 1 << 6;
 const COMPONENTS_V2 = 1 << 15;
 const SESSION_TTL_SECONDS = 15 * 60;
-const MANAGE_PAGE_SIZE = 4;
+const MANAGE_PAGE_SIZE = 2;
 const SHORTENER_ORIGIN = "https://go.aitsys.dev";
 
 type DiscordUser = { id: string; username: string };
