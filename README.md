@@ -20,6 +20,23 @@ Transparent AITSYS link shortener for `go.aitsys.dev`.
    npm run cf-typegen
    ```
 
+## Branding
+
+Public site branding is configured through the non-secret `vars` in `wrangler.jsonc`:
+
+| Variable | Default | Used for |
+| --- | --- | --- |
+| `SITE_NAME` | `AITSYS Go` | Page titles, Open Graph site names, and default preview descriptions |
+| `BRAND_LOGO_URL` | `/logo.png` | The page header logo and homepage social-preview image |
+| `BRAND_LOGO_ALT` | `Aiko IT Systems` | Accessible alternative text for the header logo |
+| `FAVICON_URL` | `/favicon.png` | The favicon linked from every generated page |
+
+Root-relative URLs such as `/logo.png` are served from `public/`. Absolute URLs can be used for externally hosted assets. A relative `BRAND_LOGO_URL` is resolved against the current request origin when it is emitted as the homepage Open Graph image, so preview and custom domains produce an absolute social-preview URL.
+
+These values are plain application configuration, not secrets. Wrangler `vars` are non-inheritable: if a named environment such as `env.staging` is added, define all four values again under that environment's `vars`. See Cloudflare's [environment variable documentation](https://developers.cloudflare.com/workers/configuration/environment-variables/) for environment-specific examples.
+
+Run `npm run cf-typegen` after adding or renaming a binding. Changing only a branding value does not require regenerating the binding types.
+
 ## API
 
 All admin endpoints require:
@@ -91,7 +108,7 @@ Release ZIPs contain `aitsys-short` and `aitsys-short-admin` without hardcoded s
 
 ```powershell
 [Environment]::SetEnvironmentVariable("AITSYS_SHORT_API_KEY", "<api-key>", "User")
+[Environment]::SetEnvironmentVariable("AITSYS_SHORT_API_BASE", "<api-base>", "User")
 ```
 
 Tool releases are published automatically when files under `tools/` change.
-

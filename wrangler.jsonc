@@ -2,8 +2,11 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "cloudflare-link-shortener",
 	"main": "src/index.ts",
-	"compatibility_date": "2026-07-30",
+	"compatibility_date": "2026-08-04",
 	"compatibility_flags": ["nodejs_compat"],
+	"placement": {
+		"mode": "smart"
+	},
 	"assets": {
 		"directory": "./public",
 		"binding": "ASSETS"
