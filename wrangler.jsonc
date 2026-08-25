@@ -30,6 +30,12 @@
 	"keep_names": true,
 	"keep_vars": true,
 	"minify": true,
+	"vars": {
+		"SITE_NAME": "AITSYS Go",
+		"BRAND_LOGO_URL": "/logo.png",
+		"BRAND_LOGO_ALT": "Aiko IT Systems",
+		"FAVICON_URL": "/favicon.png"
+	},
 	"kv_namespaces": [
 		{
 			"binding": "LINKS",

@@ -74,12 +74,20 @@ class MemoryKV {
 	}
 }
 
-function env(): Env {
+function env(overrides: Partial<Env> = {}): Env {
 	return {
 		LINKS: new MemoryKV() as KVNamespace,
 		LINK_SHORTENER_API_KEY: {
 			get: async () => "test-secret"
-		}
+		},
+		ASSETS: {
+			fetch: async () => new Response("Not found", { status: 404 })
+		} as Fetcher,
+		SITE_NAME: "AITSYS Go",
+		BRAND_LOGO_URL: "/logo.png",
+		BRAND_LOGO_ALT: "Aiko IT Systems",
+		FAVICON_URL: "/favicon.png",
+		...overrides
 	};
 }
 
@@ -327,7 +335,26 @@ describe("link shortener", () => {
 		expect(quietHtml).not.toContain('property="og:title"');
 		expect(quietHtml).not.toContain('name="twitter:card"');
 		expect(homeHtml).toContain('<meta property="og:title" content="Private link shortener">');
-		expect(homeHtml).toContain('<meta property="og:image" content="https://go.aitsys.dev/brand/aitsys-logo.png">');
+		expect(homeHtml).toContain('<meta property="og:image" content="https://go.aitsys.dev/logo.png">');
+		expect(homeHtml).toContain('<link rel="icon" href="/favicon.png">');
+	});
+
+	test("renders configured site branding and escapes its HTML attributes", async () => {
+		const envValue = env({
+			SITE_NAME: "Cats & Code",
+			BRAND_LOGO_URL: "/custom/logo.svg?light=1&wide=1",
+			BRAND_LOGO_ALT: 'Cats "R" Us & friends',
+			FAVICON_URL: "/custom/favicon.svg?pink=1&small=1"
+		});
+
+		const response = await app.fetch(new Request("https://short.example/"), envValue);
+		const html = await response.text();
+
+		expect(html).toContain("<title>Private link shortener · Cats &amp; Code</title>");
+		expect(html).toContain('<img class="brand-logo" src="/custom/logo.svg?light=1&amp;wide=1" alt="Cats &quot;R&quot; Us &amp; friends">');
+		expect(html).toContain('<link rel="icon" href="/custom/favicon.svg?pink=1&amp;small=1">');
+		expect(html).toContain('<meta property="og:image" content="https://short.example/custom/logo.svg?light=1&amp;wide=1">');
+		expect(html).toContain('<meta property="og:site_name" content="Cats &amp; Code">');
 	});
 });
 

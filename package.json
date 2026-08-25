@@ -1,7 +1,7 @@
 {
 	"name": "cloudflare-link-shortener",
 	"description": "Transparent AITSYS link shortener on Cloudflare Workers",
-	"version": "1.0.1",
+	"version": "1.2.0",
 	"author": {
 		"name": "Lulalaby",
 		"email": "aiko@aitsys.dev",
@@ -21,7 +21,7 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"typecheck": "tsc --noEmit",
-		"cf-typegen": "wrangler types"
+		"cf-typegen": "wrangler types --strict-vars false"
 	},
 	"dependencies": {
 		"hono": "^4.6.20",

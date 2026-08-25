@@ -1,6 +1,5 @@
 import { LinkRecord } from "./types";
-
-const SITE_NAME = "AITSYS Go";
+import { SiteConfig } from "./config";
 
 type PageMeta = {
 	description?: string;
@@ -19,13 +18,13 @@ function escapeHtml(value: string): string {
 		.replace(/'/g, "&#39;");
 }
 
-function metaTags(title: string, meta: PageMeta = {}): string {
+function metaTags(title: string, config: SiteConfig, meta: PageMeta = {}): string {
 	if (meta.suppressSocialPreview) {
 		return "";
 	}
 
-	const description = meta.description ?? "Transparent AITSYS GO short link preview. No click analytics, cookies, or tracking pixels.";
-	const siteName = meta.siteName ?? SITE_NAME;
+	const description = meta.description ?? `Transparent ${config.siteName} short link preview. No click analytics, cookies, or tracking pixels.`;
+	const siteName = meta.siteName ?? config.siteName;
 	const tags = [
 		["property", "og:type", "website"],
 		["property", "og:title", title],
@@ -50,15 +49,16 @@ function metaTags(title: string, meta: PageMeta = {}): string {
 		.join("\n\t\t");
 }
 
-function page(title: string, body: string, status = 200, meta: PageMeta = {}): Response {
+function page(config: SiteConfig, title: string, body: string, status = 200, meta: PageMeta = {}): Response {
 	return new Response(`<!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<meta name="robots" content="noindex, nofollow">
-		${metaTags(title, meta)}
-		<title>${escapeHtml(title)} · ${SITE_NAME}</title>
+		${metaTags(title, config, meta)}
+		<title>${escapeHtml(title)} · ${escapeHtml(config.siteName)}</title>
+		<link rel="icon" href="${escapeHtml(config.faviconUrl)}">
 		<style>
 			:root {
 				color-scheme: dark;
@@ -332,7 +332,7 @@ function page(title: string, body: string, status = 200, meta: PageMeta = {}): R
 			<div class="content">
 				<div class="brand">
 					<div class="brand-lockup">
-						<img class="brand-logo" src="/brand/aitsys-logo.png" alt="Aiko IT Systems">
+						<img class="brand-logo" src="${escapeHtml(config.brandLogoUrl)}" alt="${escapeHtml(config.brandLogoAlt)}">
 						<span class="brand-go">GO</span>
 					</div>
 				</div>
@@ -350,23 +350,24 @@ function page(title: string, body: string, status = 200, meta: PageMeta = {}): R
 	});
 }
 
-export function homepage(): Response {
-	return page("Private link shortener", `
-		<p>A small link redirector for AITSYS projects, release posts, docs, and community links.</p>
+export function homepage(config: SiteConfig, pageUrl: string): Response {
+	const brandImageUrl = new URL(config.brandLogoUrl, pageUrl).href;
+	return page(config, "Private link shortener", `
+		<p>A small link redirector for projects, release posts, docs, and community links.</p>
 		<p>Short links show the destination before leaving this site, who added the link, and when it was created. No click analytics, no cookies, no tracking pixels.</p>
 	`, 200, {
-		description: "Transparent AITSYS GO short links with a privacy-first splash page.",
-		imageUrl: "https://go.aitsys.dev/brand/aitsys-logo.png",
-		pageUrl: "https://go.aitsys.dev/",
-		siteName: SITE_NAME
+		description: `Transparent ${config.siteName} short links with a privacy-first splash page.`,
+		imageUrl: brandImageUrl,
+		pageUrl,
+		siteName: config.siteName
 	});
 }
 
-export function splash(record: LinkRecord, pageUrl: string): Response {
+export function splash(config: SiteConfig, record: LinkRecord, pageUrl: string): Response {
 	const label = record.embedTitle ?? record.title ?? record.destinationUrl;
 	const description = record.embedDescription
 		?? `Short link to ${record.destinationUrl}. No click analytics, cookies, or tracking pixels.`;
-	return page(label, `
+	return page(config, label, `
 		<h1>Leaving <span class="accent">GO</span></h1>
 		<p>This short link points to the destination below. Nothing is tracked here: no click counter, no cookies, and no analytics storage.</p>
 		<dl>
@@ -393,24 +394,24 @@ export function splash(record: LinkRecord, pageUrl: string): Response {
 	});
 }
 
-export function unavailable(record: LinkRecord): Response {
-	return page("Link unavailable", `
+export function unavailable(config: SiteConfig, record: LinkRecord): Response {
+	return page(config, "Link unavailable", `
 		<h1 class="one-line">Link <span class="accent">disabled</span></h1>
 		<p>The short link <code>/${escapeHtml(record.slug)}</code> exists, but it is no longer available.</p>
 		${record.disabledReason ? `<p class="note">${escapeHtml(record.disabledReason)}</p>` : ""}
 	`, 410);
 }
 
-export function expired(record: LinkRecord): Response {
-	return page("Link expired", `
+export function expired(config: SiteConfig, record: LinkRecord): Response {
+	return page(config, "Link expired", `
 		<h1 class="one-line">Link <span class="accent">expired</span></h1>
 		<p>The short link <code>/${escapeHtml(record.slug)}</code> exists, but its expiry time has passed.</p>
 		${record.expiresAt ? `<p class="note">Expired at ${escapeHtml(new Date(record.expiresAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }))} UTC.</p>` : ""}
 	`, 410, { suppressSocialPreview: record.suppressSocialPreview });
 }
 
-export function passwordPrompt(record: LinkRecord, invalid = false): Response {
-	return page("Password required", `
+export function passwordPrompt(config: SiteConfig, record: LinkRecord, invalid = false): Response {
+	return page(config, "Password required", `
 		<h1 class="one-line">Password <span class="accent">required</span></h1>
 		<p>The short link <code>/${escapeHtml(record.slug)}</code> is protected. Enter the password to view the destination splash.</p>
 		${invalid ? `<p class="note">That password did not match.</p>` : ""}
@@ -421,8 +422,8 @@ export function passwordPrompt(record: LinkRecord, invalid = false): Response {
 	`, invalid ? 401 : 200, { suppressSocialPreview: true });
 }
 
-export function notFound(): Response {
-	return page("Link not found", `
+export function notFound(config: SiteConfig): Response {
+	return page(config, "Link not found", `
 		<h1 class="one-line">Link <span class="accent">not found</span></h1>
 		<p>That short link does not exist, or it was typed with an extra character hiding somewhere.</p>
 		<a class="button" href="/">Back home</a>

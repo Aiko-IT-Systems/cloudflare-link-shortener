@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { requireApiKey } from "./auth";
+import { getSiteConfig } from "./config";
 import { expired, homepage, notFound, passwordPrompt, robots, splash, unavailable } from "./html";
 import { fetchTargetMetadata } from "./metadata";
 import { jsonError, jsonSuccess } from "./responses";
@@ -12,7 +13,7 @@ function isExpired(record: { expiresAt?: string }): boolean {
 	return record.expiresAt ? Date.parse(record.expiresAt) <= Date.now() : false;
 }
 
-app.get("/", () => homepage());
+app.get("/", (c) => homepage(getSiteConfig(c.env), c.req.url));
 app.get("/robots.txt", () => robots());
 
 app.use("/api/v1/*", requireApiKey);
@@ -110,65 +111,67 @@ app.post("/api/v1/links/:slug/refresh-metadata", async (c) => {
 });
 
 app.get("/:slug", async (c) => {
+	const siteConfig = getSiteConfig(c.env);
 	const slug = normalizeSlug(c.req.param("slug"));
 
 	if (!SLUG_PATTERN.test(slug) || isReservedSlug(slug)) {
-		return notFound();
+		return notFound(siteConfig);
 	}
 
 	const record = await getLink(c.env, slug);
 	if (!record) {
-		return notFound();
+		return notFound(siteConfig);
 	}
 
 	if (record.disabledAt) {
-		return unavailable(record);
+		return unavailable(siteConfig, record);
 	}
 
 	if (isExpired(record)) {
-		return expired(record);
+		return expired(siteConfig, record);
 	}
 
 	if (record.password) {
-		return passwordPrompt(record);
+		return passwordPrompt(siteConfig, record);
 	}
 
-	return splash(record, c.req.url);
+	return splash(siteConfig, record, c.req.url);
 });
 
 app.post("/:slug", async (c) => {
+	const siteConfig = getSiteConfig(c.env);
 	const slug = normalizeSlug(c.req.param("slug"));
 
 	if (!SLUG_PATTERN.test(slug) || isReservedSlug(slug)) {
-		return notFound();
+		return notFound(siteConfig);
 	}
 
 	const record = await getLink(c.env, slug);
 	if (!record) {
-		return notFound();
+		return notFound(siteConfig);
 	}
 
 	if (record.disabledAt) {
-		return unavailable(record);
+		return unavailable(siteConfig, record);
 	}
 
 	if (isExpired(record)) {
-		return expired(record);
+		return expired(siteConfig, record);
 	}
 
 	if (!record.password) {
-		return splash(record, c.req.url);
+		return splash(siteConfig, record, c.req.url);
 	}
 
 	const body = await c.req.parseBody().catch(() => ({})) as Record<string, string | File>;
 	const password = typeof body.password === "string" ? body.password : "";
 	if (password !== record.password) {
-		return passwordPrompt(record, true);
+		return passwordPrompt(siteConfig, record, true);
 	}
 
-	return splash(record, c.req.url);
+	return splash(siteConfig, record, c.req.url);
 });
 
-app.notFound(() => notFound());
+app.notFound((c) => notFound(getSiteConfig(c.env)));
 
 export default app;
