@@ -7,7 +7,6 @@ const EPHEMERAL = 1 << 6;
 const COMPONENTS_V2 = 1 << 15;
 const SESSION_TTL_SECONDS = 15 * 60;
 const MANAGE_PAGE_SIZE = 2;
-const SHORTENER_ORIGIN = "https://go.aitsys.dev";
 
 type DiscordUser = { id: string; username: string };
 type Interaction = {
@@ -32,10 +31,10 @@ function linkButton(url: string): Record<string, unknown> { return { type: 2, st
 function row(...components: Record<string, unknown>[]): Record<string, unknown> { return { type: 1, components }; }
 function container(...components: Record<string, unknown>[]): Record<string, unknown> { return { type: 17, components }; }
 function section(content: string, accessory: Record<string, unknown>): Record<string, unknown> { return { type: 9, components: [text(content)], accessory }; }
-function shortUrl(slug: string): string { return `${SHORTENER_ORIGIN}/${encodeURIComponent(slug)}`; }
+function shortUrl(origin: string, slug: string): string { return `${origin}/${encodeURIComponent(slug)}`; }
 
-function createdLinkResponse(slug: string, remaining?: number, sessionIdValue?: string): Response {
-	const url = shortUrl(slug);
+function createdLinkResponse(origin: string, slug: string, remaining?: number, sessionIdValue?: string): Response {
+	const url = shortUrl(origin, slug);
 	const details = remaining === undefined ? `## Link created\n${url}` : `## Link created\n${url}\n${remaining} link(s) remain in the selected message.`;
 	const controls = sessionIdValue ? [row(button(`short:next:${sessionIdValue}`, "Fill next URL", 1), button(`short:abort:${sessionIdValue}`, "Abort remaining", 4))] : [];
 	return v2([container(section(details, linkButton(url)), ...controls)]);
@@ -147,10 +146,10 @@ async function listManageLinks(env: Env, session: ManageSession, cursor = sessio
 	}
 }
 
-async function renderManage(env: Env, sessionIdValue: string, session: ManageSession): Promise<Response> {
+async function renderManage(env: Env, origin: string, sessionIdValue: string, session: ManageSession): Promise<Response> {
 	const page = await listManageLinks(env, session);
 	const cards = page.items.flatMap((record) => [container(
-		section(`**/${record.slug}**\n${shortUrl(record.slug)}\nDestination: ${record.destinationUrl}\nCreated ${record.createdAt}${record.expiresAt ? `\nExpires ${record.expiresAt}` : ""}`, linkButton(shortUrl(record.slug))),
+		section(`**/${record.slug}**\n${shortUrl(origin, record.slug)}\nDestination: ${record.destinationUrl}\nCreated ${record.createdAt}${record.expiresAt ? `\nExpires ${record.expiresAt}` : ""}`, linkButton(shortUrl(origin, record.slug))),
 		row(button(`short:edit:${record.slug}`, "Edit"), button(`short:refresh:${record.slug}`, "Refresh"), button(`short:preview:${record.slug}`, record.suppressSocialPreview ? "Enable preview" : "Suppress preview"), button(`short:clear-password:${record.slug}`, "Clear password", 2, !record.password), button(`short:disable:${record.slug}`, "Disable", 4, Boolean(record.disabledAt)))
 	)]);
 	const nav = row(
@@ -164,7 +163,7 @@ async function renderManage(env: Env, sessionIdValue: string, session: ManageSes
 	]);
 }
 
-async function handleCommand(interaction: Interaction, env: Env, user: DiscordUser, account: AccountRecord): Promise<Response> {
+async function handleCommand(interaction: Interaction, env: Env, origin: string, user: DiscordUser, account: AccountRecord): Promise<Response> {
 	const name = interaction.data?.name?.toLowerCase();
 	if (name === "shorten") {
 		const url = interaction.data?.options?.find((option) => option.name === "url")?.value;
@@ -188,12 +187,12 @@ async function handleCommand(interaction: Interaction, env: Env, user: DiscordUs
 		const id = sessionId();
 		const session: ManageSession = { type: "manage", userId: user.id, accountId: account.id, admin: isDiscordAdmin(env, user), previous: [] };
 		await saveSession(env, id, session);
-		return renderManage(env, id, session);
+		return renderManage(env, origin, id, session);
 	}
 	return ephemeral("Unknown command.");
 }
 
-async function handleModal(interaction: Interaction, env: Env, user: DiscordUser, account: AccountRecord, customId: string): Promise<Response> {
+async function handleModal(interaction: Interaction, env: Env, origin: string, user: DiscordUser, account: AccountRecord, customId: string): Promise<Response> {
 	const [, action, id] = customId.split(":");
 	if (action === "edit-submit" && id) {
 		const record = await getLink(env, normalizeSlug(id));
@@ -202,7 +201,7 @@ async function handleModal(interaction: Interaction, env: Env, user: DiscordUser
 		const parsed = updateLinkSchema.safeParse({ title: values.title || null, password: values.password || undefined, expiresAt: values.expiresAt || null });
 		if (!parsed.success) return ephemeral("The updated details were invalid. Check the expiry format.");
 		await updateLink(env, record.slug, Object.fromEntries(Object.entries(parsed.data).map(([key, value]) => [key, value === null ? undefined : value])));
-		return ephemeral(`Updated ${shortUrl(record.slug)}.`);
+		return ephemeral(`Updated ${shortUrl(origin, record.slug)}.`);
 	}
 	if (action !== "create" || !id) return ephemeral("This form is no longer valid.");
 	const session = await loadSession(env, id);
@@ -217,10 +216,10 @@ async function handleModal(interaction: Interaction, env: Env, user: DiscordUser
 	session.index += 1;
 	if (session.index >= session.urls.length) {
 		await clearSession(env, id);
-		return createdLinkResponse(created.slug);
+		return createdLinkResponse(origin, created.slug);
 	}
 	await saveSession(env, id, session);
-	return createdLinkResponse(created.slug, session.urls.length - session.index, id);
+	return createdLinkResponse(origin, created.slug, session.urls.length - session.index, id);
 }
 
 async function handleAdminSetup(interaction: Interaction, env: Env, user: DiscordUser): Promise<Response> {
@@ -235,7 +234,7 @@ async function handleAdminSetup(interaction: Interaction, env: Env, user: Discor
 	}
 }
 
-async function handleComponent(interaction: Interaction, env: Env, user: DiscordUser, account: AccountRecord, customId: string): Promise<Response> {
+async function handleComponent(interaction: Interaction, env: Env, origin: string, user: DiscordUser, account: AccountRecord, customId: string): Promise<Response> {
 	const [, action, value] = customId.split(":");
 	if (!action || !value) return ephemeral("This control is no longer valid.");
 	if (action === "next" || action === "abort") {
@@ -249,11 +248,11 @@ async function handleComponent(interaction: Interaction, env: Env, user: Discord
 		if (!session || session.type !== "manage" || session.userId !== user.id || session.accountId !== account.id) return ephemeral("This page has expired or belongs to another user.");
 		if (action === "manage-next") {
 			const page = await listManageLinks(env, session);
-			if (!page.cursor) return renderManage(env, value, session);
+			if (!page.cursor) return renderManage(env, origin, value, session);
 			session.previous.push(session.cursor ?? ""); session.cursor = page.cursor;
 		} else { session.cursor = session.previous.pop() || undefined; }
 		await saveSession(env, value, session);
-		return renderManage(env, value, session);
+		return renderManage(env, origin, value, session);
 	}
 	const record = await getLink(env, normalizeSlug(value));
 	const admin = isDiscordAdmin(env, user);
@@ -263,15 +262,15 @@ async function handleComponent(interaction: Interaction, env: Env, user: Discord
 		const session: CreateSession = { type: "create", user, accountId: account.id, urls: [record.destinationUrl], index: 0 };
 		return modal(session, id, record.title, `short:edit-submit:${record.slug}`);
 	}
-	if (action === "refresh") { await refreshLinkMetadata(env, record.slug, await fetchTargetMetadata(record.destinationUrl)); return ephemeral(`Metadata refreshed for ${shortUrl(record.slug)}.`); }
-	if (action === "preview") { await updateLink(env, record.slug, { suppressSocialPreview: !record.suppressSocialPreview }); return ephemeral(`Social preview ${record.suppressSocialPreview ? "enabled" : "suppressed"} for ${shortUrl(record.slug)}.`); }
-	if (action === "clear-password") { await updateLink(env, record.slug, { password: undefined }); return ephemeral(`Cleared the password for ${shortUrl(record.slug)}.`); }
-	if (action === "disable") return v2([container(section(`Disable ${shortUrl(record.slug)}? This cannot be undone from Discord.`, linkButton(shortUrl(record.slug))), row(button(`short:confirm-disable:${record.slug}`, "Disable link", 4), button("short:cancel", "Cancel")))]);
-	if (action === "confirm-disable") { await disableLink(env, record.slug, "Disabled from Discord manage."); return ephemeral(`Disabled ${shortUrl(record.slug)}.`); }
+	if (action === "refresh") { await refreshLinkMetadata(env, record.slug, await fetchTargetMetadata(record.destinationUrl)); return ephemeral(`Metadata refreshed for ${shortUrl(origin, record.slug)}.`); }
+	if (action === "preview") { await updateLink(env, record.slug, { suppressSocialPreview: !record.suppressSocialPreview }); return ephemeral(`Social preview ${record.suppressSocialPreview ? "enabled" : "suppressed"} for ${shortUrl(origin, record.slug)}.`); }
+	if (action === "clear-password") { await updateLink(env, record.slug, { password: undefined }); return ephemeral(`Cleared the password for ${shortUrl(origin, record.slug)}.`); }
+	if (action === "disable") return v2([container(section(`Disable ${shortUrl(origin, record.slug)}? This cannot be undone from Discord.`, linkButton(shortUrl(origin, record.slug))), row(button(`short:confirm-disable:${record.slug}`, "Disable link", 4), button("short:cancel", "Cancel")))]);
+	if (action === "confirm-disable") { await disableLink(env, record.slug, "Disabled from Discord manage."); return ephemeral(`Disabled ${shortUrl(origin, record.slug)}.`); }
 	return ephemeral("Unknown link action.");
 }
 
-export async function handleDiscordInteraction(request: Request, env: Env): Promise<Response> {
+export async function handleDiscordInteraction(request: Request, env: Env, origin = new URL(request.url).origin): Promise<Response> {
 	if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
 	let raw: Uint8Array | undefined;
 	try { raw = await verifyDiscordRequest(request, env); } catch { return new Response("Invalid request signature.", { status: 401 }); }
@@ -288,8 +287,8 @@ export async function handleDiscordInteraction(request: Request, env: Env): Prom
 		if (interaction.type === 5 && interaction.data?.custom_id === "short:admin-setup" && isDiscordAdmin(env, user)) return handleAdminSetup(interaction, env, user);
 		return ephemeral("Your Discord user ID is not linked to an active shortener account. Ask an administrator to link it first.");
 	}
-	if (interaction.type === 2) return handleCommand(interaction, env, user, account);
-	if (interaction.type === 5 && interaction.data?.custom_id) return handleModal(interaction, env, user, account, interaction.data.custom_id);
-	if (interaction.type === 3 && interaction.data?.custom_id) return handleComponent(interaction, env, user, account, interaction.data.custom_id);
+	if (interaction.type === 2) return handleCommand(interaction, env, origin, user, account);
+	if (interaction.type === 5 && interaction.data?.custom_id) return handleModal(interaction, env, origin, user, account, interaction.data.custom_id);
+	if (interaction.type === 3 && interaction.data?.custom_id) return handleComponent(interaction, env, origin, user, account, interaction.data.custom_id);
 	return ephemeral("Unsupported interaction.");
 }

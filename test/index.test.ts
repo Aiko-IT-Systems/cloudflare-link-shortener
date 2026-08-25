@@ -125,12 +125,12 @@ function hex(bytes: ArrayBuffer): string {
 	return Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function discordRequest(body: Record<string, unknown>, privateKey: CryptoKey): Promise<Request> {
+async function discordRequest(body: Record<string, unknown>, privateKey: CryptoKey, url = "https://go.aitsys.dev/discord/interactions"): Promise<Request> {
 	const timestamp = `${Math.floor(Date.now() / 1000)}`;
 	const json = JSON.stringify(body);
 	const data = new TextEncoder().encode(timestamp + json);
 	const signature = await crypto.subtle.sign({ name: "Ed25519" }, privateKey, data);
-	return new Request("https://go.aitsys.dev/discord/interactions", { method: "POST", headers: { "Content-Type": "application/json", "X-Signature-Ed25519": hex(signature), "X-Signature-Timestamp": timestamp }, body: json });
+	return new Request(url, { method: "POST", headers: { "Content-Type": "application/json", "X-Signature-Ed25519": hex(signature), "X-Signature-Timestamp": timestamp }, body: json });
 }
 
 describe("link shortener", () => {
@@ -461,9 +461,10 @@ describe("link shortener", () => {
 		const publicKey = hex(await crypto.subtle.exportKey("raw", keys.publicKey));
 		const envValue = env({ DISCORD_APPLICATION_ID: "discord-app", DISCORD_PUBLIC_KEY: { get: async () => publicKey } as SecretsStoreSecret });
 		const user = { id: "234567890123456789", username: "DiscordCat" };
+		const discordUrl = "https://custom-short.example/discord/interactions";
 		const invalid = await app.fetch(new Request("https://go.aitsys.dev/discord/interactions", { method: "POST", body: "{}" }), envValue);
 		expect(invalid.status).toBe(401);
-		const unlinked = await app.fetch(await discordRequest({ type: 2, application_id: "discord-app", user, data: { name: "manage" } }, keys.privateKey), envValue);
+		const unlinked = await app.fetch(await discordRequest({ type: 2, application_id: "discord-app", user, data: { name: "manage" } }, keys.privateKey, discordUrl), envValue);
 		expect(JSON.stringify(await unlinked.json())).toContain("not linked to an active shortener account");
 		const account = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts", authed({ method: "POST", body: JSON.stringify({ id: "discord-cat", creatorName: "Discord Cat", discordUserId: user.id }) })), envValue);
 		expect(account.status).toBe(201);
@@ -474,15 +475,15 @@ describe("link shortener", () => {
 			user,
 			data: { name: "Shorten link", target_id: "message", resolved: { messages: { message: { content: "https://first.example and https://second.example" } } } }
 		};
-		const start = await app.fetch(await discordRequest(messageCommand, keys.privateKey), envValue);
+		const start = await app.fetch(await discordRequest(messageCommand, keys.privateKey, discordUrl), envValue);
 		const modal = await start.json() as { type: number; data: { custom_id: string } };
 		expect(modal.type).toBe(9);
 
-		const submitted = await app.fetch(await discordRequest({ type: 5, application_id: "discord-app", user, data: { custom_id: modal.data.custom_id, components: [{ type: 18, component: { custom_id: "slug", value: "first" } }] } }, keys.privateKey), envValue);
+		const submitted = await app.fetch(await discordRequest({ type: 5, application_id: "discord-app", user, data: { custom_id: modal.data.custom_id, components: [{ type: 18, component: { custom_id: "slug", value: "first" } }] } }, keys.privateKey, discordUrl), envValue);
 		const next = await submitted.json() as { type: number; data: { components: Array<{ components?: Array<{ content?: string }> }> } };
 		expect(next.type).toBe(4);
 		expect(JSON.stringify(next.data.components)).toContain("Fill next URL");
-		expect(JSON.stringify(next.data.components)).toContain("https://go.aitsys.dev/first");
+		expect(JSON.stringify(next.data.components)).toContain("https://custom-short.example/first");
 	});
 
 	test("bootstraps one administrator profile and migrates every link", async () => {
@@ -510,7 +511,7 @@ describe("link shortener", () => {
 		expect(JSON.stringify(body)).toContain('"type":9');
 		expect(JSON.stringify(body)).toContain('"style":5');
 		expect(JSON.stringify(body)).not.toContain("disabled-link");
-		expect(body.data.components).toHaveLength(6);
+		expect(body.data.components).toHaveLength(4);
 		expect(body.data.components.every((component) => component.type === 17 && component.components.every((child) => child.type !== 17))).toBe(true);
 		const owned = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", authed()), envValue);
 		expect((await owned.json() as { result: { items: LinkRecord[] } }).result.items.map((link) => link.slug).sort()).toEqual(["disabled-link", "legacy-discord-admin", "legacy-link", "legacy-link-four", "legacy-link-three", "legacy-link-two"]);
