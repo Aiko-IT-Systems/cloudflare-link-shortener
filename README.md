@@ -156,6 +156,28 @@ The current extension UI is deliberately creation-focused: it does **not** yet l
 
 Browser extension storage is **not encrypted**. Never put `LINK_SHORTENER_API_KEY` in an extension; use a revocable `aig_…` user token and revoke it if a browser profile/device is compromised. The `Browser Extensions Release` workflow packages a versioned Chrome ZIP and Firefox XPI (an XPI is a ZIP archive with Firefox's expected extension); browser-store submission/signing is intentionally separate.
 
+### Extension branding metadata
+
+`GET /api/v1/metadata` is a public, unauthenticated endpoint for extension and client presentation. It returns only the branding configured through Wrangler—no account, link, or token information:
+
+```json
+{
+  "success": true,
+  "result": {
+    "apiVersion": 1,
+    "branding": {
+      "siteName": "AITSYS Go",
+      "brandLogoUrl": "https://go.aitsys.dev/logo.png",
+      "brandLogoAlt": "Aiko IT Systems",
+      "faviconUrl": "https://go.aitsys.dev/favicon.png",
+      "brandColor": "#fc0fc0"
+    }
+  }
+}
+```
+
+Relative logo and favicon configuration is resolved against the responding shortener origin. The extensions load this endpoint when opened and after saving a new base URL, applying its name, logo, alt text, favicon, and accent color. If an older or incompatible shortener does not provide it, the extension retains its local AITSYS fallback branding.
+
 ## Discord user app
 
 The Discord integration is an HTTP-interactions Worker route at `/discord/interactions`. It verifies Discord's Ed25519 request signature with the `DISCORD_PUBLIC_KEY` secret before parsing the body.

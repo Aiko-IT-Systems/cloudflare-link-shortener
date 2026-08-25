@@ -28,3 +28,12 @@ export function getSiteConfig(env: Env): SiteConfig {
 		brandColor: configuredValue(env.BRAND_COLOR, DEFAULT_CONFIG.brandColor)
 	};
 }
+
+export function getPublicSiteMetadata(env: Env, requestUrl: string): SiteConfig {
+	const config = getSiteConfig(env);
+	return {
+		...config,
+		brandLogoUrl: new URL(config.brandLogoUrl, requestUrl).toString(),
+		faviconUrl: new URL(config.faviconUrl, requestUrl).toString()
+	};
+}

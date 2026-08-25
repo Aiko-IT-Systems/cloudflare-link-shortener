@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { requireAdmin, requireApiKey } from "./auth";
-import { getSiteConfig } from "./config";
+import { getPublicSiteMetadata, getSiteConfig } from "./config";
 import { handleDiscordInteraction } from "./discord";
 import { expired, homepage, notFound, passwordPrompt, robots, splash, unavailable } from "./html";
 import { fetchTargetMetadata } from "./metadata";
@@ -35,6 +35,7 @@ function cleanUpdates(updates: Record<string, unknown>): Record<string, unknown>
 app.get("/", (c) => homepage(getSiteConfig(c.env), c.req.url));
 app.get("/robots.txt", () => robots());
 app.post("/discord/interactions", (c) => handleDiscordInteraction(c.req.raw, c.env));
+app.get("/api/v1/metadata", (c) => jsonSuccess({ apiVersion: 1, branding: getPublicSiteMetadata(c.env, c.req.url) }));
 
 app.use("/api/v1/*", requireApiKey);
 

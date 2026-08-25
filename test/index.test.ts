@@ -381,6 +381,34 @@ describe("link shortener", () => {
 		expect(html).toContain('<meta property="og:site_name" content="Cats &amp; Code">');
 	});
 
+	test("exposes public absolute branding metadata without API authentication", async () => {
+		const envValue = env({
+			SITE_NAME: "Cats & Code",
+			BRAND_LOGO_URL: "/custom/logo.svg",
+			BRAND_LOGO_ALT: "A custom cat logo",
+			FAVICON_URL: "https://assets.example/favicon.svg",
+			BRAND_COLOR: "#aabbcc"
+		});
+
+		const response = await app.fetch(new Request("https://short.example/api/v1/metadata"), envValue);
+		const body = await response.json() as { success: boolean; result: { apiVersion: number; branding: Record<string, string> } };
+
+		expect(response.status).toBe(200);
+		expect(body).toEqual({
+			success: true,
+			result: {
+				apiVersion: 1,
+				branding: {
+					siteName: "Cats & Code",
+					brandLogoUrl: "https://short.example/custom/logo.svg",
+					brandLogoAlt: "A custom cat logo",
+					faviconUrl: "https://assets.example/favicon.svg",
+					brandColor: "#aabbcc"
+				}
+			}
+		});
+	});
+
 	test("issues revocable account tokens and isolates owned links", async () => {
 		const envValue = env();
 		const admin = authed({ method: "POST", body: JSON.stringify({ id: "friend", creatorName: "Friendly Cat" }) });

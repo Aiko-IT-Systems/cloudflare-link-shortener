@@ -1,4 +1,5 @@
-import { createLink, extension, getSettings } from "./api";
+import { createLink, extension, getBranding, getSettings } from "./api";
+import { applyBranding, applyDefaultBranding } from "./branding";
 
 const form = document.querySelector<HTMLFormElement>("#link-form")!;
 const status = document.querySelector<HTMLOutputElement>("#status")!;
@@ -10,6 +11,10 @@ async function prefillActiveTab(): Promise<void> {
 }
 
 void prefillActiveTab();
+void getSettings().then(async (settings) => {
+	try { applyBranding(await getBranding(settings.apiBase)); }
+	catch { applyDefaultBranding(); }
+});
 
 form.addEventListener("submit", async (event) => {
 	event.preventDefault();
