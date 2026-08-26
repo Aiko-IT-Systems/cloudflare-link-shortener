@@ -149,7 +149,7 @@ fun AitsysGoApp(model: MainViewModel) {
 @Composable
 private fun BrandHeader(branding: Branding) {
     val context = LocalContext.current
-    val bitmap = remember(branding.faviconUrl, branding.brandLogoUrl) { BrandingAssets.cached(context) }
+    val bitmap = remember(branding.brandLogoUrl) { BrandingAssets.cached(context) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (bitmap != null) {
             Image(bitmap.asImageBitmap(), branding.brandLogoAlt, Modifier.size(32.dp))

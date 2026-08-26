@@ -22,8 +22,8 @@ object BrandingAssets {
     private const val MAX_DOWNLOAD_BYTES = 1_000_000
 
     suspend fun cache(context: Context, branding: Branding): Bitmap? = withContext(Dispatchers.IO) {
-        val target = File(context.filesDir, "branding-icon.png")
-        val source = branding.faviconUrl.ifBlank { branding.brandLogoUrl }
+        val target = File(context.filesDir, "branding-logo.png")
+        val source = branding.brandLogoUrl
         runCatching {
             val connection = URL(source).openConnection() as HttpURLConnection
             try {
@@ -62,7 +62,7 @@ object BrandingAssets {
         }.getOrNull()
     }
 
-    fun cached(context: Context): Bitmap? = BitmapFactory.decodeFile(File(context.filesDir, "branding-icon.png").path)
+    fun cached(context: Context): Bitmap? = BitmapFactory.decodeFile(File(context.filesDir, "branding-logo.png").path)
 
     fun requestPinnedShortcut(context: Context, branding: Branding): Boolean {
         val manager = context.getSystemService(ShortcutManager::class.java)
