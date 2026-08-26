@@ -1,0 +1,61 @@
+name: Bug report
+description: Report a reproducible problem without including secrets or personal data.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve AITSYS Go. Do not include API tokens, passwords,
+        Discord message contents, private URLs, or unredacted logs in this form.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safe report
+      options:
+        - label: I removed credentials, personal data, and private URLs from this report.
+          required: true
+        - label: This is not a security vulnerability report.
+          required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected component
+      multiple: true
+      options:
+        - Worker public redirect or privacy page
+        - REST API, accounts, or user tokens
+        - Discord interactions or commands
+        - Chrome extension
+        - Microsoft Edge extension
+        - Firefox extension
+        - Android app
+        - PowerShell or Bash tools
+        - GitHub Actions or release artifacts
+        - Branding assets
+        - Documentation
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      placeholder: Describe the observed behavior and its impact.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Safe reproduction steps
+      placeholder: Provide the smallest safe sequence that reproduces the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and safe diagnostics
+      placeholder: Browser/app/tool version, OS, and redacted error output.

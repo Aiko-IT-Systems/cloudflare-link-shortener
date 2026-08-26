@@ -1,0 +1,35 @@
+name: Documentation or privacy correction
+description: Report stale, unclear, or incomplete public documentation or privacy information.
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not include credentials, personal data, private URLs, or security
+        vulnerability details. For privacy or data requests, email privacy@aitsys.dev.
+  - type: dropdown
+    id: document
+    attributes:
+      label: Affected document or page
+      options:
+        - README.md
+        - BUILDING.md
+        - API.md
+        - PRIVACY.md
+        - Worker /privacy page
+        - Other public documentation
+    validations:
+      required: true
+  - type: textarea
+    id: issue
+    attributes:
+      label: What is inaccurate, unclear, or missing?
+      placeholder: Quote or describe the current statement without adding private data.
+    validations:
+      required: true
+  - type: textarea
+    id: correction
+    attributes:
+      label: Suggested correction
+      placeholder: "Optional: explain the safer or more accurate wording."

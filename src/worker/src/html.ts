@@ -373,19 +373,23 @@ export function privacyPolicy(config: SiteConfig): Response {
 		<p>${escapeHtml(config.siteName)} creates and manages short links. It does not use advertising, analytics, click tracking, cookies, or telemetry.</p>
 		<dl>
 			<div class="meta">
-				<dt>Browser extension</dt>
-				<dd>The extension stores its configured shortener API base URL and issued user token in browser extension storage, which is not encrypted. When you create a link, it sends the selected page URL and the fields you entered to that configured API. It also fetches public branding metadata from that same API.</dd>
+				<dt>Service and hosting</dt>
+				<dd>The service runs on Cloudflare Workers and uses Cloudflare KV to store the application data needed to operate it. Cloudflare may process normal technical request data while providing that infrastructure under its own privacy policy. AITSYS Go stores link destinations, slugs, optional settings, public creator names, ownership, and preview metadata. A short link and its preview details may be publicly visible. Issued API tokens are stored only as hashes.</dd>
 			</div>
 			<div class="meta">
-				<dt>Shortener and Discord</dt>
-				<dd>The service stores the information needed to operate a link, including its destination, slug, optional settings, public creator name, ownership, and preview metadata. Issued API tokens are stored only as hashes. Discord user IDs are used for ownership checks; Discord usernames are stored as public authors.</dd>
+				<dt>Browser extension and Android app</dt>
+				<dd>The browser extension stores its configured API base URL and issued user token in browser extension storage, which is not encrypted. It sends the selected page URL and entered fields only to that configured API. The Android app stores its issued token encrypted with Android Keystore, excludes it from Android backup, and keeps ordinary settings and cached public branding locally. It sends entered link data or shared URLs only to the configured API. Both clients fetch public branding metadata from that API.</dd>
+			</div>
+			<div class="meta">
+				<dt>Discord and distribution</dt>
+				<dd>Discord user IDs are used for ownership checks and Discord usernames are stored as public authors. Multi-link Discord batches temporarily retain pending URLs and the invoking user ID for up to 15 minutes. Browser extension stores and Google Play distribute application packages under their own privacy policies; AITSYS Go does not receive store account data merely because an app is installed.</dd>
 			</div>
 			<div class="meta">
 				<dt>Your choices</dt>
-				<dd>You can revoke an issued token, disable a link, or ask the administrator to remove an account. For privacy questions, contact <a href="mailto:${escapeHtml(config.privacyEmail)}">${escapeHtml(config.privacyEmail)}</a>.</dd>
+				<dd>You can revoke an issued token, disable a link, or ask the administrator to remove an account. Account removal revokes active tokens but retains existing public links so another account cannot inherit them. For privacy questions or data requests, contact <a href="mailto:${escapeHtml(config.privacyEmail)}">${escapeHtml(config.privacyEmail)}</a>.</dd>
 			</div>
 		</dl>
-		<p class="note">Multi-link Discord batches temporarily retain pending URLs and the invoking user ID for up to 15 minutes so they can be continued or aborted.</p>
+		<p class="note">The Android app can optionally require the device's biometric authentication or device PIN, pattern, or password. It does not create, store, or transmit an app-specific passcode.</p>
 	`, 200, {
 		description: `${config.siteName} privacy policy. No advertising, analytics, click tracking, cookies, or telemetry.`,
 		suppressSocialPreview: true

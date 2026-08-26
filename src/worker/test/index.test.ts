@@ -365,14 +365,23 @@ describe("link shortener", () => {
 	});
 
 	test("serves the privacy policy with its configured contact at its reserved public route", async () => {
-		const response = await app.fetch(new Request("https://go.aitsys.dev/privacy"), env({ PRIVACY_EMAIL: "privacy@aitsys.dev" }));
+		const response = await app.fetch(new Request("https://go.aitsys.dev/privacy"), env({ PRIVACY_EMAIL: "privacy@cats.example" }));
 		const html = await response.text();
 
 		expect(response.status).toBe(200);
 		expect(html).toContain("Privacy");
-		expect(html).toContain('href="mailto:privacy@aitsys.dev"');
-		expect(html).toContain("privacy@aitsys.dev");
+		expect(html).toContain('href="mailto:privacy@cats.example"');
+		expect(html).toContain("privacy@cats.example");
 		expect(html).toContain("does not use advertising, analytics, click tracking, cookies, or telemetry");
+		expect(html).toContain("Cloudflare Workers");
+		expect(html).toContain("Cloudflare KV");
+		expect(html).toContain("may be publicly visible");
+		expect(html).toContain("browser extension storage, which is not encrypted");
+		expect(html).toContain("Android Keystore");
+		expect(html).toContain("excludes it from Android backup");
+		expect(html).toContain("up to 15 minutes");
+		expect(html).toContain("Google Play");
+		expect(html).toContain("retains existing public links");
 		expect(html).not.toContain('property="og:title"');
 	});
 
