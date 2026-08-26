@@ -1,0 +1,260 @@
+name: Release AITSYS Go
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/android/**"
+      - "src/extensions/**"
+      - "src/tools/**"
+      - "scripts/check-extensions.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Semantic version increment to release from main
+        required: true
+        default: patch
+        type: choice
+        options: [patch, minor, major]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: aitsys-go-release-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip ci]'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.1
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked Node dependencies
+        run: npm ci
+
+      - name: Choose and prepare release version
+        id: version
+        env:
+          REQUESTED_BUMP: ${{ inputs.bump || 'patch' }}
+        run: |
+          npm version "$REQUESTED_BUMP" --no-git-tag-version --ignore-scripts
+          npm run release:sync-version
+          npm run release:check-version
+          version="$(node -p "require('./package.json').version")"
+          version_code="$(node -e "const [major, minor, patch] = require('./package.json').version.split('.').map(Number); console.log(major * 1000000 + minor * 1000 + patch)")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+          {
+            echo "## AITSYS Go release plan"
+            echo
+            echo "- **Version:** \`v$version\`"
+            echo "- **Android versionCode:** \`$version_code\`"
+            echo "- **Increment:** \`$REQUESTED_BUMP\`"
+            echo "- **Source:** \`${{ github.event_name }}\` on \`main\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit the exact release source locally
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json src/extensions/static/chrome/manifest.json src/extensions/static/edge/manifest.json src/extensions/static/firefox/manifest.json
+          git diff --cached --check
+          git commit -m "[skip ci] chore(release): v$VERSION"
+          {
+            echo
+            echo "### Source revision"
+            echo "- Created local release commit \`$(git rev-parse --short HEAD)\`; it will be pushed only after all validation passes."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate Worker and central version contract
+        run: |
+          npm ci --ignore-scripts
+          npm run test
+          npm run typecheck
+          npm run cf-typegen
+          git diff --exit-code -- src/worker/worker-configuration.d.ts
+          npm run release:check-version
+          {
+            echo
+            echo "### Validation"
+            echo "- ✅ Worker tests, TypeScript, generated bindings, and release-version contract"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build and validate browser extensions
+        run: |
+          npm run extensions:build
+          npm run extensions:check
+          echo "- ✅ Chrome, Edge, and Firefox builds plus manifest validation" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate distributable shell tools
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Path src/tools -Filter *.ps1
+          foreach ($file in $files) {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref] $null, [ref] $errors) | Out-Null
+            if ($errors) {
+              $errors | Format-List *
+              throw "PowerShell syntax check failed for $($file.FullName)"
+            }
+          }
+          echo "- ✅ PowerShell parser validation" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate Bash tools
+        run: |
+          bash -n src/tools/short src/tools/short-admin
+          echo "- ✅ Bash syntax validation" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Restore Android upload key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEY_ALIAS" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::Android upload signing secrets are not configured."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > src/android/upload-key.jks
+          chmod 600 src/android/upload-key.jks
+
+      - name: Test, lint, and build signed Android artifacts
+        env:
+          ANDROID_UPLOAD_KEYSTORE_PATH: upload-key.jks
+          ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          ANDROID_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+          VERSION: ${{ steps.version.outputs.version }}
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+        working-directory: src/android
+        run: |
+          actual="$(./gradlew --no-daemon -q printReleaseVersion)"
+          printf '%s\n' "$actual" | grep -qx "AITSYS_GO_VERSION_NAME=$VERSION"
+          printf '%s\n' "$actual" | grep -qx "AITSYS_GO_VERSION_CODE=$VERSION_CODE"
+          ./gradlew --no-daemon test lint assembleRelease bundleRelease
+          echo "- ✅ Android version contract, tests, lint, signed APK, and signed AAB" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify signed Android artifacts
+        run: |
+          apk="src/android/app/build/outputs/apk/release/app-release.apk"
+          aab="src/android/app/build/outputs/bundle/release/app-release.aab"
+          test -s "$apk"
+          test -s "$aab"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
+          # Upload keys are self-signed by design. jarsigner -strict treats that
+          # expected trust warning as a failure even for a valid Play upload AAB.
+          jarsigner -verify "$aab"
+          echo "- ✅ APK and AAB signature verification" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Package unified release assets
+        id: package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          prefix="aitsys-go-v$VERSION"
+          mkdir -p release-assets
+          cp src/android/app/build/outputs/apk/release/app-release.apk "release-assets/$prefix.apk"
+          cp src/android/app/build/outputs/bundle/release/app-release.aab "release-assets/$prefix.aab"
+          (cd dist/chrome && zip -qr "../../release-assets/$prefix-chrome.zip" .)
+          (cd dist/edge && zip -qr "../../release-assets/$prefix-edge.zip" .)
+          (cd dist/firefox && zip -qr "../../release-assets/$prefix-firefox.zip" .)
+          (cd src/extensions && zip -qr "../../release-assets/$prefix-extension-source.zip" . -x "*/node_modules/*" -x "*/dist/*")
+          (cd src/tools && zip -qr "../../release-assets/$prefix-tools.zip" .)
+          unzip -Z1 "release-assets/$prefix-extension-source.zip" | grep -qx "vite.config.ts"
+          if unzip -Z1 "release-assets/$prefix-extension-source.zip" | grep -qE '(^|/)dist/'; then
+            echo "::error::Extension source archive includes generated dist output."
+            exit 1
+          fi
+          for asset in "$prefix.apk" "$prefix.aab" "$prefix-chrome.zip" "$prefix-edge.zip" "$prefix-firefox.zip" "$prefix-extension-source.zip" "$prefix-tools.zip"; do
+            test -s "release-assets/$asset"
+          done
+          {
+            echo
+            echo "### Packaged assets"
+            for asset in release-assets/*; do
+              echo "- \`$(basename "$asset")\`"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Push the validated release commit and tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git diff --check
+          git tag -a "$TAG" -m "AITSYS Go $TAG"
+          git push origin HEAD:main
+          git push origin "$TAG"
+          echo "- ✅ Pushed validated release commit and tag \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish the unified GitHub Release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: AITSYS Go v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            release-assets/aitsys-go-v${{ steps.version.outputs.version }}.apk
+            release-assets/aitsys-go-v${{ steps.version.outputs.version }}.aab
+            release-assets/aitsys-go-v${{ steps.version.outputs.version }}-chrome.zip
+            release-assets/aitsys-go-v${{ steps.version.outputs.version }}-edge.zip
+            release-assets/aitsys-go-v${{ steps.version.outputs.version }}-firefox.zip
+            release-assets/aitsys-go-v${{ steps.version.outputs.version }}-extension-source.zip
+            release-assets/aitsys-go-v${{ steps.version.outputs.version }}-tools.zip
+
+      - name: Summarize published GitHub Release
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: echo "- ✅ Published the GitHub Release for \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write workflow outcome
+        if: always()
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          {
+            echo
+            echo "## Workflow outcome"
+            echo "- **Status:** \`$JOB_STATUS\`"
+            if [ -n "$VERSION" ]; then
+              echo "- **Version:** \`v$VERSION\`"
+            fi
+            if [ -n "$TAG" ]; then
+              echo "- **Tag:** \`$TAG\`"
+            fi
+            if [ "$JOB_STATUS" != "success" ]; then
+              echo "- No GitHub Release is published unless every preceding validation and the push/tag step succeed."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove restored Android upload key
+        if: always()
+        run: rm -f src/android/upload-key.jks

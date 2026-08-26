@@ -21,7 +21,7 @@ Mark every relevant target. Leave an unchecked item only when it does not apply,
 | Firefox extension | `npm run extensions:build:firefox` and `npm run extensions:check` |
 | Android | `./gradlew test lint`; build debug/release artifacts when Gradle, manifests, or app behavior changed |
 | Shell tools | PowerShell parser validation and `bash -n src/tools/short src/tools/short-admin` |
-| Workflows/releases | Reviewed triggers, permissions, artifact paths, and required secret names |
+| Unified release workflow | Reviewed `release.yml` triggers, permissions, artifact paths, required secret names, and the root-package/manifest/Android version contract |
 | Branding/docs | Verified asset references and Markdown links |
 
 ### Commands run and results

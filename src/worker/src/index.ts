@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { requireAdmin, requireApiKey } from "./auth";
+import { buildInfo } from "./build-info";
 import { getPublicSiteMetadata, getSiteConfig } from "./config";
 import { handleDiscordInteraction } from "./discord";
 import { expired, homepage, notFound, passwordPrompt, privacyPolicy, robots, splash, unavailable } from "./html";
@@ -36,7 +37,7 @@ app.get("/", (c) => homepage(getSiteConfig(c.env), c.req.url));
 app.get("/privacy", (c) => privacyPolicy(getSiteConfig(c.env)));
 app.get("/robots.txt", () => robots());
 app.post("/discord/interactions", (c) => handleDiscordInteraction(c.req.raw, c.env, new URL(c.req.url).origin));
-app.get("/api/v1/metadata", (c) => jsonSuccess({ apiVersion: 1, branding: getPublicSiteMetadata(c.env, c.req.url) }));
+app.get("/api/v1/metadata", (c) => jsonSuccess({ apiVersion: 1, branding: getPublicSiteMetadata(c.env, c.req.url), build: buildInfo }));
 
 app.use("/api/v1/*", requireApiKey);
 

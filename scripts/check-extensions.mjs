@@ -1,11 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+const packageVersion = JSON.parse(readFileSync(resolve("package.json"), "utf8")).version;
+
 for (const target of ["chrome", "edge", "firefox"]) {
 	const root = resolve("dist", target);
 	const manifestPath = resolve(root, "manifest.json");
 	if (!existsSync(manifestPath)) throw new Error(`${target}: manifest.json is missing. Run the extension build first.`);
 	const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+	if (manifest.version !== packageVersion) throw new Error(`${target}: manifest version ${manifest.version ?? "<missing>"} must equal package.json version ${packageVersion}.`);
 	if (manifest.manifest_version !== 3) throw new Error(`${target}: Manifest V3 is required.`);
 	if (!manifest.action?.default_popup || !existsSync(resolve(root, manifest.action.default_popup))) throw new Error(`${target}: popup is missing.`);
 	if (!manifest.host_permissions?.includes("https://*/*")) throw new Error(`${target}: all HTTPS host access is required.`);
@@ -19,4 +22,4 @@ for (const target of ["chrome", "edge", "firefox"]) {
 	}
 }
 
-console.log("Chrome, Edge, and Firefox extension manifests are valid.");
+console.log(`Chrome, Edge, and Firefox extension manifests are valid for v${packageVersion}.`);

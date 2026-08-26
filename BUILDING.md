@@ -81,7 +81,7 @@ Connect GitHub under **Settings → Builds** and configure only production:
 | Build cache | enabled |
 | Build variables/secrets | none required |
 
-`npm run deploy` runs `wrangler deploy --cwd src/worker`. Do not set the dashboard root directory to `src/worker` while retaining that command; doing both resolves paths incorrectly. Workers Builds deploys production Worker changes only; it does not replace GitHub Actions artifact workflows.
+`npm run deploy` derives build metadata from the root `package.json` and the checked-out commit, then invokes Wrangler. In Workers Builds it uses Cloudflare's injected `WORKERS_CI_COMMIT_SHA`, so `/api/v1/metadata` identifies the deployed version, commit, and repository without dashboard variables. Do not set the dashboard root directory to `src/worker` while retaining that command; doing both resolves paths incorrectly. Workers Builds deploys production Worker changes only; it does not replace GitHub Actions artifact workflows.
 
 ### Local validation and deployment
 
@@ -128,7 +128,7 @@ cd src/android
 ./gradlew test lint assembleDebug
 ```
 
-The debug APK is at `app/build/outputs/apk/debug/app-debug.apk`. Release builds need an upload key outside source control. Local signing uses ignored `signing.properties`; CI uses only these secret names: `ANDROID_UPLOAD_KEYSTORE_BASE64`, `ANDROID_UPLOAD_KEY_ALIAS`, `ANDROID_UPLOAD_KEYSTORE_PASSWORD`, and `ANDROID_UPLOAD_KEY_PASSWORD`. The release workflow builds and verifies an APK and AAB; it does not submit to Google Play.
+The debug APK is at `app/build/outputs/apk/debug/app-debug.apk`. Release builds need an upload key outside source control. Local signing uses ignored `signing.properties`; CI uses only these secret names: `ANDROID_UPLOAD_KEYSTORE_BASE64`, `ANDROID_UPLOAD_KEY_ALIAS`, `ANDROID_UPLOAD_KEYSTORE_PASSWORD`, and `ANDROID_UPLOAD_KEY_PASSWORD`. Android derives `versionName` from the root package version and computes `versionCode` as `major × 1,000,000 + minor × 1,000 + patch`; do not override either in Gradle. The release workflow builds and verifies an APK and AAB; it does not submit to Google Play.
 
 ## Discord command registration
 
@@ -142,7 +142,7 @@ npm run discord:register
 
 This command is intentionally never run by Workers Builds, deployment, or GitHub Actions.
 
-## Shell tools and release workflows
+## Shell tools and unified releases
 
 Validate the distributable shell tools before changing them:
 
@@ -159,4 +159,8 @@ foreach ($file in $files) {
 bash -n src/tools/short src/tools/short-admin
 ```
 
-Separate GitHub Actions workflows package Android, extensions, and tools. Review the relevant workflow trigger, permissions, artifact path, and required secret names before dispatching or changing a release path.
+`.github/workflows/release.yml` is the single **Release AITSYS Go** workflow. It creates one `vX.Y.Z` GitHub Release containing the signed Android APK/AAB, Chrome/Edge/Firefox ZIPs, extension source ZIP, and tools ZIP. The root `package.json` is canonical: before building it synchronizes all browser manifest versions, commits `[skip ci] chore(release): vX.Y.Z` to `main`, tags that exact source revision, and then publishes only after every validation succeeds.
+
+Qualifying pushes to `main` automatically make a patch release when they change `src/android/**`, `src/extensions/**`, `src/tools/**`, `scripts/check-extensions.mjs`, `package.json`, `package-lock.json`, or the unified workflow itself. Documentation and Worker-only changes do not create a GitHub Release. Use **Run workflow** on `main` to choose a patch, minor, or major increment. Releases are serialized so concurrent qualifying pushes cannot reuse a version.
+
+The workflow intentionally does **not** call Google Play, use a Play service account, or submit an Android build to any store. Play upload and track promotion remain an operator-controlled follow-up. The Android formula avoids run-number collisions: every Play upload still needs a never-before-used, increasing `versionCode`.

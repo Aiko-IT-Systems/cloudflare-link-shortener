@@ -47,13 +47,20 @@ Host: short.example
 			"faviconUrl": "https://short.example/favicon.png",
 			"brandColor": "#fc0fc0",
 			"privacyEmail": "privacy@example.com"
+		},
+		"build": {
+			"version": "2.0.1",
+			"sha": "0123456789abcdef0123456789abcdef01234567",
+			"repository": "https://github.com/Aiko-IT-Systems/cloudflare-link-shortener"
 		}
 	}
 }
 ```
 
-It never returns links, accounts, or credentials. Clients should retain fallback
-branding if `apiVersion` is unsupported.
+It never returns links, accounts, or credentials. `build` identifies the Worker
+source currently deployed by Workers Builds: the shared release version, its
+commit SHA, and repository URL. Clients should retain fallback branding if
+`apiVersion` is unsupported.
 
 ## Account endpoints
 

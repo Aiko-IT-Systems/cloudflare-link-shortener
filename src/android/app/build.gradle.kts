@@ -19,6 +19,18 @@ val signingStorePassword = signingValue("storePassword", "ANDROID_UPLOAD_KEYSTOR
 val signingKeyAlias = signingValue("keyAlias", "ANDROID_UPLOAD_KEY_ALIAS")
 val signingKeyPassword = signingValue("keyPassword", "ANDROID_UPLOAD_KEY_PASSWORD")
 val signingConfigured = listOf(signingStoreFile, signingStorePassword, signingKeyAlias, signingKeyPassword).all { it != null }
+val packageVersionFile = rootProject.file("../../package.json")
+val packageVersion = Regex("\"version\"\\s*:\\s*\"(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\"")
+    .find(packageVersionFile.readText())
+    ?.groupValues
+    ?.drop(1)
+    ?.let { (major, minor, patch) -> Triple(major.toInt(), minor.toInt(), patch.toInt()) }
+    ?: error("Root package.json must contain a release version in major.minor.patch form.")
+val canonicalVersionName = listOf(packageVersion.first, packageVersion.second, packageVersion.third).joinToString(".")
+val canonicalVersionCode = packageVersion.let { (major, minor, patch) ->
+    require(major <= 999 && minor <= 999 && patch <= 999) { "Each package version component must be at most 999 for Android versionCode." }
+    major * 1_000_000 + minor * 1_000 + patch
+}
 
 android {
     namespace = "dev.aitsys.go"
@@ -28,8 +40,8 @@ android {
         applicationId = "dev.aitsys.go"
         minSdk = 29
         targetSdk = 36
-        versionCode = providers.gradleProperty("versionCode").orNull?.toIntOrNull() ?: 1
-        versionName = providers.gradleProperty("versionName").orNull ?: "1.0.0"
+		versionCode = canonicalVersionCode
+		versionName = canonicalVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
@@ -67,6 +79,15 @@ android {
     }
     packaging.resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     testOptions.unitTests.isIncludeAndroidResources = true
+}
+
+tasks.register("printReleaseVersion") {
+    group = "verification"
+    description = "Prints the Android release version derived from the root package.json."
+    doLast {
+        println("AITSYS_GO_VERSION_NAME=$canonicalVersionName")
+        println("AITSYS_GO_VERSION_CODE=$canonicalVersionCode")
+    }
 }
 
 kotlin {

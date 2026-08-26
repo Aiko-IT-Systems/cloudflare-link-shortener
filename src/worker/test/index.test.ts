@@ -414,7 +414,7 @@ describe("link shortener", () => {
 		});
 
 		const response = await app.fetch(new Request("https://short.example/api/v1/metadata"), envValue);
-		const body = await response.json() as { success: boolean; result: { apiVersion: number; branding: Record<string, string> } };
+		const body = await response.json() as { success: boolean; result: { apiVersion: number; branding: Record<string, string>; build: Record<string, string> } };
 
 		expect(response.status).toBe(200);
 		expect(body).toEqual({
@@ -428,6 +428,11 @@ describe("link shortener", () => {
 					faviconUrl: "https://assets.example/favicon.svg",
 					brandColor: "#aabbcc",
 					privacyEmail: "privacy@cats.example"
+				},
+				build: {
+					version: "development",
+					sha: "local",
+					repository: "https://github.com/Aiko-IT-Systems/cloudflare-link-shortener"
 				}
 			}
 		});

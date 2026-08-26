@@ -15,7 +15,7 @@
 	"license": "MIT",
 	"private": true,
 	"scripts": {
-		"deploy": "wrangler deploy --cwd src/worker",
+		"deploy": "node scripts/deploy-worker.mjs",
 		"dev": "wrangler dev --cwd src/worker",
 		"test": "vitest run",
 		"test:watch": "vitest",
@@ -26,6 +26,8 @@
 		"extensions:build:firefox": "vite build --config src/extensions/vite.config.ts --mode firefox",
 		"extensions:build": "npm run extensions:build:chrome && npm run extensions:build:edge && npm run extensions:build:firefox",
 		"extensions:check": "node scripts/check-extensions.mjs",
+		"release:sync-version": "node scripts/sync-release-version.mjs",
+		"release:check-version": "node scripts/sync-release-version.mjs --check",
 		"discord:register": "node scripts/register-discord-commands.mjs"
 	},
 	"dependencies": {
