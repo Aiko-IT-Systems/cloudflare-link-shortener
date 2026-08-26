@@ -1,6 +1,7 @@
 param(
 	[switch] $Help,
 	[switch] $List,
+	[switch] $ListTokens,
 	[string] $ProjectRoot
 )
 
@@ -231,6 +232,27 @@ function Revoke-ShortLinkUserToken {
 	}
 }
 
+function Get-ShortLinkUserTokens {
+	Write-Host ""
+	Write-Host "Fetching remote KV token records..." -ForegroundColor DarkGray
+
+	$keys = Invoke-WranglerKv kv key list --binding LINKS --remote --prefix "token:" | ConvertFrom-Json
+	if (-not $keys -or $keys.Count -eq 0) {
+		Write-Host "No issued user tokens found." -ForegroundColor Yellow
+		return
+	}
+
+	Write-Host ""
+	Write-Host "Issued user tokens" -ForegroundColor Cyan
+	foreach ($key in $keys) {
+		$record = Invoke-WranglerKv kv key get $key.name --binding LINKS --remote | ConvertFrom-Json
+		$tokenId = if ($record.id) { $record.id } else { $key.name -replace "^token:", "" }
+		$label = if ($record.label) { "; label $($record.label)" } else { "" }
+		$status = if ($record.revokedAt) { "revoked $($record.revokedAt)" } else { "active" }
+		Write-Host "$tokenId -> account $($record.accountId)$label (created $($record.createdAt); $status)"
+	}
+}
+
 function Get-ShortLinkAccounts {
 	$result = Invoke-LinkApi -Method GET -Path "/api/v1/accounts?limit=100"
 	if (-not $result -or -not $result.success) { return }
@@ -296,16 +318,18 @@ function Show-Help {
 	Write-Host ""
 	Write-Host "Commands:"
 	Write-Host "  aitsys-short-admin -List [-ProjectRoot <repo>]"
+	Write-Host "  aitsys-short-admin -ListTokens [-ProjectRoot <repo>]"
 	Write-Host "  aitsys-short-admin -Help"
 	Write-Host ""
 	Write-Host "Note:"
-	Write-Host "  -List requires Wrangler access to the Cloudflare KV namespace."
+	Write-Host "  -List and -ListTokens require Wrangler access to the Cloudflare KV namespace."
 	Write-Host "  With only AITSYS_SHORT_API_KEY, you can operate on slugs you already know."
 	Write-Host "  User account and token actions require the master AITSYS_SHORT_API_KEY."
 }
 
 if ($Help) { Show-Help; exit 0 }
 if ($List) { Get-ShortLinks; exit 0 }
+if ($ListTokens) { Get-ShortLinkUserTokens; exit 0 }
 
 $running = $true
 while ($running) {
@@ -319,9 +343,10 @@ while ($running) {
 	Write-Host "6. Create user account"
 	Write-Host "7. Issue user token"
 	Write-Host "8. Revoke user token"
-	Write-Host "9. List user accounts"
-	Write-Host "10. Remove user account"
-	Write-Host "11. Link Discord user to account"
+	Write-Host "9. List user tokens"
+	Write-Host "10. List user accounts"
+	Write-Host "11. Remove user account"
+	Write-Host "12. Link Discord user to account"
 	Write-Host "0. Exit"
 
 	$choice = Read-Host "Choose"
@@ -334,10 +359,11 @@ while ($running) {
 		"6" { New-ShortLinkAccount }
 		"7" { New-ShortLinkUserToken }
 		"8" { Revoke-ShortLinkUserToken }
-		"9" { Get-ShortLinkAccounts }
-		"10" { Remove-ShortLinkAccount }
-		"11" { Set-ShortLinkAccountDiscordUser }
+		"9" { Get-ShortLinkUserTokens }
+		"10" { Get-ShortLinkAccounts }
+		"11" { Remove-ShortLinkAccount }
+		"12" { Set-ShortLinkAccountDiscordUser }
 		"0" { $running = $false }
-		default { Write-Host "Pick 1 through 11, or 0." -ForegroundColor DarkYellow }
+		default { Write-Host "Pick 1 through 12, or 0." -ForegroundColor DarkYellow }
 	}
 }

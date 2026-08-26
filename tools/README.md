@@ -43,4 +43,10 @@ List links:
 aitsys-short-admin -List
 ```
 
-`-List` requires Wrangler access to the Cloudflare account/KV namespace. Coworkers using only `AITSYS_SHORT_API_KEY` can create links and operate on slugs they already know, but they cannot enumerate every stored link.
+List issued user-token records and their IDs, account IDs, optional labels, creation dates, and active/revoked state:
+
+```powershell
+aitsys-short-admin -ListTokens
+```
+
+`-List` and `-ListTokens` require Wrangler access to the Cloudflare account/KV namespace. Complete issued tokens are never stored and cannot be retrieved; use the listed token ID with the interactive **Revoke user token** action. Coworkers using only `AITSYS_SHORT_API_KEY` can create links and operate on slugs they already know, but they cannot enumerate every stored link or token record.

@@ -226,4 +226,4 @@ Release ZIPs contain `aitsys-short` and `aitsys-short-admin` without hardcoded s
 
 Tool releases are published automatically when files under `tools/` change.
 
-The admin tool's interactive menu can also create/list/remove user accounts, link a Discord user ID to an account, issue a labeled user token (shown once), and revoke a token. Account removal requires typing `REMOVE` and invalidates the account's active tokens. These actions require the master `AITSYS_SHORT_API_KEY`.
+The admin tool's interactive menu can also create/list/remove user accounts, link a Discord user ID to an account, issue a labeled user token (shown once), list issued token records, and revoke a token. Token listing shows the revocable token ID, account ID, optional label, creation date, and active/revoked state; it never reveals the complete token or its digest. Run `aitsys-short-admin -ListTokens` for the same listing outside the menu. Token and link enumeration use Wrangler's remote KV access, while account/token mutations require the master `AITSYS_SHORT_API_KEY`. Account removal requires typing `REMOVE` and invalidates the account's active tokens.
