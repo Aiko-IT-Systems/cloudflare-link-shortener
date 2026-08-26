@@ -5,7 +5,7 @@ import { handleDiscordInteraction } from "./discord";
 import { expired, homepage, notFound, passwordPrompt, privacyPolicy, robots, splash, unavailable } from "./html";
 import { fetchTargetMetadata } from "./metadata";
 import { jsonError, jsonSuccess } from "./responses";
-import { createAccount, createLink, disableLink, getAccount, getAdminAccount, getLink, issueToken, linkDiscordUser, listAccounts, listOwnedLinks, ownsLink, refreshLinkMetadata, removeAccount, revokeToken, updateLink } from "./store";
+import { createAccount, createLink, disableLink, getAccount, getAdminAccount, getLink, issueToken, linkDiscordUser, listAccounts, listLinks, listOwnedLinks, listTokens, ownsLink, refreshLinkMetadata, removeAccount, revokeToken, updateLink } from "./store";
 import { AuthPrincipal, LinkOwner, LinkRecord } from "./types";
 import { createAccountSchema, createLinkSchema, disableLinkSchema, isReservedSlug, issueTokenSchema, linkDiscordUserSchema, normalizeSlug, SLUG_PATTERN, updateLinkSchema } from "./validation";
 
@@ -96,6 +96,20 @@ app.post("/api/v1/tokens/:tokenId/revoke", async (c) => {
 	if (denied) return denied;
 	const record = await revokeToken(c.env, c.req.param("tokenId"));
 	return record ? jsonSuccess({ tokenId: record.id, revokedAt: record.revokedAt }) : jsonError("Token not found.", "token_not_found", 404);
+});
+
+app.get("/api/v1/tokens", async (c) => {
+	const denied = requireAdmin(c.get("principal"));
+	if (denied) return denied;
+	const limit = Number.parseInt(c.req.query("limit") ?? "25", 10);
+	return jsonSuccess(await listTokens(c.env, c.req.query("cursor"), Number.isFinite(limit) ? limit : 25));
+});
+
+app.get("/api/v1/admin/links", async (c) => {
+	const denied = requireAdmin(c.get("principal"));
+	if (denied) return denied;
+	const limit = Number.parseInt(c.req.query("limit") ?? "25", 10);
+	return jsonSuccess(await listLinks(c.env, c.req.query("cursor"), Number.isFinite(limit) ? limit : 25));
 });
 
 app.get("/api/v1/links", async (c) => {

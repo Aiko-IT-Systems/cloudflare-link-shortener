@@ -102,6 +102,17 @@ export async function listLinks(env: Env, cursor?: string, limit = 10): Promise<
 	return "cursor" in page ? { items, cursor: page.cursor } : { items };
 }
 
+export type TokenSummary = Omit<TokenRecord, "digest">;
+
+export async function listTokens(env: Env, cursor?: string, limit = 25): Promise<{ items: TokenSummary[]; cursor?: string }> {
+	const page = await env.LINKS.list({ prefix: "token:", cursor, limit: Math.min(Math.max(limit, 1), 100) });
+	const values = await Promise.all(page.keys.map((key) => env.LINKS.get<TokenRecord>(key.name, "json")));
+	const items = values
+		.filter((record): record is TokenRecord => record !== null)
+		.map(({ digest: _digest, ...record }) => record);
+	return "cursor" in page ? { items, cursor: page.cursor } : { items };
+}
+
 export async function getAccount(env: Env, accountId: string): Promise<AccountRecord | null> { return env.LINKS.get<AccountRecord>(accountKey(accountId), "json"); }
 export async function getAccountByDiscordUserId(env: Env, discordUserId: string): Promise<AccountRecord | null> {
 	const accountId = await env.LINKS.get(discordAccountKey(discordUserId));

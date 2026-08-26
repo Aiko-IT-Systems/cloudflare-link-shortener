@@ -94,7 +94,7 @@ The optional `discordUserId` links the Discord user to this same account. The to
 
 To link or change an existing account's Discord user, call `PUT /api/v1/accounts/<account-id>/discord-user` with `{ "discordUserId": "123456789012345678" }`. A Discord user can be linked to only one active account. Linking migrates that user's older Discord-created links into the account, so `/manage`, browser extensions, and shells all manage the same link collection.
 
-List active accounts with `GET /api/v1/accounts?limit=25&cursor=<optional-cursor>`. Remove an account with `DELETE /api/v1/accounts/<account-id>`. Removal revokes every active issued token and removes the account from future listings, but retains its account ID permanently so a new user cannot inherit its old links. Existing short links remain public; their former user account cannot manage them.
+List active accounts with `GET /api/v1/accounts?limit=25&cursor=<optional-cursor>`. The master credential can enumerate every stored link with `GET /api/v1/admin/links?limit=25&cursor=<optional-cursor>` and sanitized token records with `GET /api/v1/tokens?limit=25&cursor=<optional-cursor>`. Token listings never contain the complete token or its digest. Remove an account with `DELETE /api/v1/accounts/<account-id>`. Removal revokes every active issued token and removes the account from future listings, but retains its account ID permanently so a new user cannot inherit its old links. Existing short links remain public; their former user account cannot manage them.
 
 User tokens can only create, list, read, refresh, update, and disable links that they own. Their owned list is cursor-paginated:
 
@@ -264,13 +264,13 @@ The registration command is intentionally never run by deployment or CI. `DISCOR
 
 ## CLI Tools
 
-Release ZIPs contain `aitsys-short` and `aitsys-short-admin` without hardcoded secrets. Set the API key before using them:
+Release ZIPs contain `short` and `short-admin` for PowerShell/Windows and native Bash/Linux, without hardcoded secrets. Set the API key before using them:
 
 ```powershell
 [Environment]::SetEnvironmentVariable("AITSYS_SHORT_API_KEY", "<api-key>", "User")
 [Environment]::SetEnvironmentVariable("AITSYS_SHORT_API_BASE", "<api-base>", "User")
 ```
 
-Tool releases are published automatically when files under `tools/` change.
+Tool releases are published automatically when files under `tools/` change. Linux requires `curl` and `jq`; optional clipboard integration uses `wl-copy`, `xclip`, or `xsel`.
 
-The admin tool's interactive menu can also create/list/remove user accounts, link a Discord user ID to an account, issue a labeled user token (shown once), list issued token records, and revoke a token. Token listing shows the revocable token ID, account ID, optional label, creation date, and active/revoked state; it never reveals the complete token or its digest. Run `aitsys-short-admin -ListTokens` for the same listing outside the menu. Token and link enumeration use Wrangler's remote KV access, while account/token mutations require the master `AITSYS_SHORT_API_KEY`. Account removal requires typing `REMOVE` and invalidates the account's active tokens.
+The PowerShell admin tool's interactive menu can create/list/remove user accounts, link a Discord user ID to an account, issue a labeled user token (shown once), list issued token records, and revoke a token. Token listing shows the revocable token ID, account ID, optional label, creation date, and active/revoked state; it never reveals the complete token or its digest. Run `short-admin -ListTokens` in PowerShell or `short-admin list-tokens` in Bash. All operations use the authenticated Worker API—Wrangler, Cloudflare account access, repository-directory switching, and a local checkout are not required. Global enumeration and account/token administration require the master `AITSYS_SHORT_API_KEY`. Account removal requires typing `REMOVE` and invalidates the account's active tokens.

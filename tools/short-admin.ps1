@@ -1,13 +1,10 @@
 param(
 	[switch] $Help,
 	[switch] $List,
-	[switch] $ListTokens,
-	[string] $ProjectRoot
+	[switch] $ListTokens
 )
 
 $ErrorActionPreference = "Stop"
-
-Set-Location (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
 $ApiBase = $env:AITSYS_SHORT_API_BASE
 $ApiToken = $env:AITSYS_SHORT_API_KEY
@@ -20,7 +17,7 @@ if ([string]::IsNullOrWhiteSpace($ApiToken)) {
 function Invoke-LinkApi {
 	param(
 		[Parameter(Mandatory = $true)]
-		[ValidateSet("GET", "POST", "DELETE")]
+		[ValidateSet("GET", "POST", "PUT", "PATCH", "DELETE")]
 		[string] $Method,
 
 		[Parameter(Mandatory = $true)]
@@ -68,48 +65,6 @@ function Read-Required {
 	} while ([string]::IsNullOrWhiteSpace($value))
 
 	$value.Trim()
-}
-
-function Find-ProjectRoot {
-	if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
-		return (Resolve-Path $ProjectRoot).Path
-	}
-
-	$current = Get-Location
-	while ($current) {
-		$config = Join-Path $current.Path "wrangler.jsonc"
-		if (Test-Path $config) {
-			$json = Get-Content -Raw -Path $config
-			if ($json -match '"name"\s*:\s*"cloudflare-link-shortener"') {
-				return $current.Path
-			}
-		}
-
-		$current = $current.Parent
-	}
-
-	return $null
-}
-
-function Invoke-WranglerKv {
-	param([Parameter(ValueFromRemainingArguments = $true)] [string[]] $Arguments)
-
-	$root = Find-ProjectRoot
-	if (-not $root) {
-		throw "Could not find the cloudflare-link-shortener repo. Run from the repo or pass -ProjectRoot."
-	}
-
-	Push-Location $root
-	try {
-		$output = npx wrangler @Arguments 2>$null
-		if ($LASTEXITCODE -ne 0) {
-			throw "wrangler $($Arguments -join ' ') failed."
-		}
-
-		return $output
-	} finally {
-		Pop-Location
-	}
 }
 
 function New-ShortLink {
@@ -233,20 +188,26 @@ function Revoke-ShortLinkUserToken {
 }
 
 function Get-ShortLinkUserTokens {
-	Write-Host ""
-	Write-Host "Fetching remote KV token records..." -ForegroundColor DarkGray
+	$items = @()
+	$cursor = $null
+	do {
+		$path = "/api/v1/tokens?limit=100"
+		if ($cursor) { $path += "&cursor=$([uri]::EscapeDataString($cursor))" }
+		$result = Invoke-LinkApi -Method GET -Path $path
+		if (-not $result -or -not $result.success) { return }
+		$items += @($result.result.items)
+		$cursor = $result.result.cursor
+	} while ($cursor)
 
-	$keys = Invoke-WranglerKv kv key list --binding LINKS --remote --prefix "token:" | ConvertFrom-Json
-	if (-not $keys -or $keys.Count -eq 0) {
+	if ($items.Count -eq 0) {
 		Write-Host "No issued user tokens found." -ForegroundColor Yellow
 		return
 	}
 
 	Write-Host ""
 	Write-Host "Issued user tokens" -ForegroundColor Cyan
-	foreach ($key in $keys) {
-		$record = Invoke-WranglerKv kv key get $key.name --binding LINKS --remote | ConvertFrom-Json
-		$tokenId = if ($record.id) { $record.id } else { $key.name -replace "^token:", "" }
+	foreach ($record in $items) {
+		$tokenId = $record.id
 		$label = if ($record.label) { "; label $($record.label)" } else { "" }
 		$status = if ($record.revokedAt) { "revoked $($record.revokedAt)" } else { "active" }
 		Write-Host "$tokenId -> account $($record.accountId)$label (created $($record.createdAt); $status)"
@@ -286,20 +247,26 @@ function Remove-ShortLinkAccount {
 }
 
 function Get-ShortLinks {
-	Write-Host ""
-	Write-Host "Fetching remote KV link keys..." -ForegroundColor DarkGray
+	$items = @()
+	$cursor = $null
+	do {
+		$path = "/api/v1/admin/links?limit=100"
+		if ($cursor) { $path += "&cursor=$([uri]::EscapeDataString($cursor))" }
+		$result = Invoke-LinkApi -Method GET -Path $path
+		if (-not $result -or -not $result.success) { return }
+		$items += @($result.result.items)
+		$cursor = $result.result.cursor
+	} while ($cursor)
 
-	$keys = Invoke-WranglerKv kv key list --binding LINKS --remote --prefix "link:" | ConvertFrom-Json
-	if (-not $keys -or $keys.Count -eq 0) {
+	if ($items.Count -eq 0) {
 		Write-Host "No links found." -ForegroundColor Yellow
 		return
 	}
 
 	Write-Host ""
 	Write-Host "Links" -ForegroundColor Cyan
-	foreach ($key in $keys) {
-		$slug = $key.name -replace "^link:", ""
-		$record = Invoke-WranglerKv kv key get $key.name --binding LINKS --remote | ConvertFrom-Json
+	foreach ($record in $items) {
+		$slug = $record.slug
 		$flags = @()
 		if ($record.password) { $flags += "pw=$($record.password)" }
 		if ($record.expiresAt) { $flags += "expires=$($record.expiresAt)" }
@@ -314,17 +281,16 @@ function Show-Help {
 	Write-Host "AITSYS GO admin"
 	Write-Host ""
 	Write-Host "Interactive:"
-	Write-Host "  aitsys-short-admin"
+	Write-Host "  short-admin"
 	Write-Host ""
 	Write-Host "Commands:"
-	Write-Host "  aitsys-short-admin -List [-ProjectRoot <repo>]"
-	Write-Host "  aitsys-short-admin -ListTokens [-ProjectRoot <repo>]"
-	Write-Host "  aitsys-short-admin -Help"
+	Write-Host "  short-admin -List"
+	Write-Host "  short-admin -ListTokens"
+	Write-Host "  short-admin -Help"
 	Write-Host ""
 	Write-Host "Note:"
-	Write-Host "  -List and -ListTokens require Wrangler access to the Cloudflare KV namespace."
-	Write-Host "  With only AITSYS_SHORT_API_KEY, you can operate on slugs you already know."
-	Write-Host "  User account and token actions require the master AITSYS_SHORT_API_KEY."
+	Write-Host "  Listing, user account, and token actions require the master AITSYS_SHORT_API_KEY."
+	Write-Host "  All operations use the configured shortener API; Wrangler is not required."
 }
 
 if ($Help) { Show-Help; exit 0 }

@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+api_base="${AITSYS_SHORT_API_BASE:-https://go.aitsys.dev}"
+api_key="${AITSYS_SHORT_API_KEY:-}"
+destination=""
+creator=""
+title=""
+slug=""
+password=""
+expires_at=""
+suppress_preview=false
+copy_result=true
+
+usage() {
+  cat <<'EOF'
+Usage: short [options]
+  --url URL            Destination URL (defaults to the current Git remote)
+  --creator NAME       Creator (master tokens only; inferred from GitHub URL)
+  --title TITLE        Fallback title
+  --slug SLUG          Custom slug
+  --password PASSWORD  Optional password
+  --expires-at ISO     ISO-8601 expiry
+  --suppress-preview   Suppress social previews
+  --no-clipboard       Do not copy the resulting short URL
+EOF
+}
+
+while (($#)); do
+  case "$1" in
+    --url) destination="$2"; shift 2 ;;
+    --creator) creator="$2"; shift 2 ;;
+    --title) title="$2"; shift 2 ;;
+    --slug) slug="$2"; shift 2 ;;
+    --password) password="$2"; shift 2 ;;
+    --expires-at) expires_at="$2"; shift 2 ;;
+    --suppress-preview) suppress_preview=true; shift ;;
+    --no-clipboard) copy_result=false; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+[[ -n "$api_key" ]] || { echo "AITSYS_SHORT_API_KEY is not set." >&2; exit 1; }
+command -v curl >/dev/null || { echo "curl is required." >&2; exit 1; }
+command -v jq >/dev/null || { echo "jq is required." >&2; exit 1; }
+
+if [[ -z "$destination" ]]; then
+  remote="$(git remote get-url origin 2>/dev/null)" || { echo "Pass --url or run inside a Git repository." >&2; exit 1; }
+  case "$remote" in
+    git@github.com:*) destination="https://github.com/${remote#git@github.com:}" ;;
+    ssh://git@github.com/*) destination="https://github.com/${remote#ssh://git@github.com/}" ;;
+    https://github.com/*) destination="$remote" ;;
+    *) echo "Only GitHub remotes are inferred automatically; pass --url." >&2; exit 1 ;;
+  esac
+  destination="${destination%.git}"
+fi
+
+if [[ -z "$creator" && "$destination" =~ ^https://github.com/([^/]+)/ ]]; then creator="${BASH_REMATCH[1]}"; fi
+if [[ -z "$title" && "$destination" =~ ^https://github.com/[^/]+/([^/]+) ]]; then title="${BASH_REMATCH[1]}"; fi
+
+payload="$(jq -n --arg destinationUrl "$destination" --arg creator "$creator" --arg title "$title" --arg slug "$slug" --arg password "$password" --arg expiresAt "$expires_at" --argjson suppress "$suppress_preview" '
+  {destinationUrl: $destinationUrl}
+  + (if $creator != "" then {creator: $creator} else {} end)
+  + (if $title != "" then {title: $title} else {} end)
+  + (if $slug != "" then {slug: $slug} else {} end)
+  + (if $password != "" then {password: $password} else {} end)
+  + (if $expiresAt != "" then {expiresAt: $expiresAt} else {} end)
+  + (if $suppress then {suppressSocialPreview: true} else {} end)')"
+
+response="$(curl --fail-with-body --silent --show-error -X POST "$api_base/api/v1/links" -H "Authorization: Bearer $api_key" -H 'Content-Type: application/json' --data "$payload")"
+short_url="$api_base/$(jq -er '.result.slug' <<<"$response")"
+echo "$short_url"
+
+if $copy_result; then
+  if command -v wl-copy >/dev/null; then printf %s "$short_url" | wl-copy
+  elif command -v xclip >/dev/null; then printf %s "$short_url" | xclip -selection clipboard
+  elif command -v xsel >/dev/null; then printf %s "$short_url" | xsel --clipboard --input
+  else echo "Clipboard helper not found; install wl-clipboard, xclip, or xsel." >&2
+  fi
+fi

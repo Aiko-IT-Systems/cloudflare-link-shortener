@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+api_base="${AITSYS_SHORT_API_BASE:-https://go.aitsys.dev}"
+api_key="${AITSYS_SHORT_API_KEY:-}"
+
+usage() {
+  cat <<'EOF'
+Usage: short-admin [command]
+  list-links                 List every link (master token required)
+  list-tokens                List token IDs, labels, and status
+  list-accounts              List active accounts
+  create-account ID NAME [DISCORD_ID]
+  link-discord ACCOUNT_ID DISCORD_ID
+  issue-token ACCOUNT_ID [LABEL]
+  revoke-token TOKEN_ID
+  remove-account ACCOUNT_ID  Requires an interactive REMOVE confirmation
+  read SLUG
+  disable SLUG [REASON]
+  refresh SLUG
+EOF
+}
+
+api() {
+  local method="$1" path="$2" body="${3-}"
+  local args=(--fail-with-body --silent --show-error -X "$method" "$api_base$path" -H "Authorization: Bearer $api_key")
+  if [[ -n "$body" ]]; then args+=(-H 'Content-Type: application/json' --data "$body"); fi
+  curl "${args[@]}"
+}
+
+encode() { jq -rn --arg value "$1" '$value | @uri'; }
+
+list_pages() {
+  local path="$1" filter="$2" cursor="" response
+  while :; do
+    response="$(api GET "$path${cursor:+&cursor=$(encode "$cursor")}")"
+    jq -r "$filter" <<<"$response"
+    cursor="$(jq -r '.result.cursor // empty' <<<"$response")"
+    [[ -n "$cursor" ]] || break
+  done
+}
+
+command="${1:-help}"; shift || true
+if [[ "$command" == help || "$command" == -h || "$command" == --help ]]; then usage; exit 0; fi
+
+[[ -n "$api_key" ]] || { echo "AITSYS_SHORT_API_KEY is not set." >&2; exit 1; }
+command -v curl >/dev/null || { echo "curl is required." >&2; exit 1; }
+command -v jq >/dev/null || { echo "jq is required." >&2; exit 1; }
+
+case "$command" in
+  list-links)
+    list_pages '/api/v1/admin/links?limit=100' '.result.items[] | "\(.slug): \(.destinationUrl)" + (if .disabledAt then " [disabled]" else "" end)' ;;
+  list-tokens)
+    list_pages '/api/v1/tokens?limit=100' '.result.items[] | "\(.id) -> account \(.accountId)" + (if .label then "; label \(.label)" else "" end) + " (created \(.createdAt); " + (if .revokedAt then "revoked \(.revokedAt)" else "active" end) + ")"' ;;
+  list-accounts)
+    list_pages '/api/v1/accounts?limit=100' '.result.items[] | "\(.id) -> \(.creatorName)" + (if .discordUserId then "; Discord \(.discordUserId)" else "" end)' ;;
+  create-account)
+    [[ $# -ge 2 ]] || { usage >&2; exit 2; }
+    body="$(jq -n --arg id "$1" --arg creatorName "$2" --arg discordUserId "${3-}" '{id:$id,creatorName:$creatorName} + (if $discordUserId != "" then {discordUserId:$discordUserId} else {} end)')"
+    api POST '/api/v1/accounts' "$body" | jq . ;;
+  link-discord)
+    [[ $# -eq 2 ]] || { usage >&2; exit 2; }
+    api PUT "/api/v1/accounts/$(encode "$1")/discord-user" "$(jq -n --arg discordUserId "$2" '{discordUserId:$discordUserId}')" | jq . ;;
+  issue-token)
+    [[ $# -ge 1 ]] || { usage >&2; exit 2; }
+    api POST "/api/v1/accounts/$(encode "$1")/tokens" "$(jq -n --arg label "${2-}" 'if $label != "" then {label:$label} else {} end')" | jq . ;;
+  revoke-token)
+    [[ $# -eq 1 ]] || { usage >&2; exit 2; }
+    api POST "/api/v1/tokens/$(encode "$1")/revoke" '{}' | jq . ;;
+  remove-account)
+    [[ $# -eq 1 ]] || { usage >&2; exit 2; }
+    read -r -p "Type REMOVE to revoke its tokens and remove account $1: " confirmation
+    [[ "$confirmation" == REMOVE ]] || { echo "Cancelled."; exit 0; }
+    api DELETE "/api/v1/accounts/$(encode "$1")" | jq . ;;
+  read)
+    [[ $# -eq 1 ]] || { usage >&2; exit 2; }
+    api GET "/api/v1/links/$(encode "$1")" | jq . ;;
+  disable)
+    [[ $# -ge 1 ]] || { usage >&2; exit 2; }
+    api POST "/api/v1/links/$(encode "$1")/disable" "$(jq -n --arg reason "${2-}" 'if $reason != "" then {reason:$reason} else {} end')" | jq . ;;
+  refresh)
+    [[ $# -eq 1 ]] || { usage >&2; exit 2; }
+    api POST "/api/v1/links/$(encode "$1")/refresh-metadata" '{}' | jq . ;;
+  *) echo "Unknown command: $command" >&2; usage >&2; exit 2 ;;
+esac

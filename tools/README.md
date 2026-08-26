@@ -1,10 +1,10 @@
 # AITSYS GO CLI Tools
 
-PowerShell helpers for creating and managing AITSYS GO short links.
+Cross-platform helpers for creating and managing AITSYS GO short links. Every operation uses the Worker API; Wrangler and a local repository checkout are not required.
 
 ## Setup
 
-Set your API key in the system or user environment:
+Set the API base and key. Use an issued account token with `short`, and the master administrator token with `short-admin`:
 
 ```powershell
 [Environment]::SetEnvironmentVariable("AITSYS_SHORT_API_BASE", "https://go.aitsys.dev", "User")
@@ -13,40 +13,51 @@ Set your API key in the system or user environment:
 
 Open a new terminal after setting the variable. Add this folder to `PATH` if you want to run the commands from anywhere.
 
+On Linux:
+
+```bash
+export AITSYS_SHORT_API_BASE=https://go.aitsys.dev
+export AITSYS_SHORT_API_KEY='<api-key>'
+```
+
+Linux requires `curl` and `jq`. Clipboard copying additionally uses `wl-copy`, `xclip`, or `xsel` when available.
+
 ## Commands
 
 Create a random short link for the current GitHub repository:
 
 ```powershell
-aitsys-short
+short
 ```
 
 Useful options:
 
 ```powershell
-aitsys-short -NoClipboard
-aitsys-short -ExpiresIn 7d
-aitsys-short -ExpiresAt "2026-08-01T00:00:00Z"
-aitsys-short -SuppressSocialPreview
-aitsys-short -DestinationUrl "https://example.com" -Creator "AITSYS" -Title "Example"
+short -NoClipboard
+short -ExpiresIn 7d
+short -ExpiresAt "2026-08-01T00:00:00Z"
+short -SuppressSocialPreview
+short -DestinationUrl "https://example.com" -Creator "AITSYS" -Title "Example"
 ```
 
 Open the interactive admin tool:
 
 ```powershell
-aitsys-short-admin
+short-admin
 ```
 
 List links:
 
 ```powershell
-aitsys-short-admin -List
+short-admin -List
 ```
 
 List issued user-token records and their IDs, account IDs, optional labels, creation dates, and active/revoked state:
 
 ```powershell
-aitsys-short-admin -ListTokens
+short-admin -ListTokens
 ```
 
-`-List` and `-ListTokens` require Wrangler access to the Cloudflare account/KV namespace. Complete issued tokens are never stored and cannot be retrieved; use the listed token ID with the interactive **Revoke user token** action. Coworkers using only `AITSYS_SHORT_API_KEY` can create links and operate on slugs they already know, but they cannot enumerate every stored link or token record.
+Native Bash equivalents include `short-admin list-links`, `short-admin list-tokens`, `short-admin list-accounts`, and the account/token management commands shown by `short-admin --help`.
+
+All admin operations use the authenticated Worker API. Global link and token enumeration requires the master administrator key. Complete issued tokens are never stored or retrieved; token listings intentionally omit both the complete token and its SHA-256 digest.

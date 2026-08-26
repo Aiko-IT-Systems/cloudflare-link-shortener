@@ -33,6 +33,9 @@ jobs:
             }
           }
 
+      - name: Validate Bash scripts
+        run: bash -n tools/short tools/short-admin
+
       - name: Package tools
         id: package-tools
         run: |

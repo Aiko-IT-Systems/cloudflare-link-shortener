@@ -471,6 +471,42 @@ describe("link shortener", () => {
 		expect((await emptyAccountList.json() as { result: { items: unknown[] } }).result.items).toEqual([]);
 	});
 
+	test("lists all links and sanitized token records for administrators", async () => {
+		const envValue = env();
+		await create(envValue, { destinationUrl: "https://one.example", creator: "Admin Cat", slug: "one" });
+		await create(envValue, { destinationUrl: "https://two.example", creator: "Admin Cat", slug: "two" });
+		await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts", authed({
+			method: "POST",
+			body: JSON.stringify({ id: "shell-cat", creatorName: "Shell Cat" })
+		})), envValue);
+		const firstTokenResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts/shell-cat/tokens", authed({
+			method: "POST",
+			body: JSON.stringify({ label: "Laptop" })
+		})), envValue);
+		const firstToken = await firstTokenResponse.json() as { result: { token: string } };
+		await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts/shell-cat/tokens", authed({
+			method: "POST",
+			body: JSON.stringify({ label: "Desktop" })
+		})), envValue);
+
+		const firstLinkPage = await app.fetch(new Request("https://go.aitsys.dev/api/v1/admin/links?limit=1", authed()), envValue);
+		const firstLinks = await firstLinkPage.json() as { result: { items: LinkRecord[]; cursor: string } };
+		expect(firstLinks.result.items).toHaveLength(1);
+		expect(firstLinks.result.cursor).toBeTruthy();
+		const secondLinkPage = await app.fetch(new Request(`https://go.aitsys.dev/api/v1/admin/links?limit=1&cursor=${encodeURIComponent(firstLinks.result.cursor)}`, authed()), envValue);
+		expect((await secondLinkPage.json() as { result: { items: LinkRecord[] } }).result.items).toHaveLength(1);
+
+		const tokenList = await app.fetch(new Request("https://go.aitsys.dev/api/v1/tokens?limit=100", authed()), envValue);
+		const tokens = await tokenList.json() as { result: { items: Array<Record<string, unknown>> } };
+		expect(tokens.result.items).toHaveLength(2);
+		expect(tokens.result.items.map((token) => token.label).sort()).toEqual(["Desktop", "Laptop"]);
+		expect(tokens.result.items.every((token) => !("digest" in token) && !("token" in token))).toBe(true);
+
+		const userHeaders = { Authorization: `Bearer ${firstToken.result.token}` };
+		expect((await app.fetch(new Request("https://go.aitsys.dev/api/v1/admin/links", { headers: userHeaders }), envValue)).status).toBe(403);
+		expect((await app.fetch(new Request("https://go.aitsys.dev/api/v1/tokens", { headers: userHeaders }), envValue)).status).toBe(403);
+	});
+
 	test("verifies Discord interactions and queues multiple message links", async () => {
 		const keys = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
 		const publicKey = hex(await crypto.subtle.exportKey("raw", keys.publicKey));
