@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-for (const target of ["chrome", "firefox"]) {
+for (const target of ["chrome", "edge", "firefox"]) {
 	const root = resolve("extensions", "dist", target);
 	const manifestPath = resolve(root, "manifest.json");
 	if (!existsSync(manifestPath)) throw new Error(`${target}: manifest.json is missing. Run the extension build first.`);
@@ -11,6 +11,7 @@ for (const target of ["chrome", "firefox"]) {
 	if (!manifest.host_permissions?.includes("https://*/*")) throw new Error(`${target}: all HTTPS host access is required.`);
 	if (manifest.optional_host_permissions?.length) throw new Error(`${target}: host access must be declared at install time.`);
 	if (!manifest.permissions?.includes("storage") || !manifest.permissions?.includes("activeTab")) throw new Error(`${target}: required minimum permissions are missing.`);
+	if (target === "edge" && manifest.name !== "AITSYS Go for Microsoft Edge") throw new Error("edge: manifest must use the Microsoft Edge store name.");
 	if (target === "firefox") {
 		const collected = manifest.browser_specific_settings?.gecko?.data_collection_permissions?.required ?? [];
 		if (!collected.includes("authenticationInfo") || !collected.includes("browsingActivity")) throw new Error("firefox: data-collection declarations must cover the issued token and submitted page URL.");
@@ -18,4 +19,4 @@ for (const target of ["chrome", "firefox"]) {
 	}
 }
 
-console.log("Chrome and Firefox extension manifests are valid.");
+console.log("Chrome, Edge, and Firefox extension manifests are valid.");

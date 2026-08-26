@@ -23,8 +23,9 @@
 		"typecheck": "tsc --noEmit",
 		"cf-typegen": "wrangler types --strict-vars false",
 		"extensions:build:chrome": "vite build --config extensions/vite.config.ts --mode chrome",
+		"extensions:build:edge": "vite build --config extensions/vite.config.ts --mode edge",
 		"extensions:build:firefox": "vite build --config extensions/vite.config.ts --mode firefox",
-		"extensions:build": "npm run extensions:build:chrome && npm run extensions:build:firefox",
+		"extensions:build": "npm run extensions:build:chrome && npm run extensions:build:edge && npm run extensions:build:firefox",
 		"extensions:check": "node scripts/check-extensions.mjs",
 		"discord:register": "node scripts/register-discord-commands.mjs"
 	},

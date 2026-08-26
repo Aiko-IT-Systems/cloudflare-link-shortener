@@ -145,7 +145,7 @@ This service intentionally does not store click analytics, counters, cookies, or
 
 ## Browser extensions
 
-The repository builds separate unsigned Manifest V3 packages for Chrome and Firefox from shared source:
+The repository builds separate unsigned Manifest V3 packages for Chrome, Microsoft Edge, and Firefox from shared source:
 
 ```bash
 npm run extensions:build
@@ -154,9 +154,9 @@ npm run extensions:check
 
 Each popup pre-fills the active HTTPS tab and can create a short link with an optional custom slug, fallback title, password, expiry, preview suppression, and manual embed metadata. It displays the resulting full short URL and provides copy and open actions. Open its settings page first and enter the shortener base URL plus an **issued user token**. The extension declares access to all HTTPS hosts at installation time, so any HTTPS shortener endpoint can be used without a later permission prompt.
 
-The current extension UI is deliberately creation-focused: it does **not** yet list, edit, refresh, or disable existing links. Both target builds and their manifests are validated locally by the commands above. They still need normal manual smoke-testing after loading the generated packages in Chrome and Firefox; no browser-store signing, submission, GitHub release, or store publication is performed by this repository.
+The current extension UI is deliberately creation-focused: it does **not** yet list, edit, refresh, or disable existing links. All three target builds and their manifests are validated locally by the commands above. They still need normal manual smoke-testing after loading the generated packages in Chrome, Edge, and Firefox; no browser-store signing, submission, GitHub release, or store publication is performed by this repository.
 
-Browser extension storage is **not encrypted**. Never put `LINK_SHORTENER_API_KEY` in an extension; use a revocable `aig_…` user token and revoke it if a browser profile/device is compromised. The `Browser Extensions Release` workflow packages versioned Chrome and Firefox ZIPs, plus an editable `aitsys-go-extension-source-…zip` containing `extensions/` source without generated `extensions/dist/` output. Firefox accepts the ZIP for AMO upload; copy or rename the Firefox ZIP to `.xpi` when installing it directly in Firefox. Browser-store submission/signing is intentionally separate.
+Browser extension storage is **not encrypted**. Never put `LINK_SHORTENER_API_KEY` in an extension; use a revocable `aig_…` user token and revoke it if a browser profile/device is compromised. The `Browser Extensions Release` workflow packages versioned Chrome, Edge, and Firefox ZIPs, plus an editable `aitsys-go-extension-source-…zip` containing `extensions/` source without generated `extensions/dist/` output. Firefox accepts the ZIP for AMO upload; copy or rename the Firefox ZIP to `.xpi` when installing it directly in Firefox. Submit the Edge-branded ZIP to Microsoft Edge Add-ons. Browser-store submission/signing is intentionally separate.
 
 For Firefox submission, the manifest accurately declares the data required for the chosen operation: the issued token (**authentication information**) and the selected destination URL (**browsing activity**) are sent only to the shortener API base URL you configure when you create a link. The extension has no analytics, telemetry, or third-party data destination. Firefox's built-in consent requires Firefox 140+ on desktop and 142+ on Android.
 
