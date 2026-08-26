@@ -7,3 +7,14 @@ extensions/dist/
 .env
 scripts/local-admin.ps1
 local-bin/
+
+# Android / Gradle local and generated files
+android/.gradle/
+android/local.properties
+android/signing.properties
+android/aitsys-go-test.apk
+android/**/build/
+android/captures/
+android/.idea/
+*.jks
+*.keystore

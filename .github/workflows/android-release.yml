@@ -1,0 +1,79 @@
+name: "[DISABLED] Android Release"
+
+on:
+  # Restore the push trigger after the upload-key secrets are configured.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b3c1987288cf1069921038bc3cc5a7a9d2983f92 # v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+      - name: Restore upload keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEY_ALIAS" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::Android upload signing secrets are not configured."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > upload-key.jks
+          chmod 600 upload-key.jks
+      - name: Test, lint, and build signed artifacts
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+          ANDROID_UPLOAD_KEYSTORE_PATH: upload-key.jks
+          ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          ANDROID_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          version_name="1.0.${GITHUB_RUN_NUMBER}"
+          ./gradlew --no-daemon test lint assembleRelease bundleRelease \
+            -PversionCode="$VERSION_CODE" -PversionName="$version_name"
+      - name: Verify signed artifacts
+        run: |
+          apk="app/build/outputs/apk/release/app-release.apk"
+          aab="app/build/outputs/bundle/release/app-release.aab"
+          test -s "$apk"
+          test -s "$aab"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          jarsigner -verify -strict "$aab"
+      - id: package
+        name: Name release artifacts
+        run: |
+          version="android-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
+          apk="aitsys-go-${version}.apk"
+          aab="aitsys-go-${version}.aab"
+          cp app/build/outputs/apk/release/app-release.apk "../$apk"
+          cp app/build/outputs/bundle/release/app-release.aab "../$aab"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"
+          echo "aab=$aab" >> "$GITHUB_OUTPUT"
+      - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: ${{ steps.package.outputs.version }}
+          name: AITSYS Go Android ${{ steps.package.outputs.version }}
+          body: |
+            Signed Android APK for direct installation and signed Android App Bundle for manual Google Play upload.
+
+            The APK is signed with the upload key. Google Play App Signing re-signs store-distributed builds with Google's app-signing key, so switching from this APK to the Play build requires one uninstall.
+          files: |
+            ${{ steps.package.outputs.apk }}
+            ${{ steps.package.outputs.aab }}

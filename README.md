@@ -184,6 +184,53 @@ For Firefox submission, the manifest accurately declares the data required for t
 
 Relative logo and favicon configuration is resolved against the responding shortener origin. The extensions load this endpoint when opened and after saving a new base URL, applying its name, logo, alt text, favicon, and accent color. If an older or incompatible shortener does not provide it, the extension retains its local AITSYS fallback branding.
 
+## Android app
+
+`android/` contains a lightweight native Kotlin/Jetpack Compose client for Android 10 (API 29) and newer. Its application ID is `dev.aitsys.go`; it targets API 36 and uses the same issued account token and ownership scope as the browser extensions and CLI tools. It has no analytics, ads, background service, Retrofit, Room, or dependency-injection framework.
+
+The app is an Android `ACTION_SEND` target for `text/plain`. When another app shares text to **AITSYS Go**, it extracts the first valid HTTPS URL. The saved share preference controls what happens next:
+
+- **Configure** opens the normal prefilled form before publishing. This is the default.
+- **Automatic** creates the link immediately and shows a compact result with copy, open, and share actions.
+
+The create form supports custom slugs, fallback titles, passwords, ISO-8601 expiry, preview suppression, and manual embed metadata. **Manage** lists the current account's active links with cursor pagination and supports open, copy, sharing the short URL into other apps, edit, metadata refresh, and disable confirmation. Newly created results have the same outbound share action. Disabled links are not shown.
+
+Open **Settings** and save an exact HTTPS shortener origin plus a revocable issued user token. The token is encrypted with an AES-GCM key held by Android Keystore and is excluded from backup. Ordinary settings and cached public branding use DataStore. Never put the master `LINK_SHORTENER_API_KEY` in the app.
+
+The client loads `GET /api/v1/metadata`, applies the configured site name/color/privacy contact in-app, and downloads a capped, downscaled logo/favicon into private app storage. Android does not allow an installed app or Sharesheet icon to become an arbitrary downloaded image. The bundled launcher/share icon therefore remains static; **Add branded home shortcut** requests a separate pinned shortcut using the cached endpoint branding.
+
+Build and test locally with Android Studio's JDK and SDK, or equivalent JDK 17+ tooling:
+
+```powershell
+cd android
+./gradlew test lint assembleDebug
+```
+
+The debug APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`. Manual device smoke-testing should cover normal launch, Configure and Automatic sharing, create/edit/refresh/disable, revoked-token handling, branding/shortcut behavior, and offline/time-out errors.
+
+### Android signing and releases
+
+The `[DISABLED] Android Release` GitHub Actions workflow is currently manual-only so it cannot run while signing is unconfigured. After the secrets below are installed, remove the `[DISABLED]` name prefix and restore its documented `push` trigger for `android/**` and the workflow file. When enabled, it runs unit tests and lint, builds a minified signed universal APK and Android App Bundle, verifies both signatures, and publishes them as GitHub Release assets. It never uploads or submits anything to Google Play. Configure these repository secrets before enabling it:
+
+| Secret | Value |
+| --- | --- |
+| `ANDROID_UPLOAD_KEYSTORE_BASE64` | Base64-encoded upload-key keystore file |
+| `ANDROID_UPLOAD_KEY_ALIAS` | Upload-key alias |
+| `ANDROID_UPLOAD_KEYSTORE_PASSWORD` | Keystore password |
+| `ANDROID_UPLOAD_KEY_PASSWORD` | Key password |
+
+Keep the original upload keystore and passwords in your own offline/password-manager backups. The encrypted GitHub Secrets copy is for CI recovery and builds, not the only copy. Neither a keystore nor `signing.properties` belongs in source control.
+
+For the first Google Play release:
+
+1. Create the Play Console app with package name `dev.aitsys.go` and opt into Play App Signing with a **Google-generated app-signing key**.
+2. Generate a separate local upload key, keep the original yourself, and configure the four GitHub Secrets above. Upload the workflow-produced `.aab` manually to an internal test track first.
+3. Use the deployed `/privacy` URL for the privacy-policy field. Complete Data Safety consistently with this policy: no ads/analytics; destination/link-form data and the issued authentication token are transmitted only to the user-configured shortener to provide the requested function.
+4. For App Access review, create a dedicated, revocable issued user token and provide it with the API base URL and short test instructions. Revoke that reviewer token when it is no longer needed.
+5. Complete the store listing, screenshots/feature graphic, content rating, target-audience declarations, and testing requirements, then promote manually after the internal build is proven.
+
+The direct GitHub APK is signed with the upload key. A Play-installed build is re-signed by Google with the app-signing key, so a phone that switches from the GitHub APK to the Play build must uninstall once. Future Play updates then work normally.
+
 ## Discord user app
 
 The Discord integration is an HTTP-interactions Worker route at `/discord/interactions`. It verifies Discord's Ed25519 request signature with the `DISCORD_PUBLIC_KEY` secret before parsing the body.
