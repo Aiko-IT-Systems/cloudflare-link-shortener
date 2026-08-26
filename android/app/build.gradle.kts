@@ -23,12 +23,12 @@ val signingConfigured = listOf(signingStoreFile, signingStorePassword, signingKe
 
 android {
     namespace = "dev.aitsys.go"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "dev.aitsys.go"
         minSdk = 29
-        targetSdk = 36
+        targetSdk = 37
         versionCode = providers.gradleProperty("versionCode").orNull?.toIntOrNull() ?: 1
         versionName = providers.gradleProperty("versionName").orNull ?: "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -36,6 +36,12 @@ android {
     }
 
     signingConfigs {
+        getByName("debug") {
+            storeFile = file("C:\\Users\\Lulalaby\\.android\\debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (signingConfigured) {
             create("release") {
                 storeFile = rootProject.file(signingStoreFile!!)

@@ -1,4 +1,4 @@
 {
-    "java.configuration.updateBuildConfiguration": "interactive",
+    "java.configuration.updateBuildConfiguration": "automatic",
     "postman.settings.dotenv-detection-notification-visibility": false
 }

@@ -12,6 +12,7 @@ local-bin/
 android/.gradle/
 android/local.properties
 android/signing.properties
+android/PLAY_PUBLISHING_SETUP.local.md
 android/aitsys-go-test.apk
 android/**/build/
 android/captures/
