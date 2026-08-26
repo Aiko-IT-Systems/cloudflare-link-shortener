@@ -19,10 +19,11 @@ class SettingsRepositoryTest {
     @After fun cleanToken() = repository.clearToken()
 
     @Test fun tokenRoundTripsThroughKeystoreBackedStorage() = runBlocking {
-        repository.save(AppSettings("https://example.com", ShareMode.AUTOMATIC), "aig_test.secret")
+        repository.save(AppSettings("https://example.com", ShareMode.AUTOMATIC, appLockEnabled = true), "aig_test.secret")
         val (settings, token) = repository.load()
         assertEquals("https://example.com", settings.apiBase)
         assertEquals(ShareMode.AUTOMATIC, settings.shareMode)
+        assertEquals(true, settings.appLockEnabled)
         assertEquals("aig_test.secret", token)
     }
 }

@@ -7,6 +7,7 @@ enum class ShareMode { CONFIGURE, AUTOMATIC }
 data class AppSettings(
     val apiBase: String = "https://go.aitsys.dev",
     val shareMode: ShareMode = ShareMode.CONFIGURE,
+    val appLockEnabled: Boolean = false,
 )
 
 data class Branding(

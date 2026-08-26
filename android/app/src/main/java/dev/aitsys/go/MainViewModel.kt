@@ -28,6 +28,8 @@ data class UiState(
     val token: String = "",
     val branding: Branding = Branding(),
     val brandingAssetRevision: Long = 0,
+    val appLocked: Boolean = false,
+    val appLockError: String? = null,
     val draft: LinkDraft = LinkDraft(),
     val links: List<LinkRecord> = emptyList(),
     val nextCursor: String? = null,
@@ -37,6 +39,7 @@ data class UiState(
     val message: String? = null,
     val error: String? = null,
     val createdUrl: String? = null,
+    val clipboardUrl: String? = null,
     val editing: LinkRecord? = null,
     val confirmDisable: LinkRecord? = null,
 )
@@ -44,6 +47,7 @@ data class UiState(
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = SettingsRepository(application)
     private var loadJob: Job
+    private var pendingSharedText: String? = null
     var state by mutableStateOf(UiState())
         private set
 
@@ -57,6 +61,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 token = token,
                 branding = cachedBranding,
                 brandingAssetRevision = BrandingAssets.cachedRevision(application, cachedBranding.brandLogoUrl),
+                appLocked = settings.appLockEnabled,
             )
             viewModelScope.launch { refreshBranding(silent = true) }
         }
@@ -69,15 +74,64 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateDraft(draft: LinkDraft) { state = state.copy(draft = draft, error = null) }
     fun dismissNotice() { state = state.copy(error = null, message = null) }
+    fun confirmClipboardWrite(url: String) {
+        if (state.clipboardUrl == url) state = state.copy(clipboardUrl = null)
+    }
     fun edit(record: LinkRecord?) { state = state.copy(editing = record) }
     fun confirmDisable(record: LinkRecord?) { state = state.copy(confirmDisable = record) }
 
     fun receiveSharedText(text: String?) = viewModelScope.launch {
         loadJob.join()
+        if (state.appLocked) {
+            pendingSharedText = text
+            return@launch
+        }
+        processSharedText(text)
+    }
+
+    fun unlock() {
+        if (!state.appLocked) return
+        state = state.copy(appLocked = false, appLockError = null)
+        pendingSharedText?.let { text ->
+            pendingSharedText = null
+            receiveSharedText(text)
+        }
+    }
+
+    fun lock() {
+        if (!state.settings.appLockEnabled || state.appLocked) return
+        state = state.copy(
+            appLocked = true,
+            appLockError = null,
+            draft = LinkDraft(),
+            links = emptyList(),
+            createdUrl = null,
+            editing = null,
+            confirmDisable = null,
+            error = null,
+            message = null,
+        )
+    }
+
+    fun enableAppLock() = runAction {
+        repository.setAppLockEnabled(true)
+        state = state.copy(settings = state.settings.copy(appLockEnabled = true), appLockError = null, message = "App lock enabled.")
+    }
+
+    fun disableAppLock() = runAction {
+        repository.setAppLockEnabled(false)
+        state = state.copy(settings = state.settings.copy(appLockEnabled = false), appLockError = null, message = "App lock disabled.")
+    }
+
+    fun showAppLockError(message: String) {
+        state = if (state.appLocked) state.copy(appLockError = message) else state.copy(error = message)
+    }
+
+    private fun processSharedText(text: String?) {
         val url = UrlExtractor.firstHttpsUrl(text)
         if (url == null) {
             state = state.copy(screen = Screen.CREATE, error = "The shared text does not contain an HTTPS URL.")
-            return@launch
+            return
         }
         val draft = LinkDraft(destinationUrl = url)
         state = state.copy(screen = Screen.CREATE, draft = draft, error = null, createdUrl = null)
@@ -85,7 +139,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun saveSettings(apiBase: String, token: String, shareMode: ShareMode) = runAction {
-        val settings = AppSettings(ApiClient.normalizeOrigin(apiBase), shareMode)
+        val settings = AppSettings(ApiClient.normalizeOrigin(apiBase), shareMode, state.settings.appLockEnabled)
         repository.save(settings, token)
         state = state.copy(settings = settings, token = token.trim(), message = "Settings saved.")
         refreshBranding(silent = false)
@@ -103,10 +157,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         validateDraft(draft)
         val client = client()
         val record = client.create(draft)
+        val shortUrl = client.shortUrl(record.slug)
         state = state.copy(
             draft = LinkDraft(),
-            createdUrl = client.shortUrl(record.slug),
-            message = "Short link created.",
+            createdUrl = shortUrl,
+            clipboardUrl = shortUrl,
+            message = "Short link created and copied to the clipboard.",
         )
     }
 

@@ -199,6 +199,8 @@ Open **Settings** and save an exact HTTPS shortener origin plus a revocable issu
 
 The client loads `GET /api/v1/metadata`, applies the configured site name/color/privacy contact in-app, and downloads a capped, downscaled logo/favicon into private app storage. Android does not allow an installed app or Sharesheet icon to become an arbitrary downloaded image. The bundled launcher/share icon therefore remains static; **Add branded home shortcut** requests a separate pinned shortcut using the cached endpoint branding.
 
+In **Settings → Privacy**, **Lock app with biometrics** is opt-in. When enabled, AITSYS Go locks whenever it leaves the foreground and requires a device biometric or the device's own PIN, pattern, or password before it displays saved link data or processes a received shared URL. It does not create, store, or transmit an app-specific passcode; a device must have a secure lock method configured before the option can be enabled.
+
 Build and test locally with Android Studio's JDK and SDK, or equivalent JDK 17+ tooling:
 
 ```powershell

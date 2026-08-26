@@ -51,6 +51,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -83,7 +84,11 @@ private val DarkSurface = Color(0xFF21102B)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AitsysGoApp(model: MainViewModel) {
+fun AitsysGoApp(
+    model: MainViewModel,
+    requestUnlock: () -> Unit,
+    requestEnableAppLock: () -> Unit,
+) {
     val state = model.state
     val context = LocalContext.current
     val brand = parseBrandColor(state.branding.brandColor)
@@ -99,43 +104,52 @@ fun AitsysGoApp(model: MainViewModel) {
         (state.error ?: state.message)?.let { snackbar.showSnackbar(it) }
         if (state.error != null || state.message != null) model.dismissNotice()
     }
+    LaunchedEffect(state.clipboardUrl) {
+        state.clipboardUrl?.let { url ->
+            copy(context, url)
+            model.confirmClipboardWrite(url)
+        }
+    }
 
     MaterialTheme(colorScheme = colors) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Scaffold(
-                containerColor = MaterialTheme.colorScheme.background,
-                snackbarHost = { SnackbarHost(snackbar) },
-                topBar = {
-                    TopAppBar(
-                        title = { BrandHeader(state.branding, state.brandingAssetRevision) },
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
-                    )
-                },
-                bottomBar = {
-                    NavigationBar(containerColor = DarkSurface) {
-                        NavigationBarItem(state.screen == Screen.CREATE, { model.navigate(Screen.CREATE) }, { Icon(Icons.Default.Add, null) }, label = { Text("Create") })
-                        NavigationBarItem(state.screen == Screen.MANAGE, { model.navigate(Screen.MANAGE) }, { Icon(Icons.Default.Link, null) }, label = { Text("Manage") })
-                        NavigationBarItem(state.screen == Screen.SETTINGS, { model.navigate(Screen.SETTINGS) }, { Icon(Icons.Default.Settings, null) }, label = { Text("Settings") })
+            when {
+                !state.loaded -> Box(Modifier.fillMaxSize()) { CircularProgressIndicator(Modifier.align(Alignment.Center)) }
+                state.appLocked -> AppLockScreen(state, requestUnlock)
+                else -> Scaffold(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    snackbarHost = { SnackbarHost(snackbar) },
+                    topBar = {
+                        TopAppBar(
+                            title = { BrandHeader(state.branding, state.brandingAssetRevision) },
+                            colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
+                        )
+                    },
+                    bottomBar = {
+                        NavigationBar(containerColor = DarkSurface) {
+                            NavigationBarItem(state.screen == Screen.CREATE, { model.navigate(Screen.CREATE) }, { Icon(Icons.Default.Add, null) }, label = { Text("Create") })
+                            NavigationBarItem(state.screen == Screen.MANAGE, { model.navigate(Screen.MANAGE) }, { Icon(Icons.Default.Link, null) }, label = { Text("Manage") })
+                            NavigationBarItem(state.screen == Screen.SETTINGS, { model.navigate(Screen.SETTINGS) }, { Icon(Icons.Default.Settings, null) }, label = { Text("Settings") })
+                        }
                     }
-                },
-            ) { padding ->
-                Box(Modifier.fillMaxSize().padding(padding)) {
-                    when {
-                        !state.loaded -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-                        state.screen == Screen.CREATE -> CreateScreen(state, model, context)
-                        state.screen == Screen.MANAGE -> ManageScreen(state, model, context)
-                        state.screen == Screen.SETTINGS -> SettingsScreen(state, model)
-                    }
-                    if (state.busy) Surface(color = Color.Black.copy(alpha = .38f), modifier = Modifier.fillMaxSize()) {
-                        Box(Modifier.fillMaxSize()) { CircularProgressIndicator(Modifier.align(Alignment.Center)) }
+                ) { padding ->
+                    Box(Modifier.fillMaxSize().padding(padding)) {
+                        when (state.screen) {
+                            Screen.CREATE -> CreateScreen(state, model, context)
+                            Screen.MANAGE -> ManageScreen(state, model, context)
+                            Screen.SETTINGS -> SettingsScreen(state, model, requestEnableAppLock)
+                        }
+                        if (state.busy) Surface(color = Color.Black.copy(alpha = .38f), modifier = Modifier.fillMaxSize()) {
+                            Box(Modifier.fillMaxSize()) { CircularProgressIndicator(Modifier.align(Alignment.Center)) }
+                        }
                     }
                 }
             }
         }
     }
 
-    state.editing?.let { EditDialog(it, model) }
-    state.confirmDisable?.let { record ->
+    if (!state.appLocked) state.editing?.let { EditDialog(it, model) }
+    if (!state.appLocked) state.confirmDisable?.let { record ->
         AlertDialog(
             onDismissRequest = { model.confirmDisable(null) },
             title = { Text("Disable ${record.slug}?") },
@@ -143,6 +157,27 @@ fun AitsysGoApp(model: MainViewModel) {
             confirmButton = { Button(onClick = { model.disable(record) }) { Text("Disable") } },
             dismissButton = { TextButton(onClick = { model.confirmDisable(null) }) { Text("Cancel") } },
         )
+    }
+}
+
+@Composable
+private fun AppLockScreen(state: UiState, requestUnlock: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(28.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(state.branding.siteName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(12.dp))
+        Text("App locked", style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(8.dp))
+        Text("Unlock with biometrics or your device screen lock.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        state.appLockError?.let {
+            Spacer(Modifier.height(12.dp))
+            Text(it, color = MaterialTheme.colorScheme.error)
+        }
+        Spacer(Modifier.height(24.dp))
+        Button(requestUnlock) { Text("Unlock") }
     }
 }
 
@@ -260,7 +295,7 @@ private fun LinkCard(record: LinkRecord, apiBase: String, model: MainViewModel, 
 }
 
 @Composable
-private fun SettingsScreen(state: UiState, model: MainViewModel) {
+private fun SettingsScreen(state: UiState, model: MainViewModel, requestEnableAppLock: () -> Unit) {
     var apiBase by remember(state.settings.apiBase) { mutableStateOf(state.settings.apiBase) }
     var token by remember(state.token) { mutableStateOf(state.token) }
     var shareMode by remember(state.settings.shareMode) { mutableStateOf(state.settings.shareMode) }
@@ -275,6 +310,16 @@ private fun SettingsScreen(state: UiState, model: MainViewModel) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button({ model.saveSettings(apiBase, token, shareMode) }) { Text("Save") }
             OutlinedButton({ model.testConnection(apiBase, token) }) { Text("Test connection") }
+        }
+        HorizontalDivider()
+        Text("Privacy", fontWeight = FontWeight.Bold)
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Lock app with biometrics")
+            Text("On return, require biometrics or your device PIN, pattern, or password before showing link data or handling shared links.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Switch(
+                checked = state.settings.appLockEnabled,
+                onCheckedChange = { enabled -> if (enabled) requestEnableAppLock() else model.disableAppLock() },
+            )
         }
         HorizontalDivider()
         Text("Branding", fontWeight = FontWeight.Bold)

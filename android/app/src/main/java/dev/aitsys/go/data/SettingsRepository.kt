@@ -5,6 +5,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
@@ -19,6 +20,7 @@ private val Context.dataStore by preferencesDataStore("settings")
 class SettingsRepository(private val context: Context) {
     private val apiBaseKey = stringPreferencesKey("api_base")
     private val shareModeKey = stringPreferencesKey("share_mode")
+    private val appLockEnabledKey = booleanPreferencesKey("app_lock_enabled")
     private val brandingKey = stringPreferencesKey("branding")
     private val secureToken = SecureTokenStore(context)
 
@@ -27,6 +29,7 @@ class SettingsRepository(private val context: Context) {
         return AppSettings(
             apiBase = values[apiBaseKey] ?: "https://go.aitsys.dev",
             shareMode = runCatching { ShareMode.valueOf(values[shareModeKey].orEmpty()) }.getOrDefault(ShareMode.CONFIGURE),
+            appLockEnabled = values[appLockEnabledKey] ?: false,
         ) to secureToken.get()
     }
 
@@ -35,12 +38,15 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit {
             it[apiBaseKey] = origin
             it[shareModeKey] = settings.shareMode.name
+            it[appLockEnabledKey] = settings.appLockEnabled
         }
         secureToken.set(token.trim())
     }
 
     suspend fun saveBrandingJson(json: String) = context.dataStore.edit { it[brandingKey] = json }
     suspend fun loadBrandingJson(): String? = context.dataStore.data.first()[brandingKey]
+
+    suspend fun setAppLockEnabled(enabled: Boolean) = context.dataStore.edit { it[appLockEnabledKey] = enabled }
 
     fun clearToken() = secureToken.clear()
 }
