@@ -17,9 +17,9 @@ Releases are built and published automatically from the `main` branch.
 
 Due to extension store limitations, extension zips are not signed.
 
-If a version was submitted, we'll update the release with the signed package once it is available. 
+If a version was submitted, we'll update the release with the signed package once it is available. (Firefox will have an `.xpi` package, and Chrome & Edge an `.crx` package)
 
-Play store releases are manually as well. If you want to install a release, use the apk. The aab file is for us to submit to the Play Store.
+Play Store releases are manually as well. If you want to install a release, use the apk. The aab file is for us to submit to the Play Store.
 
 ## Documentation
 
