@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { requireAdmin, requireApiKey } from "./auth";
 import { getPublicSiteMetadata, getSiteConfig } from "./config";
 import { handleDiscordInteraction } from "./discord";
-import { expired, homepage, notFound, passwordPrompt, robots, splash, unavailable } from "./html";
+import { expired, homepage, notFound, passwordPrompt, privacyPolicy, robots, splash, unavailable } from "./html";
 import { fetchTargetMetadata } from "./metadata";
 import { jsonError, jsonSuccess } from "./responses";
 import { createAccount, createLink, disableLink, getAccount, getAdminAccount, getLink, issueToken, linkDiscordUser, listAccounts, listOwnedLinks, ownsLink, refreshLinkMetadata, removeAccount, revokeToken, updateLink } from "./store";
@@ -33,6 +33,7 @@ function cleanUpdates(updates: Record<string, unknown>): Record<string, unknown>
 }
 
 app.get("/", (c) => homepage(getSiteConfig(c.env), c.req.url));
+app.get("/privacy", (c) => privacyPolicy(getSiteConfig(c.env)));
 app.get("/robots.txt", () => robots());
 app.post("/discord/interactions", (c) => handleDiscordInteraction(c.req.raw, c.env, new URL(c.req.url).origin));
 app.get("/api/v1/metadata", (c) => jsonSuccess({ apiVersion: 1, branding: getPublicSiteMetadata(c.env, c.req.url) }));

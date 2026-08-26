@@ -359,6 +359,31 @@ export function homepage(config: SiteConfig, pageUrl: string): Response {
 	});
 }
 
+export function privacyPolicy(config: SiteConfig): Response {
+	return page(config, "Privacy policy", `
+		<h1>Privacy <span class="accent">policy</span></h1>
+		<p>${escapeHtml(config.siteName)} creates and manages short links. It does not use advertising, analytics, click tracking, cookies, or telemetry.</p>
+		<dl>
+			<div class="meta">
+				<dt>Browser extension</dt>
+				<dd>The extension stores its configured shortener API base URL and issued user token in browser extension storage, which is not encrypted. When you create a link, it sends the selected page URL and the fields you entered to that configured API. It also fetches public branding metadata from that same API.</dd>
+			</div>
+			<div class="meta">
+				<dt>Shortener and Discord</dt>
+				<dd>The service stores the information needed to operate a link, including its destination, slug, optional settings, public creator name, ownership, and preview metadata. Issued API tokens are stored only as hashes. Discord user IDs are used for ownership checks; Discord usernames are stored as public authors.</dd>
+			</div>
+			<div class="meta">
+				<dt>Your choices</dt>
+				<dd>You can revoke an issued token, disable a link, or ask the administrator to remove an account. For privacy questions, contact <a href="mailto:privacy@aitsys.dev">privacy@aitsys.dev</a>.</dd>
+			</div>
+		</dl>
+		<p class="note">Multi-link Discord batches temporarily retain pending URLs and the invoking user ID for up to 15 minutes so they can be continued or aborted.</p>
+	`, 200, {
+		description: `${config.siteName} privacy policy. No advertising, analytics, click tracking, cookies, or telemetry.`,
+		suppressSocialPreview: true
+	});
+}
+
 export function splash(config: SiteConfig, record: LinkRecord, pageUrl: string): Response {
 	const label = record.embedTitle ?? record.title ?? record.destinationUrl;
 	const description = record.embedDescription

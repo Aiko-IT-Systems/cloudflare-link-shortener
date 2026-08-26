@@ -363,6 +363,17 @@ describe("link shortener", () => {
 		expect(homeHtml).toContain('<link rel="icon" href="/favicon.png">');
 	});
 
+	test("serves the privacy policy at its reserved public route", async () => {
+		const response = await app.fetch(new Request("https://go.aitsys.dev/privacy"), env());
+		const html = await response.text();
+
+		expect(response.status).toBe(200);
+		expect(html).toContain("Privacy");
+		expect(html).toContain("privacy@aitsys.dev");
+		expect(html).toContain("does not use advertising, analytics, click tracking, cookies, or telemetry");
+		expect(html).not.toContain('property="og:title"');
+	});
+
 	test("renders configured site branding and escapes its HTML attributes", async () => {
 		const envValue = env({
 			SITE_NAME: "Cats & Code",

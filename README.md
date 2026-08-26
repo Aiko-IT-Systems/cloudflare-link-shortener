@@ -2,6 +2,8 @@
 
 Transparent AITSYS link shortener for `go.aitsys.dev`.
 
+Privacy: [AITSYS Go Privacy Policy](PRIVACY.md). The deployed Worker serves the same policy at `/privacy` (for example, `https://go.aitsys.dev/privacy`).
+
 ## Setup
 
 1. Install dependencies:
