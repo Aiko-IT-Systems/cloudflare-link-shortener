@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "tools/**"
+      - "src/tools/**"
       - ".github/workflows/tools-release.yml"
   workflow_dispatch:
 
@@ -23,7 +23,7 @@ jobs:
       - name: Validate PowerShell scripts
         shell: pwsh
         run: |
-          $files = Get-ChildItem -Path tools -Filter *.ps1
+          $files = Get-ChildItem -Path src/tools -Filter *.ps1
           foreach ($file in $files) {
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref] $null, [ref] $errors) | Out-Null
@@ -34,14 +34,14 @@ jobs:
           }
 
       - name: Validate Bash scripts
-        run: bash -n tools/short tools/short-admin
+        run: bash -n src/tools/short src/tools/short-admin
 
       - name: Package tools
         id: package-tools
         run: |
           version="tools-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
           archive="aitsys-go-tools-${version}.zip"
-          (cd tools && zip -r "../${archive}" .)
+          (cd src/tools && zip -r "../../${archive}" .)
           echo "tools_version=${version}" >> "$GITHUB_OUTPUT"
           echo "tools_archive=${archive}" >> "$GITHUB_OUTPUT"
 

@@ -24,7 +24,8 @@ Privacy: [AITSYS Go Privacy Policy](PRIVACY.md). The deployed Worker serves the 
 
 ## Branding
 
-Public site branding is configured through the non-secret `vars` in `wrangler.jsonc`:
+Public site branding is configured through the non-secret `vars` in
+[`src/worker/wrangler.jsonc`](src/worker/wrangler.jsonc):
 
 | Variable | Default | Used for |
 | --- | --- | --- |
@@ -35,9 +36,19 @@ Public site branding is configured through the non-secret `vars` in `wrangler.js
 | `BRAND_COLOR` | `#fc0fc0` | The primary accent color |
 | `PRIVACY_EMAIL` | `privacy@aitsys.dev` | Contact address displayed on the deployed `/privacy` page |
 
-Root-relative URLs such as `/logo.png` are served from `public/`. Absolute URLs can be used for externally hosted assets. A relative `BRAND_LOGO_URL` is resolved against the current request origin when it is emitted as the homepage Open Graph image, so preview and custom domains produce an absolute social-preview URL.
+Root-relative URLs such as `/logo.png` are served from `src/worker/public/`.
+Absolute URLs can be used for externally hosted assets. A relative
+`BRAND_LOGO_URL` is resolved against the current request origin when it is
+emitted as the homepage Open Graph image, so preview and custom domains produce
+an absolute social-preview URL.
 
-The checked-in AITSYS Go defaults are generated from the canonical cat-link SVG in [`branding/aitsys-go-cat-link.svg`](branding/aitsys-go-cat-link.svg). It has matching PNG exports, a multi-size [`public/favicon.ico`](public/favicon.ico), public SVG aliases, browser-extension SVGs, and an Android adaptive-icon vector drawable. Do not redraw those formats independently; update the canonical mark and regenerate them as one set.
+The checked-in AITSYS Go defaults are generated from the canonical cat-link SVG
+in [`branding/aitsys-go-cat-link.svg`](branding/aitsys-go-cat-link.svg). It has
+matching PNG exports, a multi-size
+[`src/worker/public/favicon.ico`](src/worker/public/favicon.ico), public SVG
+aliases, browser-extension SVGs, and an Android adaptive-icon vector drawable.
+Do not redraw those formats independently; update the canonical mark and
+regenerate them as one set.
 
 These values are plain application configuration, not secrets. Wrangler `vars` are non-inheritable: if a named environment such as `env.staging` is added, define all five branding values again under that environment's `vars`. See Cloudflare's [environment variable documentation](https://developers.cloudflare.com/workers/configuration/environment-variables/) for environment-specific examples.
 
@@ -159,7 +170,15 @@ Each popup pre-fills the active HTTPS tab and can create a short link with an op
 
 The current extension UI is deliberately creation-focused: it does **not** yet list, edit, refresh, or disable existing links. All three target builds and their manifests are validated locally by the commands above. They still need normal manual smoke-testing after loading the generated packages in Chrome, Edge, and Firefox; no browser-store signing, submission, GitHub release, or store publication is performed by this repository.
 
-Browser extension storage is **not encrypted**. Never put `LINK_SHORTENER_API_KEY` in an extension; use a revocable `aig_…` user token and revoke it if a browser profile/device is compromised. The `Browser Extensions Release` workflow packages versioned Chrome, Edge, and Firefox ZIPs, plus an editable `aitsys-go-extension-source-…zip` containing `extensions/` source without generated `extensions/dist/` output. Firefox accepts the ZIP for AMO upload; copy or rename the Firefox ZIP to `.xpi` when installing it directly in Firefox. Submit the Edge-branded ZIP to Microsoft Edge Add-ons. Browser-store submission/signing is intentionally separate.
+Browser extension storage is **not encrypted**. Never put
+`LINK_SHORTENER_API_KEY` in an extension; use a revocable `aig_…` user token
+and revoke it if a browser profile/device is compromised. The `Browser
+Extensions Release` workflow packages versioned Chrome, Edge, and Firefox ZIPs,
+plus an editable `aitsys-go-extension-source-…zip` containing
+`src/extensions/` source without generated `dist/` output. Firefox accepts the
+ZIP for AMO upload; copy or rename the Firefox ZIP to `.xpi` when installing it
+directly in Firefox. Submit the Edge-branded ZIP to Microsoft Edge Add-ons.
+Browser-store submission/signing is intentionally separate.
 
 For Firefox submission, the manifest accurately declares the data required for the chosen operation: the issued token (**authentication information**) and the selected destination URL (**browsing activity**) are sent only to the shortener API base URL you configure when you create a link. The extension has no analytics, telemetry, or third-party data destination. Firefox's built-in consent requires Firefox 140+ on desktop and 142+ on Android.
 
@@ -188,7 +207,11 @@ Relative logo and favicon configuration is resolved against the responding short
 
 ## Android app
 
-`android/` contains a lightweight native Kotlin/Jetpack Compose client for Android 10 (API 29) and newer. Its application ID is `dev.aitsys.go`; it targets API 36 and uses the same issued account token and ownership scope as the browser extensions and CLI tools. It has no analytics, ads, background service, Retrofit, Room, or dependency-injection framework.
+`src/android/` contains a lightweight native Kotlin/Jetpack Compose client for
+Android 10 (API 29) and newer. Its application ID is `dev.aitsys.go`; it
+targets API 36 and uses the same issued account token and ownership scope as
+the browser extensions and CLI tools. It has no analytics, ads, background
+service, Retrofit, Room, or dependency-injection framework.
 
 The app is an Android `ACTION_SEND` target for `text/plain`. When another app shares text to **AITSYS Go**, it extracts the first valid HTTPS URL. The saved share preference controls what happens next:
 
@@ -206,15 +229,24 @@ In **Settings → Privacy**, **Lock app with biometrics** is opt-in. When enable
 Build and test locally with Android Studio's JDK and SDK, or equivalent JDK 17+ tooling:
 
 ```powershell
-cd android
+cd src/android
 ./gradlew test lint assembleDebug
 ```
 
-The debug APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`. Manual device smoke-testing should cover normal launch, Configure and Automatic sharing, create/edit/refresh/disable, revoked-token handling, branding/shortcut behavior, and offline/time-out errors.
+The debug APK is written to
+`src/android/app/build/outputs/apk/debug/app-debug.apk`. Manual device
+smoke-testing should cover normal launch, Configure and Automatic sharing,
+create/edit/refresh/disable, revoked-token handling, branding/shortcut
+behavior, and offline/time-out errors.
 
 ### Android signing and releases
 
-The `[DISABLED] Android Release` GitHub Actions workflow is currently manual-only so it cannot run while signing is unconfigured. After the secrets below are installed, remove the `[DISABLED]` name prefix and restore its documented `push` trigger for `android/**` and the workflow file. When enabled, it runs unit tests and lint, builds a minified signed universal APK and Android App Bundle, verifies both signatures, and publishes them as GitHub Release assets. It never uploads or submits anything to Google Play. Configure these repository secrets before enabling it:
+The `Android Release` GitHub Actions workflow runs on manual dispatch and on
+pushes to `main` that change `src/android/**` or the workflow itself. It runs
+unit tests and lint, builds a minified signed universal APK and Android App
+Bundle, verifies both signatures, and publishes them as GitHub Release assets.
+It never uploads or submits anything to Google Play. Configure these repository
+secrets before relying on the push trigger:
 
 | Secret | Value |
 | --- | --- |
@@ -239,7 +271,8 @@ The direct GitHub APK is signed with the upload key. A Play-installed build is r
 
 The Discord integration is an HTTP-interactions Worker route at `/discord/interactions`. It verifies Discord's Ed25519 request signature with the `DISCORD_PUBLIC_KEY` secret before parsing the body.
 
-Configure these non-secret Worker variables in `wrangler.jsonc` before deployment:
+Configure these non-secret Worker variables in `src/worker/wrangler.jsonc`
+before deployment:
 
 | Variable | Purpose |
 | --- | --- |
@@ -275,6 +308,8 @@ Release ZIPs contain `short` and `short-admin` for PowerShell/Windows and native
 [Environment]::SetEnvironmentVariable("AITSYS_SHORT_API_BASE", "<api-base>", "User")
 ```
 
-Tool releases are published automatically when files under `tools/` change. Linux requires `curl` and `jq`; optional clipboard integration uses `wl-copy`, `xclip`, or `xsel`.
+Tool releases are published automatically when files under `src/tools/` change.
+Linux requires `curl` and `jq`; optional clipboard integration uses `wl-copy`,
+`xclip`, or `xsel`.
 
 The PowerShell admin tool's interactive menu can create/list/remove user accounts, link a Discord user ID to an account, issue a labeled user token (shown once), list issued token records, and revoke a token. Token listing shows the revocable token ID, account ID, optional label, creation date, and active/revoked state; it never reveals the complete token or its digest. Run `short-admin -ListTokens` in PowerShell or `short-admin list-tokens` in Bash. All operations use the authenticated Worker API—Wrangler, Cloudflare account access, repository-directory switching, and a local checkout are not required. Global enumeration and account/token administration require the master `AITSYS_SHORT_API_KEY`. Account removal requires typing `REMOVE` and invalidates the account's active tokens.

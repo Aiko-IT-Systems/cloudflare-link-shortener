@@ -5,7 +5,7 @@ export default defineConfig(({ mode }) => ({
 	root: resolve(import.meta.dirname),
 	publicDir: resolve(import.meta.dirname, "static", mode),
 	build: {
-		outDir: resolve(import.meta.dirname, "dist", mode),
+		outDir: resolve(import.meta.dirname, "..", "..", "dist", mode),
 		emptyOutDir: true,
 		rollupOptions: {
 			input: {

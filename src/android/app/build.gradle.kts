@@ -3,7 +3,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
@@ -75,7 +74,7 @@ kotlin {
 }
 
 dependencies {
-    // Last API-36/AGP-8 compatible line. Newer 2026 AndroidX releases require API 37 and AGP 9.1.
+    // API 37 is supported by the AGP 9.1/Gradle 9.3.1 toolchain.
     implementation(platform("androidx.compose:compose-bom:2025.09.01"))
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.09.01"))
 

@@ -9,10 +9,11 @@ version for platform tinting and themed Android icons.
 
 The current checked-in exports are:
 
-- `public/logo.png` and `public/favicon.png` for the Worker defaults;
-- `public/favicon.ico` for conventional favicon consumers;
-- `extensions/static/*/icons/icon.svg` for Chrome, Edge, and Firefox;
-- `android/app/src/main/res/drawable/ic_launcher_foreground.xml` for Android's
+- `src/worker/public/logo.png` and `src/worker/public/favicon.png` for the
+  Worker defaults;
+- `src/worker/public/favicon.ico` for conventional favicon consumers;
+- `src/extensions/static/*/icons/icon.svg` for Chrome, Edge, and Firefox;
+- `src/android/app/src/main/res/drawable/ic_launcher_foreground.xml` for Android's
   adaptive and monochrome launcher icon.
 
 Keep the mark text-free, retain its dark `#12051A` backdrop in full-colour app

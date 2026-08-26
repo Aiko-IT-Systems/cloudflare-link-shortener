@@ -1,21 +1,20 @@
-node_modules/
+**/node_modules/**
 .wrangler/
 .wrangler-dev*.log
 dist/
-extensions/dist/
 .dev.vars
 .env
 scripts/local-admin.ps1
 local-bin/
 
 # Android / Gradle local and generated files
-android/.gradle/
-android/local.properties
-android/signing.properties
-android/PLAY_PUBLISHING_SETUP.local.md
-android/aitsys-go-test.apk
-android/**/build/
-android/captures/
-android/.idea/
+src/android/.gradle/
+src/android/local.properties
+src/android/signing.properties
+src/android/PLAY_PUBLISHING_SETUP.local.md
+src/android/aitsys-go-test.apk
+src/android/**/build/
+src/android/captures/
+src/android/.idea/
 *.jks
 *.keystore

@@ -18,10 +18,10 @@
 		"noEmit": true,
 		"lib": ["es2022"],
 		"types": [
-			"./worker-configuration.d.ts",
+			"./src/worker/worker-configuration.d.ts",
 			"@types/node"
 		]
 	},
-	"exclude": ["node_modules", "dist", "test"],
-	"include": ["src", "worker-configuration.d.ts"]
+	"exclude": ["node_modules", "dist", "src/worker/test"],
+	"include": ["src/worker/src", "src/worker/worker-configuration.d.ts", "vitest.config.ts"]
 }

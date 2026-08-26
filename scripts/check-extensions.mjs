@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 for (const target of ["chrome", "edge", "firefox"]) {
-	const root = resolve("extensions", "dist", target);
+	const root = resolve("dist", target);
 	const manifestPath = resolve(root, "manifest.json");
 	if (!existsSync(manifestPath)) throw new Error(`${target}: manifest.json is missing. Run the extension build first.`);
 	const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));

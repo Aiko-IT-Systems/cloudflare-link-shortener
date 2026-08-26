@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "extensions/**"
+      - "src/extensions/**"
       - "scripts/check-extensions.mjs"
       - "package.json"
       - "package-lock.json"
@@ -33,13 +33,13 @@ jobs:
           edge_archive="aitsys-go-edge-${version}.zip"
           firefox_archive="aitsys-go-firefox-${version}.zip"
           source_archive="aitsys-go-extension-source-${version}.zip"
-          (cd extensions/dist/chrome && zip -r "../../../${chrome_archive}" .)
-          (cd extensions/dist/edge && zip -r "../../../${edge_archive}" .)
-          (cd extensions/dist/firefox && zip -r "../../../${firefox_archive}" .)
-          zip -r "${source_archive}" extensions -x "extensions/dist/*"
-          unzip -Z1 "${source_archive}" | grep -qx "extensions/vite.config.ts"
-          if unzip -Z1 "${source_archive}" | grep -q "^extensions/dist/"; then
-            echo "::error::Source archive must not include generated extensions/dist output."
+          (cd dist/chrome && zip -r "../../${chrome_archive}" .)
+          (cd dist/edge && zip -r "../../${edge_archive}" .)
+          (cd dist/firefox && zip -r "../../${firefox_archive}" .)
+          zip -r "${source_archive}" src/extensions -x "src/extensions/dist/*"
+          unzip -Z1 "${source_archive}" | grep -qx "src/extensions/vite.config.ts"
+          if unzip -Z1 "${source_archive}" | grep -q "^src/extensions/dist/"; then
+            echo "::error::Source archive must not include generated src/extensions/dist output."
             exit 1
           fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"

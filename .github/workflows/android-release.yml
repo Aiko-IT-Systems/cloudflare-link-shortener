@@ -7,7 +7,7 @@ on:
       - main
     paths:
       - ".github/workflows/android-release.yml"
-      - 'android/**'
+      - 'src/android/**'
 
 permissions:
   contents: write
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: android
+        working-directory: src/android
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6
@@ -27,7 +27,7 @@ jobs:
           cache: gradle
       - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
       - name: Install Android SDK packages
-        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+        run: sdkmanager "platforms;android-37" "build-tools;36.0.0"
       - name: Restore upload keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
@@ -58,7 +58,7 @@ jobs:
           aab="app/build/outputs/bundle/release/app-release.aab"
           test -s "$apk"
           test -s "$aab"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
           # Upload keys are normally self-signed, so -strict incorrectly fails
           # on GitHub-hosted runners even when the AAB's signature is valid.
           jarsigner -verify "$aab"
@@ -68,8 +68,8 @@ jobs:
           version="android-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
           apk="aitsys-go-${version}.apk"
           aab="aitsys-go-${version}.aab"
-          cp app/build/outputs/apk/release/app-release.apk "../$apk"
-          cp app/build/outputs/bundle/release/app-release.aab "../$aab"
+          cp app/build/outputs/apk/release/app-release.apk "../../$apk"
+          cp app/build/outputs/bundle/release/app-release.aab "../../$aab"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "apk=$apk" >> "$GITHUB_OUTPUT"
           echo "aab=$aab" >> "$GITHUB_OUTPUT"
