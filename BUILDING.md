@@ -159,7 +159,7 @@ foreach ($file in $files) {
 bash -n src/tools/short src/tools/short-admin
 ```
 
-`.github/workflows/release.yml` is the single **Release AITSYS Go** workflow. It creates one `vX.Y.Z` GitHub Release containing the signed Android APK/AAB, Chrome/Edge/Firefox ZIPs, extension source ZIP, and tools ZIP. The root `package.json` is canonical: before building it synchronizes all browser manifest versions, commits `[skip ci] chore(release): vX.Y.Z` to `main`, tags that exact source revision, and then publishes only after every validation succeeds.
+`.github/workflows/release.yml` is the single **Release AITSYS Go** workflow. It creates one `vX.Y.Z` GitHub Release containing the signed Android APK/AAB, Chrome/Edge/Firefox ZIPs, extension source ZIP, and tools ZIP. The root `package.json` is canonical: before building it synchronizes all browser manifest versions, commits `chore(release): vX.Y.Z` to `main`, tags that exact source revision, and then publishes only after every validation succeeds. The release workflow recognizes its own bot-authored version commit and skips a duplicate GitHub Release job, but intentionally does not use a CI-skip marker: Workers Builds must deploy that commit so the public Worker metadata reports the released version and SHA.
 
 Qualifying pushes to `main` automatically make a patch release when they change `src/android/**`, `src/extensions/**`, `src/tools/**`, `scripts/check-extensions.mjs`, `package.json`, `package-lock.json`, or the unified workflow itself. Documentation and Worker-only changes do not create a GitHub Release. Use **Run workflow** on `main` to choose a patch, minor, or major increment. Releases are serialized so concurrent qualifying pushes cannot reuse a version.
 

@@ -12,6 +12,7 @@ src/android/.gradle/
 src/android/local.properties
 src/android/signing.properties
 src/android/PLAY_PUBLISHING_SETUP.local.md
+src/extensions/STORE_PUBLISHING_AUTOMATION.local.md
 src/android/aitsys-go-test.apk
 src/android/**/build/
 src/android/captures/
