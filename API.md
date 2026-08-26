@@ -1,82 +1,622 @@
 # AITSYS Go API
 
-The REST API is served by the configured shortener origin under `/api/v1`. Responses use this envelope:
-
-```json
-{ "success": true, "result": {} }
-```
-
-Errors return `success: false` with a stable error code and a human-readable message. Requests that manage accounts, tokens, or links require:
+Base URL examples use `https://short.example`. Replace it with your configured
+shortener origin. Management endpoints accept JSON and need a bearer token:
 
 ```http
-Authorization: Bearer <credential>
+Authorization: Bearer <master-or-issued-token>
+Content-Type: application/json
 ```
 
-Do not put credentials in URLs, source control, browser-extension bundles, or screenshots.
+Never put credentials in URLs, source code, screenshots, or browser-extension
+packages.
 
-## Credentials and ownership
+## Authentication roles
 
-`LINK_SHORTENER_API_KEY` is the master administrator credential. It can manage all links and administer accounts and issued tokens. It remains compatible with the legacy create payload, including an optional `creator` field.
+- The master `LINK_SHORTENER_API_KEY` can administer accounts and tokens and
+  manage every link.
+- An issued `aig_…` token can manage only its account’s links. The API derives
+  its public creator and ownership from that account.
+- Account removal revokes its tokens but retains existing public links and their
+  ownership, so no later account can inherit them.
 
-Issued `aig_…` user tokens are account-scoped, revocable credentials. They can create, read, list, update, refresh, and disable only links owned by their account. The user token determines both ownership and public creator name; a client-supplied `creator` is ignored.
+## Public endpoint
 
-## Accounts and tokens
+### `GET /api/v1/metadata`
 
-These endpoints require the master credential:
+Returns public presentation metadata for clients. Authentication is not needed.
 
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `POST` | `/accounts` | Create an account with `id`, `creatorName`, and optional `discordUserId`. |
-| `GET` | `/accounts?limit=25&cursor=…` | List active accounts. |
-| `DELETE` | `/accounts/:accountId` | Remove an account and revoke its active tokens. Existing public links remain. |
-| `PUT` | `/accounts/:accountId/discord-user` | Link or change the Discord user ID. |
-| `POST` | `/accounts/:accountId/tokens` | Issue a token; accepts optional `label`. The complete token is returned once. |
-| `GET` | `/tokens?limit=25&cursor=…` | List sanitized token records. |
-| `POST` | `/tokens/:tokenId/revoke` | Revoke an issued token. |
-| `GET` | `/admin/links?limit=25&cursor=…` | List every stored link. |
+**Request**
 
-Account removal deliberately preserves ownership records and public links. It prevents a later account from inheriting or managing removed-account links.
+```http
+GET /api/v1/metadata HTTP/1.1
+Host: short.example
+```
 
-## Links
-
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `POST` | `/links` | Create a link. |
-| `GET` | `/links?limit=10&cursor=…` | List accessible links; issued tokens receive only owned links. |
-| `GET` | `/links/:slug` | Read an accessible link. |
-| `PATCH` | `/links/:slug` | Update an accessible link. |
-| `POST` | `/links/:slug/refresh-metadata` | Fetch and store fresh preview metadata. |
-| `POST` | `/links/:slug/disable` | Disable an accessible link; accepts optional `reason`. |
-
-Create a link with `destinationUrl` and optional `slug`, `title`, `password`, `expiresAt`, `suppressSocialPreview`, `embedTitle`, `embedDescription`, `embedImageUrl`, and `embedSiteName`. Master-credential creation may also send `creator` for compatibility.
-
-`PATCH` accepts the same mutable fields. Use JSON `null` to clear optional text, password, or expiry values. Changing `destinationUrl` fetches fresh preview metadata for fields that were not supplied manually.
-
-List responses are cursor-paginated. Preserve the returned cursor unchanged and omit it on the first request. A disabled or expired link remains a record but does not redirect normally.
-
-## Public branding metadata
-
-`GET /api/v1/metadata` is public and requires no credential. It returns only the configured presentation data for clients:
+**200 response**
 
 ```json
 {
-  "success": true,
-  "result": {
-    "apiVersion": 1,
-    "branding": {
-      "siteName": "AITSYS Go",
-      "brandLogoUrl": "https://shortener.example/logo.png",
-      "brandLogoAlt": "Brand logo",
-      "faviconUrl": "https://shortener.example/favicon.png",
-      "brandColor": "#fc0fc0",
-      "privacyEmail": "privacy@example.com"
-    }
-  }
+	"success": true,
+	"result": {
+		"apiVersion": 1,
+		"branding": {
+			"siteName": "Example Go",
+			"brandLogoUrl": "https://short.example/logo.png",
+			"brandLogoAlt": "Example logo",
+			"faviconUrl": "https://short.example/favicon.png",
+			"brandColor": "#fc0fc0",
+			"privacyEmail": "privacy@example.com"
+		}
+	}
 }
 ```
 
-It never exposes links, accounts, tokens, or secrets. Clients should retain their local fallback branding if the endpoint is absent or incompatible.
+It never returns links, accounts, or credentials. Clients should retain fallback
+branding if `apiVersion` is unsupported.
 
-## Discord interactions
+## Account endpoints
 
-`POST /discord/interactions` is reserved for Discord and is not a general client API. Discord signs each request; the Worker verifies it before parsing. Configure the endpoint and public key in Discord and Cloudflare, then use the local registration script described in [BUILDING.md](BUILDING.md).
+All account endpoints require the master credential.
+
+### `POST /api/v1/accounts`
+
+Creates an account. `id` is 2–64 letters, numbers, `_`, or `-`; `creatorName`
+is 1–80 characters. `discordUserId` is optional and must be 17–20 digits.
+
+**Request**
+
+```http
+POST /api/v1/accounts HTTP/1.1
+Host: short.example
+Authorization: Bearer <master-token>
+Content-Type: application/json
+
+{
+  "id": "friendly-cat",
+  "creatorName": "Friendly Cat",
+  "discordUserId": "123456789012345678"
+}
+```
+
+**201 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"id": "friendly-cat",
+		"creatorName": "Friendly Cat",
+		"discordUserId": "123456789012345678",
+		"createdAt": "2026-08-26T20:00:00.000Z"
+	}
+}
+```
+
+**Conflict response (`409`)**
+
+```json
+{
+	"success": false,
+	"errors": [
+		{
+			"code": "duplicate_account",
+			"message": "That account already exists."
+		}
+	]
+}
+```
+
+`discord_user_in_use` is returned instead when that Discord ID belongs to a
+different active account.
+
+### `GET /api/v1/accounts`
+
+Lists active accounts. `limit` defaults to `25` and accepts `1`–`100`. Send the
+returned cursor unchanged to request the next page.
+
+**Request**
+
+```http
+GET /api/v1/accounts?limit=25&cursor=account%3Aprevious HTTP/1.1
+Host: short.example
+Authorization: Bearer <master-token>
+```
+
+**200 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"items": [
+			{
+				"id": "friendly-cat",
+				"creatorName": "Friendly Cat",
+				"discordUserId": "123456789012345678",
+				"createdAt": "2026-08-26T20:00:00.000Z"
+			}
+		],
+		"cursor": "account%3Anext"
+	}
+}
+```
+
+The `cursor` property is absent on the final page.
+
+### `DELETE /api/v1/accounts/:accountId`
+
+Removes an account and revokes every active issued token. It does not delete
+the account’s public links.
+
+**Request**
+
+```http
+DELETE /api/v1/accounts/friendly-cat HTTP/1.1
+Host: short.example
+Authorization: Bearer <master-token>
+```
+
+**200 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"accountId": "friendly-cat",
+		"deletedAt": "2026-08-26T21:00:00.000Z",
+		"revokedTokenCount": 2
+	}
+}
+```
+
+**Not-found response (`404`)**
+
+```json
+{
+	"success": false,
+	"errors": [
+		{
+			"code": "account_not_found",
+			"message": "Account not found."
+		}
+	]
+}
+```
+
+Attempting to remove the configured administrator profile returns `409` with
+`administrator_account`.
+
+### `PUT /api/v1/accounts/:accountId/discord-user`
+
+Links or changes an account’s Discord user ID. Linking migrates older links
+owned by that Discord identity into the account.
+
+**Request**
+
+```http
+PUT /api/v1/accounts/friendly-cat/discord-user HTTP/1.1
+Host: short.example
+Authorization: Bearer <master-token>
+Content-Type: application/json
+
+{
+  "discordUserId": "123456789012345678"
+}
+```
+
+**200 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"id": "friendly-cat",
+		"creatorName": "Friendly Cat",
+		"discordUserId": "123456789012345678",
+		"createdAt": "2026-08-26T20:00:00.000Z"
+	}
+}
+```
+
+## Token endpoints
+
+All token endpoints require the master credential.
+
+### `POST /api/v1/accounts/:accountId/tokens`
+
+Issues a revocable account token. `label` is optional and limited to 80
+characters. The complete token is shown only in this response.
+
+**Request**
+
+```http
+POST /api/v1/accounts/friendly-cat/tokens HTTP/1.1
+Host: short.example
+Authorization: Bearer <master-token>
+Content-Type: application/json
+
+{
+  "label": "Firefox laptop"
+}
+```
+
+**201 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"token": "aig_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		"tokenId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		"accountId": "friendly-cat",
+		"label": "Firefox laptop",
+		"createdAt": "2026-08-26T20:05:00.000Z"
+	}
+}
+```
+
+The token above is fake. Treat a real response token like a password.
+
+### `GET /api/v1/tokens`
+
+Lists sanitized token records. It never returns the token string or its digest.
+`limit` defaults to `25` and accepts `1`–`100`.
+
+**Request**
+
+```http
+GET /api/v1/tokens?limit=25 HTTP/1.1
+Host: short.example
+Authorization: Bearer <master-token>
+```
+
+**200 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"items": [
+			{
+				"id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"accountId": "friendly-cat",
+				"label": "Firefox laptop",
+				"createdAt": "2026-08-26T20:05:00.000Z"
+			}
+		],
+		"cursor": "token%3Anext"
+	}
+}
+```
+
+### `POST /api/v1/tokens/:tokenId/revoke`
+
+Revokes a known issued token. Repeating the request for the same known token is
+safe and returns its original revocation timestamp.
+
+**Request**
+
+```http
+POST /api/v1/tokens/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/revoke HTTP/1.1
+Host: short.example
+Authorization: Bearer <master-token>
+```
+
+**200 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"tokenId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		"revokedAt": "2026-08-26T21:10:00.000Z"
+	}
+}
+```
+
+## Link endpoints
+
+### `POST /api/v1/links`
+
+Creates a link. `destinationUrl` must be `https://`; omitting `slug` generates
+one. An issued-token request ignores `creator` and derives it from its account.
+A master request must send `creator` until the administrator profile has been
+set up through Discord.
+
+**Request**
+
+```http
+POST /api/v1/links HTTP/1.1
+Host: short.example
+Authorization: Bearer <issued-user-token>
+Content-Type: application/json
+
+{
+  "destinationUrl": "https://www.example.com/docs",
+  "slug": "example-docs",
+  "title": "Example documentation",
+  "expiresAt": "2027-01-31T12:00:00.000Z",
+  "suppressSocialPreview": false,
+  "embedTitle": "Example documentation",
+  "embedDescription": "Safe fake documentation link.",
+  "embedImageUrl": "https://www.example.com/preview.png",
+  "embedSiteName": "Example"
+}
+```
+
+**201 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"slug": "example-docs",
+		"destinationUrl": "https://www.example.com/docs",
+		"creator": "Friendly Cat",
+		"createdAt": "2026-08-26T20:10:00.000Z",
+		"owner": {
+			"kind": "account",
+			"id": "friendly-cat"
+		},
+		"title": "Example documentation",
+		"embedTitle": "Example documentation",
+		"embedDescription": "Safe fake documentation link.",
+		"embedImageUrl": "https://www.example.com/preview.png",
+		"embedSiteName": "Example",
+		"metadataFetchedAt": "2026-08-26T20:10:00.000Z",
+		"expiresAt": "2027-01-31T12:00:00.000Z"
+	}
+}
+```
+
+The Worker fetches automatic metadata when creating a link; manually supplied
+embed fields override it. A duplicate slug returns `409` with `duplicate_slug`.
+
+### `GET /api/v1/links`
+
+Lists accessible links. Issued tokens receive only their account-owned links.
+Master requests list the administrator profile by default, or a selected owner
+when `ownerKind=account|discord` and `ownerId` are supplied. Use the separate
+administrator list below for every link. `limit` defaults to `10` and accepts
+`1`–`25`.
+
+**Request**
+
+```http
+GET /api/v1/links?limit=10&cursor=owner%3Aaccount%3Afriendly-cat%3Aprevious HTTP/1.1
+Host: short.example
+Authorization: Bearer <issued-user-token>
+```
+
+**200 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"items": [
+			{
+				"slug": "example-docs",
+				"destinationUrl": "https://www.example.com/docs",
+				"creator": "Friendly Cat",
+				"createdAt": "2026-08-26T20:10:00.000Z",
+				"owner": {
+					"kind": "account",
+					"id": "friendly-cat"
+				}
+			}
+		],
+		"cursor": "owner%3Aaccount%3Afriendly-cat%3Anext"
+	}
+}
+```
+
+### `GET /api/v1/admin/links`
+
+Lists every link. This endpoint is master-only; `limit` defaults to `25` and
+accepts `1`–`25`.
+
+**Request**
+
+```http
+GET /api/v1/admin/links?limit=25 HTTP/1.1
+Host: short.example
+Authorization: Bearer <master-token>
+```
+
+**200 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"items": [
+			{
+				"slug": "example-docs",
+				"destinationUrl": "https://www.example.com/docs",
+				"creator": "Friendly Cat",
+				"createdAt": "2026-08-26T20:10:00.000Z",
+				"owner": {
+					"kind": "account",
+					"id": "friendly-cat"
+				}
+			}
+		]
+	}
+}
+```
+
+### `GET /api/v1/links/:slug`
+
+Reads one accessible link. A master token can read every link; an issued token
+can read only its own.
+
+**Request**
+
+```http
+GET /api/v1/links/example-docs HTTP/1.1
+Host: short.example
+Authorization: Bearer <issued-user-token>
+```
+
+**200 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"slug": "example-docs",
+		"destinationUrl": "https://www.example.com/docs",
+		"creator": "Friendly Cat",
+		"createdAt": "2026-08-26T20:10:00.000Z",
+		"owner": {
+			"kind": "account",
+			"id": "friendly-cat"
+		},
+		"title": "Example documentation"
+	}
+}
+```
+
+**Not-found response (`404`)**
+
+```json
+{
+	"success": false,
+	"errors": [
+		{
+			"code": "not_found",
+			"message": "Link not found."
+		}
+	]
+}
+```
+
+### `PATCH /api/v1/links/:slug`
+
+Updates an accessible link. Include at least one field. Supported fields are
+`destinationUrl`, `title`, `password`, `expiresAt`,
+`suppressSocialPreview`, `embedTitle`, `embedDescription`, `embedImageUrl`, and
+`embedSiteName`. Use `null` to clear optional text, password, expiry, or manual
+metadata. A changed destination refreshes automatic metadata for fields not
+provided in the same request.
+
+**Request**
+
+```http
+PATCH /api/v1/links/example-docs HTTP/1.1
+Host: short.example
+Authorization: Bearer <issued-user-token>
+Content-Type: application/json
+
+{
+  "destinationUrl": "https://www.example.com/new-docs",
+  "title": null,
+  "password": null,
+  "suppressSocialPreview": true
+}
+```
+
+**200 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"slug": "example-docs",
+		"destinationUrl": "https://www.example.com/new-docs",
+		"creator": "Friendly Cat",
+		"createdAt": "2026-08-26T20:10:00.000Z",
+		"owner": {
+			"kind": "account",
+			"id": "friendly-cat"
+		},
+		"suppressSocialPreview": true,
+		"metadataFetchedAt": "2026-08-26T21:15:00.000Z"
+	}
+}
+```
+
+### `POST /api/v1/links/:slug/refresh-metadata`
+
+Fetches and stores fresh automatic metadata for the current destination.
+
+**Request**
+
+```http
+POST /api/v1/links/example-docs/refresh-metadata HTTP/1.1
+Host: short.example
+Authorization: Bearer <issued-user-token>
+```
+
+**200 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"slug": "example-docs",
+		"destinationUrl": "https://www.example.com/new-docs",
+		"creator": "Friendly Cat",
+		"createdAt": "2026-08-26T20:10:00.000Z",
+		"owner": {
+			"kind": "account",
+			"id": "friendly-cat"
+		},
+		"embedTitle": "New example documentation",
+		"embedDescription": "Fetched from the fake destination.",
+		"metadataFetchedAt": "2026-08-26T21:20:00.000Z"
+	}
+}
+```
+
+### `POST /api/v1/links/:slug/disable`
+
+Disables an accessible link. `reason` is optional and limited to 200 characters.
+
+**Request**
+
+```http
+POST /api/v1/links/example-docs/disable HTTP/1.1
+Host: short.example
+Authorization: Bearer <issued-user-token>
+Content-Type: application/json
+
+{
+  "reason": "No longer maintained"
+}
+```
+
+**200 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"slug": "example-docs",
+		"destinationUrl": "https://www.example.com/new-docs",
+		"creator": "Friendly Cat",
+		"createdAt": "2026-08-26T20:10:00.000Z",
+		"owner": {
+			"kind": "account",
+			"id": "friendly-cat"
+		},
+		"disabledAt": "2026-08-26T21:25:00.000Z",
+		"disabledReason": "No longer maintained"
+	}
+}
+```
+
+Disabled links remain manageable but show an unavailable page instead of
+redirecting.
+
+## Browser-facing and Discord routes
+
+`GET /`, `GET /privacy`, `GET /robots.txt`, and `GET /:slug` are browser-facing
+routes rather than JSON management endpoints. `POST /:slug` accepts the HTML
+password form for password-protected links.
+
+`POST /discord/interactions` is reserved for Discord. Discord signs the raw
+request with Ed25519, so it is not a general client endpoint. Configure and
+register it as described in [BUILDING.md](BUILDING.md).
