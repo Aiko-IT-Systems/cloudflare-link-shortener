@@ -1,0 +1,68 @@
+name: Pull request checks
+
+on:
+  pull_request:
+    paths:
+      - "src/worker/**"
+      - "src/extensions/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Worker and extensions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run Worker tests
+        run: npm test
+
+      - name: Typecheck Worker and shared code
+        run: npm run typecheck
+
+      - name: Validate generated Worker bindings
+        run: |
+          npm run cf-typegen
+          git diff --exit-code -- src/worker/worker-configuration.d.ts
+
+      - name: Build browser extensions
+        run: npm run extensions:build
+
+      - name: Validate extension manifests and output
+        run: npm run extensions:check
+
+      - name: Write validation summary
+        if: always()
+        run: |
+          {
+            echo "## Pull request validation"
+            echo
+            echo "- Worker tests"
+            echo "- TypeScript typecheck"
+            echo "- Generated Cloudflare Worker bindings"
+            echo "- Chrome, Edge, and Firefox extension builds"
+            echo "- Extension manifest validation"
+            echo
+            echo "This workflow performs no Cloudflare deployment and uses no production secrets."
+          } >> "$GITHUB_STEP_SUMMARY"
