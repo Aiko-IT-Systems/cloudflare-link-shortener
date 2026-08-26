@@ -17,7 +17,6 @@
 	"scripts": {
 		"deploy": "wrangler deploy --cwd src/worker",
 		"dev": "wrangler dev --cwd src/worker",
-		"deploy:preview": "wrangler versions upload --cwd src/worker",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"typecheck": "tsc --noEmit",
