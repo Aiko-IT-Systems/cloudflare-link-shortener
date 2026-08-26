@@ -2,13 +2,6 @@ name: Pull request checks
 
 on:
   pull_request:
-    paths:
-      - "src/worker/**"
-      - "src/extensions/**"
-      - "scripts/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/**"
   workflow_dispatch:
 
 permissions:
