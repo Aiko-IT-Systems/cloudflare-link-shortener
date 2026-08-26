@@ -329,7 +329,7 @@ function page(config: SiteConfig, title: string, body: string, status = 200, met
 				<div class="brand">
 					<div class="brand-lockup">
 						<img class="brand-logo" src="${escapeHtml(config.brandLogoUrl)}" alt="${escapeHtml(config.brandLogoAlt)}">
-						<span class="brand-go">GO</span>
+						<span>${escapeHtml(config.siteName.replace('Go', '').trim())}</span> <span class="brand-go">GO</span>
 					</div>
 				</div>
 				${body}
