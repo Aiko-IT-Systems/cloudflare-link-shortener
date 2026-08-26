@@ -97,6 +97,7 @@ function env(overrides: Partial<Env> = {}): Env {
 		BRAND_LOGO_ALT: "Aiko IT Systems",
 		FAVICON_URL: "/favicon.png",
 		BRAND_COLOR: "#fc0fc0",
+		PRIVACY_EMAIL: "privacy@aitsys.dev",
 		DISCORD_APPLICATION_ID: "",
 		DISCORD_ADMIN_USER_ID: "",
 		...overrides
@@ -363,12 +364,13 @@ describe("link shortener", () => {
 		expect(homeHtml).toContain('<link rel="icon" href="/favicon.png">');
 	});
 
-	test("serves the privacy policy at its reserved public route", async () => {
-		const response = await app.fetch(new Request("https://go.aitsys.dev/privacy"), env());
+	test("serves the privacy policy with its configured contact at its reserved public route", async () => {
+		const response = await app.fetch(new Request("https://go.aitsys.dev/privacy"), env({ PRIVACY_EMAIL: "privacy@aitsys.dev" }));
 		const html = await response.text();
 
 		expect(response.status).toBe(200);
 		expect(html).toContain("Privacy");
+		expect(html).toContain('href="mailto:privacy@aitsys.dev"');
 		expect(html).toContain("privacy@aitsys.dev");
 		expect(html).toContain("does not use advertising, analytics, click tracking, cookies, or telemetry");
 		expect(html).not.toContain('property="og:title"');
@@ -398,7 +400,8 @@ describe("link shortener", () => {
 			BRAND_LOGO_URL: "/custom/logo.svg",
 			BRAND_LOGO_ALT: "A custom cat logo",
 			FAVICON_URL: "https://assets.example/favicon.svg",
-			BRAND_COLOR: "#aabbcc"
+			BRAND_COLOR: "#aabbcc",
+			PRIVACY_EMAIL: "privacy@cats.example"
 		});
 
 		const response = await app.fetch(new Request("https://short.example/api/v1/metadata"), envValue);
@@ -414,7 +417,8 @@ describe("link shortener", () => {
 					brandLogoUrl: "https://short.example/custom/logo.svg",
 					brandLogoAlt: "A custom cat logo",
 					faviconUrl: "https://assets.example/favicon.svg",
-					brandColor: "#aabbcc"
+					brandColor: "#aabbcc",
+					privacyEmail: "privacy@cats.example"
 				}
 			}
 		});
@@ -542,4 +546,3 @@ describe("link shortener", () => {
 		expect((await links.json() as { result: { items: LinkRecord[] } }).result.items.map((link) => link.slug)).toEqual(["legacy-discord"]);
 	});
 });
-

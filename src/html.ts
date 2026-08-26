@@ -374,7 +374,7 @@ export function privacyPolicy(config: SiteConfig): Response {
 			</div>
 			<div class="meta">
 				<dt>Your choices</dt>
-				<dd>You can revoke an issued token, disable a link, or ask the administrator to remove an account. For privacy questions, contact <a href="mailto:privacy@aitsys.dev">privacy@aitsys.dev</a>.</dd>
+				<dd>You can revoke an issued token, disable a link, or ask the administrator to remove an account. For privacy questions, contact <a href="mailto:${escapeHtml(config.privacyEmail)}">${escapeHtml(config.privacyEmail)}</a>.</dd>
 			</div>
 		</dl>
 		<p class="note">Multi-link Discord batches temporarily retain pending URLs and the invoking user ID for up to 15 minutes so they can be continued or aborted.</p>

@@ -33,6 +33,7 @@ Public site branding is configured through the non-secret `vars` in `wrangler.js
 | `BRAND_LOGO_ALT` | `Aiko IT Systems` | Accessible alternative text for the header logo |
 | `FAVICON_URL` | `/favicon.png` | The favicon linked from every generated page |
 | `BRAND_COLOR` | `#fc0fc0` | The primary accent color |
+| `PRIVACY_EMAIL` | `privacy@aitsys.dev` | Contact address displayed on the deployed `/privacy` page |
 
 Root-relative URLs such as `/logo.png` are served from `public/`. Absolute URLs can be used for externally hosted assets. A relative `BRAND_LOGO_URL` is resolved against the current request origin when it is emitted as the homepage Open Graph image, so preview and custom domains produce an absolute social-preview URL.
 
@@ -174,7 +175,8 @@ For Firefox submission, the manifest accurately declares the data required for t
       "brandLogoUrl": "https://go.aitsys.dev/logo.png",
       "brandLogoAlt": "Aiko IT Systems",
       "faviconUrl": "https://go.aitsys.dev/favicon.png",
-      "brandColor": "#fc0fc0"
+      "brandColor": "#fc0fc0",
+      "privacyEmail": "privacy@aitsys.dev"
     }
   }
 }
