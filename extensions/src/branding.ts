@@ -15,6 +15,14 @@ export function applyBranding(branding: Branding, pageSuffix?: string): void {
 		document.head.append(favicon);
 	}
 	favicon.href = branding.faviconUrl;
+	const privacyContact = document.querySelector<HTMLElement>("#privacy-contact");
+	const privacyEmail = document.querySelector<HTMLAnchorElement>("#privacy-email");
+	if (privacyContact && privacyEmail) {
+		const email = branding.privacyEmail?.trim();
+		privacyContact.hidden = !email;
+		privacyEmail.textContent = email ?? "";
+		privacyEmail.href = email ? `mailto:${email}` : "";
+	}
 }
 
 export function applyDefaultBranding(pageSuffix?: string): void { applyBranding(defaultBranding, pageSuffix); }

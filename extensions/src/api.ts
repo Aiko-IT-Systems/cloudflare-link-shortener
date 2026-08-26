@@ -9,6 +9,7 @@ export type Branding = {
 	brandLogoAlt: string;
 	faviconUrl: string;
 	brandColor: string;
+	privacyEmail?: string;
 };
 export const defaultSettings: Settings = { apiBase: "https://go.aitsys.dev", apiToken: "" };
 export const defaultBranding: Branding = {
