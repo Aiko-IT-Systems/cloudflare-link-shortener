@@ -1,7 +1,11 @@
 {
-	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
-	"extends": [
-		"local>Aiko-IT-Systems/renovate-config",
-		":dependencyDashboard"
-	]
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["local>Aiko-IT-Systems/renovate-config", ":dependencyDashboard"],
+  "packageRules": [
+    {
+      "description": "Android dependencies are maintained and tested with the Android toolchain in Android Studio.",
+      "matchFileNames": ["src/android/**"],
+      "enabled": false
+    }
+  ]
 }
