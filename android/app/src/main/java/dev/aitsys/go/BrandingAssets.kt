@@ -9,6 +9,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.graphics.drawable.Icon
 import androidx.core.graphics.scale
 import androidx.core.net.toUri
@@ -95,12 +97,48 @@ object BrandingAssets {
     private fun fallbackBitmap(color: String): Bitmap {
         val bitmap = createBitmap(192, 192)
         val canvas = Canvas(bitmap)
-        val parsed = runCatching { color.toColorInt() }.getOrDefault(Color.MAGENTA)
         canvas.drawColor(Color.rgb(18, 5, 26))
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = parsed; strokeWidth = 22f; style = Paint.Style.STROKE }
-        canvas.drawCircle(72f, 96f, 38f, paint)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        val cat = Path().apply {
+            moveTo(50f, 70f)
+            lineTo(50f, 45f)
+            quadTo(50f, 35f, 59f, 41f)
+            lineTo(76f, 54f)
+            quadTo(96f, 47f, 116f, 54f)
+            lineTo(133f, 41f)
+            quadTo(142f, 35f, 142f, 45f)
+            lineTo(142f, 70f)
+            quadTo(157f, 84f, 157f, 112f)
+            quadTo(157f, 164f, 96f, 164f)
+            quadTo(35f, 164f, 35f, 112f)
+            quadTo(35f, 84f, 50f, 70f)
+            close()
+        }
+        paint.color = runCatching { color.toColorInt() }.getOrDefault(Color.rgb(237, 77, 167))
+        paint.style = Paint.Style.FILL
+        canvas.drawPath(cat, paint)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 11f
+        paint.strokeCap = Paint.Cap.ROUND
+        paint.strokeJoin = Paint.Join.ROUND
         paint.color = Color.rgb(124, 92, 255)
-        canvas.drawCircle(120f, 96f, 38f, paint)
+        canvas.drawRoundRect(RectF(52f, 83f, 103f, 119f), 18f, 18f, paint)
+        paint.color = Color.rgb(69, 200, 255)
+        canvas.drawRoundRect(RectF(89f, 83f, 140f, 119f), 18f, 18f, paint)
+        paint.style = Paint.Style.FILL
+        paint.color = Color.rgb(18, 5, 26)
+        val nose = Path().apply {
+            moveTo(96f, 121f)
+            lineTo(103f, 128f)
+            lineTo(96f, 135f)
+            lineTo(89f, 128f)
+            close()
+        }
+        canvas.drawPath(nose, paint)
+        paint.color = Color.rgb(253, 214, 241)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 7f
+        canvas.drawArc(RectF(63f, 124f, 129f, 150f), 18f, 144f, false, paint)
         return bitmap
     }
 

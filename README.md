@@ -37,6 +37,8 @@ Public site branding is configured through the non-secret `vars` in `wrangler.js
 
 Root-relative URLs such as `/logo.png` are served from `public/`. Absolute URLs can be used for externally hosted assets. A relative `BRAND_LOGO_URL` is resolved against the current request origin when it is emitted as the homepage Open Graph image, so preview and custom domains produce an absolute social-preview URL.
 
+The checked-in AITSYS Go defaults are generated from the canonical cat-link SVG in [`branding/aitsys-go-cat-link.svg`](branding/aitsys-go-cat-link.svg). It has matching PNG exports, a multi-size [`public/favicon.ico`](public/favicon.ico), public SVG aliases, browser-extension SVGs, and an Android adaptive-icon vector drawable. Do not redraw those formats independently; update the canonical mark and regenerate them as one set.
+
 These values are plain application configuration, not secrets. Wrangler `vars` are non-inheritable: if a named environment such as `env.staging` is added, define all five branding values again under that environment's `vars`. See Cloudflare's [environment variable documentation](https://developers.cloudflare.com/workers/configuration/environment-variables/) for environment-specific examples.
 
 Run `npm run cf-typegen` after adding or renaming a binding. Changing only a branding value does not require regenerating the binding types.

@@ -1,1 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#45c8ff"/><stop offset="1" stop-color="#fc0fc0"/></linearGradient></defs><rect width="64" height="64" rx="15" fill="#100a1b"/><path fill="url(#g)" d="M14 20a12 12 0 0 1 20-8l4 4-7 7-4-4a4 4 0 1 0-6 6l4 4-7 7-4-4A12 12 0 0 1 14 20m36 12a12 12 0 0 1-20 8l-4-4 7-7 4 4a4 4 0 1 0 6-6l-4-4 7-7 4 4a12 12 0 0 1 0 20"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" role="img" aria-labelledby="title desc">
+  <title id="title">AITSYS Go cat link icon</title>
+  <desc id="desc">A pink cat face with two linked violet chain loops as its eyes.</desc>
+  <rect width="108" height="108" fill="#12051A"/>
+  <path fill="#ED4DA7" d="M28 39V26c0-5 5-7 9-4l10 8a23 23 0 0 1 14 0l10-8c4-3 9-1 9 4v13c5 5 7 12 7 22 0 18-14 30-33 30S21 79 21 61c0-10 2-17 7-22Z"/>
+  <path fill="none" stroke="#7C5CFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" d="M41 49h7a9 9 0 0 1 0 18h-7a9 9 0 0 1 0-18Z"/>
+  <path fill="none" stroke="#45C8FF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" d="M60 49h7a9 9 0 0 1 0 18h-7a9 9 0 0 1 0-18Z"/>
+  <path fill="#12051A" d="m54 67 4 4-4 4-4-4 4-4Z"/>
+  <path fill="#FDD6F1" d="M38 78c5 5 27 5 32 0-3 10-29 10-32 0Z"/>
+</svg>
