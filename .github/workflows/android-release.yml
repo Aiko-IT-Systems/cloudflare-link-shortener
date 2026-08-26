@@ -1,8 +1,12 @@
-name: "[DISABLED] Android Release"
+name: "Android Release"
 
 on:
-  # Restore the push trigger after the upload-key secrets are configured.
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'android/**'
 
 permissions:
   contents: write
@@ -54,7 +58,9 @@ jobs:
           test -s "$apk"
           test -s "$aab"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
-          jarsigner -verify -strict "$aab"
+          # Upload keys are normally self-signed, so -strict incorrectly fails
+          # on GitHub-hosted runners even when the AAB's signature is valid.
+          jarsigner -verify "$aab"
       - id: package
         name: Name release artifacts
         run: |
