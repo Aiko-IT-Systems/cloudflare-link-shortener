@@ -11,4 +11,5 @@
 
 ## Android App
 [Publishing Dashboard](https://play.google.com/console/u/0/developers/8522447285588463857/app/4974303957489721300/app-dashboard)
-[Internal Testing](https://play.google.com/apps/internaltest/4701373538234902722)
+[Internal Testing Sign-up](https://play.google.com/apps/internaltest/4701373538234902722)
+[Play Store Listing](https://play.google.com/store/apps/details?id=dev.aitsys.go)
