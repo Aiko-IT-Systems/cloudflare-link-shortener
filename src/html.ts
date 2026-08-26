@@ -75,6 +75,7 @@ function page(config: SiteConfig, title: string, body: string, status = 200, met
 				--cyan-soft: rgba(69, 200, 255, .2);
 				--go: ${config.brandColor ?? "#fc0fc0"};
 				--pink-soft: rgba(252, 15, 192, .2);
+				--fg: #f6f8fb;
 			}
 			* { box-sizing: border-box; }
 			body {
@@ -148,6 +149,13 @@ function page(config: SiteConfig, title: string, body: string, status = 200, met
 			}
 			.brand-go {
 				color: var(--go);
+				font-size: 3.6rem;
+				font-weight: 800;
+				line-height: .85;
+				text-transform: uppercase;
+			}
+			.brand-name {
+				color: var(--fg);
 				font-size: 3.6rem;
 				font-weight: 800;
 				line-height: .85;
@@ -329,7 +337,7 @@ function page(config: SiteConfig, title: string, body: string, status = 200, met
 				<div class="brand">
 					<div class="brand-lockup">
 						<img class="brand-logo" src="${escapeHtml(config.brandLogoUrl)}" alt="${escapeHtml(config.brandLogoAlt)}">
-						<span>${escapeHtml(config.siteName.replace('Go', '').trim())}</span> <span class="brand-go">GO</span>
+						<span class="brand-name">${escapeHtml(config.siteName.replace('Go', '').trim())}</span> <span class="brand-go">GO</span>
 					</div>
 				</div>
 				${body}
