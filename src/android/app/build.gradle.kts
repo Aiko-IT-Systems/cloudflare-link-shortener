@@ -22,12 +22,12 @@ val signingConfigured = listOf(signingStoreFile, signingStorePassword, signingKe
 
 android {
     namespace = "dev.aitsys.go"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "dev.aitsys.go"
         minSdk = 29
-        targetSdk = 37
+        targetSdk = 36
         versionCode = providers.gradleProperty("versionCode").orNull?.toIntOrNull() ?: 1
         versionName = providers.gradleProperty("versionName").orNull ?: "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -74,7 +74,7 @@ kotlin {
 }
 
 dependencies {
-    // API 37 is supported by the AGP 9.1/Gradle 9.3.1 toolchain.
+    // AGP 9.1/Gradle 9.3.1 keeps this app on the current stable Android SDK line.
     implementation(platform("androidx.compose:compose-bom:2025.09.01"))
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.09.01"))
 

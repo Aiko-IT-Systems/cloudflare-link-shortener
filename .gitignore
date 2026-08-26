@@ -18,3 +18,4 @@ src/android/captures/
 src/android/.idea/
 *.jks
 *.keystore
+*.salive
