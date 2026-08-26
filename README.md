@@ -12,9 +12,9 @@ Privacy: [AITSYS Go Privacy Policy](PRIVACY.md). The deployed Worker serves the 
    npm install
    ```
 
-2. KV namespace `LINKS` is configured with ID `54872d4a38e6486e8f6cc053364d6f64`.
+2. KV namespace `LINKS` is configured.
 
-3. Secrets Store secret `LINK_SHORTENER_API_KEY` is configured in store `766810d8e2c04f1ca24dcc45253af39e`.
+3. Secrets Store secret `LINK_SHORTENER_API_KEY` and `LINK_SHORTENER_DISCORD_PUBLIC_KEY` is configured.
 
 4. Generate Worker types:
 
