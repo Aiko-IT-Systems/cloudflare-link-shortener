@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets
 class ApiException(message: String, val status: Int? = null) : IOException(message)
 
 class ApiClient(
-    private val baseUrl: String,
+    baseUrl: String,
     private val token: String,
 ) {
     private val origin = normalizeOrigin(baseUrl)

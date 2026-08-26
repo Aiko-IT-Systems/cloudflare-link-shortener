@@ -27,6 +27,7 @@ data class UiState(
     val settings: AppSettings = AppSettings(),
     val token: String = "",
     val branding: Branding = Branding(),
+    val brandingAssetRevision: Long = 0,
     val draft: LinkDraft = LinkDraft(),
     val links: List<LinkRecord> = emptyList(),
     val nextCursor: String? = null,
@@ -50,7 +51,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         loadJob = viewModelScope.launch {
             val (settings, token) = repository.load()
             val cachedBranding = repository.loadBrandingJson()?.let(::parseBranding) ?: Branding()
-            state = state.copy(loaded = true, settings = settings, token = token, branding = cachedBranding)
+            state = state.copy(
+                loaded = true,
+                settings = settings,
+                token = token,
+                branding = cachedBranding,
+                brandingAssetRevision = BrandingAssets.cachedRevision(application, cachedBranding.brandLogoUrl),
+            )
             viewModelScope.launch { refreshBranding(silent = true) }
         }
     }
@@ -88,8 +95,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val normalized = ApiClient.normalizeOrigin(apiBase)
         val branding = ApiClient(normalized, token).metadata()
         if (token.isNotBlank()) ApiClient(normalized, token).list(limit = 1)
-        cacheBranding(branding)
-        state = state.copy(branding = branding, message = "Connected to ${branding.siteName}.")
+        val assetRevision = cacheBranding(branding)
+        state = state.copy(branding = branding, brandingAssetRevision = assetRevision, message = "Connected to ${branding.siteName}.")
     }
 
     fun create(draft: LinkDraft = state.draft) = runAction {
@@ -160,15 +167,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun refreshBranding(silent: Boolean) {
         runCatching { ApiClient(state.settings.apiBase, state.token).metadata() }
             .onSuccess {
-                cacheBranding(it)
-                state = state.copy(branding = it, message = if (silent) state.message else "Branding updated.")
+                val assetRevision = cacheBranding(it)
+                state = state.copy(
+                    branding = it,
+                    brandingAssetRevision = assetRevision,
+                    message = if (silent) state.message else "Branding updated.",
+                )
             }
             .onFailure { if (!silent) throw it }
     }
 
-    private suspend fun cacheBranding(branding: Branding) {
+    private suspend fun cacheBranding(branding: Branding): Long {
         repository.saveBrandingJson(brandingJson(branding).toString())
         BrandingAssets.cache(getApplication(), branding)
+        return BrandingAssets.cachedRevision(getApplication(), branding.brandLogoUrl)
     }
 
     private fun client() = ApiClient(state.settings.apiBase, state.token)

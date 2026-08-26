@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color as AndroidColor
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -73,6 +71,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
+import androidx.core.net.toUri
 import dev.aitsys.go.data.Branding
 import dev.aitsys.go.data.LinkDraft
 import dev.aitsys.go.data.LinkRecord
@@ -107,7 +107,7 @@ fun AitsysGoApp(model: MainViewModel) {
                 snackbarHost = { SnackbarHost(snackbar) },
                 topBar = {
                     TopAppBar(
-                        title = { BrandHeader(state.branding) },
+                        title = { BrandHeader(state.branding, state.brandingAssetRevision) },
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
                     )
                 },
@@ -147,9 +147,9 @@ fun AitsysGoApp(model: MainViewModel) {
 }
 
 @Composable
-private fun BrandHeader(branding: Branding) {
+private fun BrandHeader(branding: Branding, assetRevision: Long) {
     val context = LocalContext.current
-    val bitmap = remember(branding.brandLogoUrl) { BrandingAssets.cached(context) }
+    val bitmap = remember(branding.brandLogoUrl, assetRevision) { BrandingAssets.cached(context, branding.brandLogoUrl) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (bitmap != null) {
             Image(bitmap.asImageBitmap(), branding.brandLogoAlt, Modifier.size(32.dp))
@@ -327,14 +327,14 @@ private fun EditDialog(record: LinkRecord, model: MainViewModel) {
     )
 }
 
-private fun parseBrandColor(value: String): Color = runCatching { Color(AndroidColor.parseColor(value)) }.getOrDefault(Color(0xFFFC0FC0))
+private fun parseBrandColor(value: String): Color = runCatching { Color(value.toColorInt()) }.getOrDefault(Color(0xFFFC0FC0))
 
 private fun copy(context: Context, text: String) {
     context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Short URL", text))
 }
 
 private fun open(context: Context, url: String) {
-    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
 }
 
 private fun share(context: Context, url: String) {

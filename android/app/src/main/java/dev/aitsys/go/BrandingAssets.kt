@@ -10,20 +10,27 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.drawable.Icon
-import android.net.Uri
+import androidx.core.graphics.scale
+import androidx.core.net.toUri
 import dev.aitsys.go.data.Branding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.toColorInt
 
 object BrandingAssets {
-    private const val MAX_DOWNLOAD_BYTES = 1_000_000
+    // Logos are downscaled to 192 px before caching. Allow a modestly larger source
+    // file because otherwise valid, ordinary PNG branding such as SMPEarth's 1.85 MB
+    // logo is rejected before it reaches that safe cached size.
+    private const val MAX_DOWNLOAD_BYTES = 2 * 1024 * 1024
 
     suspend fun cache(context: Context, branding: Branding): Bitmap? = withContext(Dispatchers.IO) {
-        val target = File(context.filesDir, "branding-logo.png")
         val source = branding.brandLogoUrl
+        val target = logoFile(context, source)
         runCatching {
             val connection = URL(source).openConnection() as HttpURLConnection
             try {
@@ -53,7 +60,7 @@ object BrandingAssets {
                 while (bounds.outWidth / sample > 512 || bounds.outHeight / sample > 512) sample *= 2
                 val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
                     ?: return@runCatching null
-                val scaled = Bitmap.createScaledBitmap(decoded, 192, 192, true)
+                val scaled = decoded.scale(192, 192)
                 target.outputStream().use { scaled.compress(Bitmap.CompressFormat.PNG, 95, it) }
                 scaled
             } finally {
@@ -62,34 +69,49 @@ object BrandingAssets {
         }.getOrNull()
     }
 
-    fun cached(context: Context): Bitmap? = BitmapFactory.decodeFile(File(context.filesDir, "branding-logo.png").path)
+    fun cached(context: Context, source: String): Bitmap? = BitmapFactory.decodeFile(logoFile(context, source).path)
+
+    fun cachedRevision(context: Context, source: String): Long = logoFile(context, source).lastModified()
 
     fun requestPinnedShortcut(context: Context, branding: Branding): Boolean {
         val manager = context.getSystemService(ShortcutManager::class.java)
         if (!manager.isRequestPinShortcutSupported) return false
-        val source = cached(context) ?: fallbackBitmap(branding.brandColor)
+        val source = cached(context, branding.brandLogoUrl) ?: fallbackBitmap(branding.brandColor)
         val intent = Intent(context, MainActivity::class.java).apply {
             action = Intent.ACTION_VIEW
-            data = Uri.parse("aitsys-go://create")
+            data = "aitsys-go://create".toUri()
         }
         val shortcut = ShortcutInfo.Builder(context, "branded-create")
-            .setShortLabel(branding.siteName.take(10))
+            .setShortLabel(shortcutLabel(branding.siteName))
             .setLongLabel("Create with ${branding.siteName}".take(25))
             .setIcon(Icon.createWithBitmap(source))
             .setIntent(intent)
             .build()
-        return manager.requestPinShortcut(shortcut, null)
+        val alreadyPinned = manager.pinnedShortcuts.any { it.id == shortcut.id }
+        manager.updateShortcuts(listOf(shortcut))
+        return alreadyPinned || manager.requestPinShortcut(shortcut, null)
     }
 
     private fun fallbackBitmap(color: String): Bitmap {
-        val bitmap = Bitmap.createBitmap(192, 192, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(192, 192)
         val canvas = Canvas(bitmap)
-        val parsed = runCatching { Color.parseColor(color) }.getOrDefault(Color.MAGENTA)
+        val parsed = runCatching { color.toColorInt() }.getOrDefault(Color.MAGENTA)
         canvas.drawColor(Color.rgb(18, 5, 26))
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = parsed; strokeWidth = 22f; style = Paint.Style.STROKE }
         canvas.drawCircle(72f, 96f, 38f, paint)
         paint.color = Color.rgb(124, 92, 255)
         canvas.drawCircle(120f, 96f, 38f, paint)
         return bitmap
+    }
+
+    private fun logoFile(context: Context, source: String): File {
+        val digest = MessageDigest.getInstance("SHA-256").digest(source.toByteArray(Charsets.UTF_8))
+        val suffix = digest.joinToString("") { byte -> "%02x".format(byte) }
+        return File(context.filesDir, "branding-logo-$suffix.png")
+    }
+
+    private fun shortcutLabel(siteName: String): String {
+        val compact = siteName.filter { it.isLetterOrDigit() }
+        return (compact.ifBlank { siteName }.take(10)).ifBlank { "AITSYSGo" }
     }
 }

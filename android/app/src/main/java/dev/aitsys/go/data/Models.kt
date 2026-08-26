@@ -11,9 +11,9 @@ data class AppSettings(
 
 data class Branding(
     val siteName: String = "AITSYS Go",
-    val brandLogoUrl: String = "",
-    val brandLogoAlt: String = "AITSYS Go",
-    val faviconUrl: String = "",
+    val brandLogoUrl: String = "/logo.png",
+    val brandLogoAlt: String = "Aiko IT Systems",
+    val faviconUrl: String = "/favicon.png",
     val brandColor: String = "#FC0FC0",
     val privacyEmail: String? = null,
 )
@@ -67,7 +67,7 @@ data class LinkDraft(
 }
 
 object UrlExtractor {
-    private val httpsUrl = Regex("https://[^\\s<>\\[\\]{}\\\"']+", RegexOption.IGNORE_CASE)
+    private val httpsUrl = Regex("https://[^\\s<>\\[\\]{}\"']+", RegexOption.IGNORE_CASE)
     private val trailingPunctuation = charArrayOf('.', ',', ';', ':', '!', '?', ')')
 
     fun firstHttpsUrl(text: String?): String? {
