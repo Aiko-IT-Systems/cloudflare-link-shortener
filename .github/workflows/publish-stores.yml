@@ -36,30 +36,30 @@ jobs:
   #         client-id: ${{ vars.CHROME_CLIENT_ID }}
   #         client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
   #         refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
-  # firefox:
-  #   name: Firefox Add-ons
-  #   runs-on: ubuntu-latest
-  #   environment: firefox-amo
-  #   steps:
-  #     - name: Download Firefox release artifacts
-  #       env:
-  #         GH_TOKEN: ${{ secrets.NYUW_TOKEN }}
-  #         TAG: ${{ github.event.release.tag_name }}
-  #       run: |
-  #         mkdir release-assets
-  #         gh release download "$TAG" \
-  #           --repo "$GITHUB_REPOSITORY" \
-  #           --pattern "aitsys-go-$TAG-firefox.zip" \
-  #           --pattern "aitsys-go-$TAG-extension-source.zip" \
-  #           --dir release-assets
-  #     - uses: wdzeng/firefox-addon@3184ee491b500e080885e046051366a4228c6e5d # v1.2.1
-  #       with:
-  #         addon-guid: ${{ vars.FIREFOX_ADDON_GUID }}
-  #         xpi-path: release-assets/aitsys-go-${{ github.event.release.tag_name }}-firefox.zip
-  #         source-file-path: release-assets/aitsys-go-${{ github.event.release.tag_name }}-extension-source.zip
-  #         self-hosted: true
-  #         jwt-issuer: ${{ secrets.FIREFOX_JWT_ISSUER }}
-  #         jwt-secret: ${{ secrets.FIREFOX_JWT_SECRET }}
+  firefox:
+    name: Firefox Add-ons
+    runs-on: ubuntu-latest
+    environment: firefox-amo
+    steps:
+      - name: Download Firefox release artifacts
+        env:
+          GH_TOKEN: ${{ secrets.NYUW_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          mkdir release-assets
+          gh release download "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "aitsys-go-$TAG-firefox.zip" \
+            --pattern "aitsys-go-$TAG-extension-source.zip" \
+            --dir release-assets
+      - uses: wdzeng/firefox-addon@3184ee491b500e080885e046051366a4228c6e5d # v1.2.1
+        with:
+          addon-guid: ${{ vars.FIREFOX_ADDON_GUID }}
+          xpi-path: release-assets/aitsys-go-${{ github.event.release.tag_name }}-firefox.zip
+          source-file-path: release-assets/aitsys-go-${{ github.event.release.tag_name }}-extension-source.zip
+          self-hosted: true
+          jwt-issuer: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          jwt-secret: ${{ secrets.FIREFOX_JWT_SECRET }}
   # edge:
   #   name: Microsoft Edge Add-ons
   #   runs-on: ubuntu-latest
