@@ -1,0 +1,111 @@
+name: Publish Stores
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stores-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  chrome:
+    name: Chrome Web Store
+    runs-on: ubuntu-latest
+    environment: chrome-web-store
+    steps:
+      - name: Download Chrome release artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          mkdir release-assets
+          gh release download "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "aitsys-go-$TAG-chrome.zip" \
+            --dir release-assets
+
+      - uses: wdzeng/chrome-extension@d13687a31d7884b5fb01c87a90986f8c365e6e0a # v2.0.0
+        with:
+          extension-id: ${{ vars.CHROME_EXTENSION_ID }}
+          publisher-id: ${{ vars.CHROME_PUBLISHER_ID }}
+          zip-path: release-assets/aitsys-go-${{ github.event.release.tag_name }}-chrome.zip
+          client-id: ${{ vars.CHROME_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+  firefox:
+    name: Firefox Add-ons
+    runs-on: ubuntu-latest
+    environment: firefox-amo
+    steps:
+      - name: Download Firefox release artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          mkdir release-assets
+          gh release download "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "aitsys-go-$TAG-firefox.zip" \
+            --pattern "aitsys-go-$TAG-extension-source.zip" \
+            --dir release-assets
+      - uses: wdzeng/firefox-addon@3184ee491b500e080885e046051366a4228c6e5d # v1.2.1
+        with:
+          addon-guid: ${{ vars.FIREFOX_ADDON_GUID }}
+          xpi-path: release-assets/aitsys-go-${{ github.event.release.tag_name }}-firefox.zip
+          source-file-path: release-assets/aitsys-go-${{ github.event.release.tag_name }}-extension-source.zip
+          self-hosted: false
+          jwt-issuer: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          jwt-secret: ${{ secrets.FIREFOX_JWT_SECRET }}
+  edge:
+    name: Microsoft Edge Add-ons
+    runs-on: ubuntu-latest
+    environment: edge-addons
+    steps:
+      - name: Download Edge release artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          mkdir release-assets
+          gh release download "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "aitsys-go-$TAG-edge.zip" \
+            --dir release-assets
+      - uses: wdzeng/edge-addon@9881f57720358040d079eaa06a4596dc9c273eb6 # v2.1.1
+        with:
+          product-id: ${{ vars.EDGE_PRODUCT_ID }}
+          zip-path: release-assets/aitsys-go-${{ github.event.release.tag_name }}-edge.zip
+          api-key: ${{ secrets.EDGE_API_KEY }}
+          client-id: ${{ vars.EDGE_CLIENT_ID }}
+  android:
+    name: Google Play Store
+    runs-on: ubuntu-latest
+    environment: google-play-store
+    steps:
+      - name: Download Android release artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          mkdir release-assets
+          gh release download "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "aitsys-go-$TAG.aab" \
+            --dir release-assets
+      - name: Publish to Google Play
+        id: publish-google-play
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}
+          packageName: ${{ vars.ANDROID_PACKAGE_NAME }}
+          releaseFiles: release-assets/aitsys-go-${{ github.event.release.tag_name }}.aab
+          track: internal,alpha,internalsharing
+          status: completed
+          releaseName: ${{ github.event.release.tag_name }}
+      - name: Output internal testing url
+        run: > 
+          echo "Internal testing URL: ${{ steps.publish-google-play.outputs.internalSharingDownloadUrl }}" >> $GITHUB_STEP_SUMMARY

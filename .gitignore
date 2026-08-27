@@ -6,6 +6,7 @@ dist/
 .env
 scripts/local-admin.ps1
 local-bin/
+*.local.*
 
 # Android / Gradle local and generated files
 src/android/.gradle/
