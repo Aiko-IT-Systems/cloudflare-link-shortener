@@ -85,7 +85,7 @@ function Convert-Expiry {
 	param([string] $At, [string] $In)
 
 	if (-not [string]::IsNullOrWhiteSpace($At)) {
-		return ([DateTimeOffset]::Parse($At)).ToUniversalTime().ToString("o")
+		return ([DateTimeOffset]::Parse($At)).ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'")
 	}
 
 	if ([string]::IsNullOrWhiteSpace($In)) {
@@ -104,7 +104,7 @@ function Convert-Expiry {
 		"w" { [DateTimeOffset]::UtcNow.AddDays($amount * 7) }
 	}
 
-	$expires.ToString("o")
+	$expires.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'")
 }
 
 $repoRoot = Invoke-Git rev-parse --show-toplevel

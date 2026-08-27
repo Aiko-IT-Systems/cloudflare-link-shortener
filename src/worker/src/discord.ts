@@ -2,6 +2,7 @@ import { bootstrapAdminAccount, createLink, disableLink, getAccountByDiscordUser
 import { AccountRecord, LinkPage, LinkRecord } from "./types";
 import { createLinkSchema, normalizeSlug, updateLinkSchema } from "./validation";
 import { fetchTargetMetadata } from "./metadata";
+import { canonicalTimestamp } from "./timestamps";
 
 const EPHEMERAL = 1 << 6;
 const COMPONENTS_V2 = 1 << 15;
@@ -53,7 +54,7 @@ function modal(session: CreateSession, id: string, currentTitle?: string, custom
 				...(!editing ? [label("Custom slug (optional)", "slug", "AITSYS-GO")] : []),
 				label("Fallback title (optional)", "title", "Used if no page title is found", currentTitle),
 				label(editing ? "New password (leave blank to keep)" : "Password (optional)", "password", "Protect this link", undefined, true),
-				label("Expiry, UTC ISO (optional)", "expiresAt", "2026-12-31T23:59:00Z")
+				label("Expiry, UTC ISO-8601 (optional)", "expiresAt", "2026-12-31T23:59:00Z")
 			]
 		}
 	});
@@ -149,7 +150,7 @@ async function listManageLinks(env: Env, session: ManageSession, cursor = sessio
 async function renderManage(env: Env, origin: string, sessionIdValue: string, session: ManageSession): Promise<Response> {
 	const page = await listManageLinks(env, session);
 	const cards = page.items.flatMap((record) => [container(
-		section(`**/${record.slug}**\n${shortUrl(origin, record.slug)}\nDestination: ${record.destinationUrl}\nCreated ${record.createdAt}${record.expiresAt ? `\nExpires ${record.expiresAt}` : ""}`, linkButton(shortUrl(origin, record.slug))),
+		section(`**/${record.slug}**\n${shortUrl(origin, record.slug)}\nDestination: ${record.destinationUrl}\nCreated ${canonicalTimestamp(record.createdAt)}${record.expiresAt ? `\nExpires ${canonicalTimestamp(record.expiresAt)}` : ""}`, linkButton(shortUrl(origin, record.slug))),
 		row(button(`short:edit:${record.slug}`, "Edit"), button(`short:refresh:${record.slug}`, "Refresh"), button(`short:preview:${record.slug}`, record.suppressSocialPreview ? "Enable preview" : "Suppress preview"), button(`short:clear-password:${record.slug}`, "Clear password", 2, !record.password), button(`short:disable:${record.slug}`, "Disable", 4, Boolean(record.disabledAt)))
 	)]);
 	const nav = row(

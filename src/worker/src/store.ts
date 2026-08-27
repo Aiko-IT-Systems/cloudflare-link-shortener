@@ -1,6 +1,7 @@
 import { customAlphabet } from "nanoid";
 import { sha256 } from "./auth";
 import { AccountRecord, LinkOwner, LinkPage, LinkRecord, TokenRecord } from "./types";
+import { canonicalizeLinkTimestamps, canonicalizeWritableLinkTimestamps } from "./timestamps";
 import { isReservedSlug, normalizeSlug, SLUG_PATTERN } from "./validation";
 
 const randomSlug = customAlphabet("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 8);
@@ -56,7 +57,7 @@ export async function createLink(env: Env, input: LinkInput): Promise<LinkRecord
 export async function updateLink(env: Env, slug: string, updates: Partial<Omit<LinkRecord, "slug" | "creator" | "createdAt" | "owner">>): Promise<LinkRecord | null> {
 	const record = await getLink(env, slug);
 	if (!record) return null;
-	const updated = { ...record, ...updates };
+	const updated = canonicalizeWritableLinkTimestamps({ ...record, ...updates });
 	await putLink(env, updated);
 	return updated;
 }
@@ -259,7 +260,7 @@ export async function removeAccount(env: Env, accountId: string): Promise<{ acco
 }
 
 function toRecord(input: LinkInput & { slug: string }): LinkRecord {
-	return {
+	return canonicalizeLinkTimestamps({
 		slug: input.slug,
 		destinationUrl: input.destinationUrl,
 		creator: input.creator,
@@ -274,5 +275,5 @@ function toRecord(input: LinkInput & { slug: string }): LinkRecord {
 		...(input.password ? { password: input.password } : {}),
 		...(input.expiresAt ? { expiresAt: input.expiresAt } : {}),
 		...(input.suppressSocialPreview ? { suppressSocialPreview: true } : {})
-	};
+	});
 }

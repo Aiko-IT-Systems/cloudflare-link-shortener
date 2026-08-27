@@ -1,5 +1,6 @@
 import { createLink, extension, getBranding, getSettings } from "./api";
 import { applyBranding, applyDefaultBranding } from "./branding";
+import { localDateTimeToUtcIso } from "./datetime";
 
 const form = document.querySelector<HTMLFormElement>("#link-form")!;
 const status = document.querySelector<HTMLOutputElement>("#status")!;
@@ -22,6 +23,7 @@ form.addEventListener("submit", async (event) => {
 	try {
 		const payload = Object.fromEntries(new FormData(form).entries());
 		for (const key of Object.keys(payload)) if (payload[key] === "") delete payload[key];
+		if (typeof payload.expiresAt === "string") payload.expiresAt = localDateTimeToUtcIso(payload.expiresAt);
 		payload.suppressSocialPreview = byId<HTMLInputElement>("suppressSocialPreview").checked;
 		const { slug } = await createLink(payload);
 		const { apiBase } = await getSettings();

@@ -614,4 +614,42 @@ describe("link shortener", () => {
 		const links = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", { headers: { Authorization: `Bearer ${issued.result.token}` } }), envValue);
 		expect((await links.json() as { result: { items: LinkRecord[] } }).result.items.map((link) => link.slug)).toEqual(["legacy-discord"]);
 	});
+
+	test("returns legacy timestamps as canonical UTC Z values without rewriting them on read", async () => {
+		const envValue = env();
+		const legacy: LinkRecord = {
+			slug: "legacy-time",
+			destinationUrl: "https://example.com/legacy-time",
+			creator: "Legacy Cat",
+			createdAt: "2026-08-26T20:10:00+02:00",
+			expiresAt: "2027-01-31T12:00:00+01:00",
+			metadataFetchedAt: "2026-08-26T20:15:00+02:00"
+		};
+		await envValue.LINKS.put("link:legacy-time", JSON.stringify(legacy));
+
+		const read = await app.fetch(new Request("https://go.aitsys.dev/api/v1/admin/links", authed()), envValue);
+		const returned = (await read.json() as { result: { items: LinkRecord[] } }).result.items[0]!;
+		expect(returned.createdAt).toBe("2026-08-26T18:10:00.000Z");
+		expect(returned.expiresAt).toBe("2027-01-31T11:00:00.000Z");
+		expect(returned.metadataFetchedAt).toBe("2026-08-26T18:15:00.000Z");
+		expect(await envValue.LINKS.get("link:legacy-time")).toBe(JSON.stringify(legacy));
+		const patched = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links/legacy-time", authed({
+			method: "PATCH",
+			body: JSON.stringify({ expiresAt: "2027-02-01T12:00:00+01:00" })
+		})), envValue);
+		expect((await patched.json() as { result: LinkRecord }).result.expiresAt).toBe("2027-02-01T11:00:00.000Z");
+		const afterUpdate = await envValue.LINKS.get<LinkRecord>("link:legacy-time", "json");
+		expect(afterUpdate?.createdAt).toBe(legacy.createdAt);
+		expect(afterUpdate?.expiresAt).toBe("2027-02-01T11:00:00.000Z");
+
+		const created = await create(envValue, {
+			destinationUrl: "https://example.com/new-time",
+			creator: "New Cat",
+			slug: "new-time",
+			expiresAt: "2027-01-31T12:00:00+01:00"
+		});
+		expect((await created.json() as { result: LinkRecord }).result.expiresAt).toBe("2027-01-31T11:00:00.000Z");
+		const stored = await envValue.LINKS.get<LinkRecord>("link:new-time", "json");
+		expect(stored?.expiresAt).toBe("2027-01-31T11:00:00.000Z");
+	});
 });

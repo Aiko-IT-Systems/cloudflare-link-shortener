@@ -48,9 +48,9 @@ app.get("/robots.txt", () => robots());
 app.post("/discord/interactions", (c) => handleDiscordInteraction(c.req.raw, c.env, new URL(c.req.url).origin));
 app.get("/api/v1/metadata", (c) => jsonSuccess({ apiVersion: 1, branding: getPublicSiteMetadata(c.env, c.req.url), build: buildInfo }));
 app.get("/api/v1/connection-test", (c) => jsonSuccess({
-		status: "ok",
-		apiVersion: 1
-	}));
+	status: "ok",
+	apiVersion: 1
+}));
 
 app.use("/api/v1/*", requireApiKey);
 

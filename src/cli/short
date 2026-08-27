@@ -20,7 +20,7 @@ Usage: short [options]
   --title TITLE        Fallback title
   --slug SLUG          Custom slug
   --password PASSWORD  Optional password
-  --expires-at ISO     ISO-8601 expiry
+  --expires-at ISO     ISO-8601 expiry with an offset; responses use UTC Z form
   --suppress-preview   Suppress social previews
   --no-clipboard       Do not copy the resulting short URL
 EOF

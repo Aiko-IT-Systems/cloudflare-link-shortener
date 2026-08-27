@@ -73,7 +73,7 @@ function New-ShortLink {
 	$title = Read-Host "Title (optional)"
 	$slug = Read-Host "Custom slug (optional, leave empty for random)"
 	$password = Read-Host "Password (optional)"
-	$expiresAt = Read-Host "Expires at UTC ISO timestamp (optional, e.g. 2026-08-01T00:00:00Z)"
+	$expiresAt = Read-Host "Expires at UTC ISO-8601 timestamp (optional, e.g. 2026-08-01T00:00:00.000Z)"
 	$suppressPreview = Read-Host "Suppress social preview? (y/N)"
 
 	$body = @{
@@ -84,7 +84,7 @@ function New-ShortLink {
 	if (-not [string]::IsNullOrWhiteSpace($title)) { $body.title = $title.Trim() }
 	if (-not [string]::IsNullOrWhiteSpace($slug)) { $body.slug = $slug.Trim() }
 	if (-not [string]::IsNullOrWhiteSpace($password)) { $body.password = $password.Trim() }
-	if (-not [string]::IsNullOrWhiteSpace($expiresAt)) { $body.expiresAt = ([DateTimeOffset]::Parse($expiresAt)).ToUniversalTime().ToString("o") }
+	if (-not [string]::IsNullOrWhiteSpace($expiresAt)) { $body.expiresAt = ([DateTimeOffset]::Parse($expiresAt)).ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'") }
 	if ($suppressPreview -match "^(y|yes)$") { $body.suppressSocialPreview = $true }
 
 	$result = Invoke-LinkApi -Method POST -Path "/api/v1/links" -Body $body

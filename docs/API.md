@@ -11,6 +11,14 @@ Content-Type: application/json
 Never put credentials in URLs, source code, screenshots, or browser-extension
 packages.
 
+## Timestamp format
+
+Inputs accept valid ISO-8601 timestamps with an explicit UTC offset. Every
+timestamp returned by the API uses canonical UTC ISO-8601 form with millisecond
+precision and a trailing `Z`, for example `2026-08-26T20:10:00.000Z`. This also
+applies to legacy records whose stored timestamp used an equivalent offset such
+as `+00:00`; reading them never rewrites KV data.
+
 ## Authentication roles
 
 - The master `LINK_SHORTENER_API_KEY` can administer accounts and tokens and
