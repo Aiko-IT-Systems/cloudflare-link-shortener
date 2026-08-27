@@ -19,7 +19,7 @@ Due to extension store limitations, extension zips are not signed.
 
 If a version was submitted, we'll update the release with the signed package once it is available. (Firefox will have an `.xpi` package, and Chrome & Edge an `.crx` package)
 
-Play Store releases are manually as well. If you want to install a release, use the apk. The aab file is for us to submit to the Play Store.
+Play Store releases are automatic. See the `publish-stores.yml` [runs](https://github.com/Aiko-IT-Systems/cloudflare-link-shortener/actions/workflows/publish-stores.yml) to get access to the app sharing link if you don't have access to the Play Store version yet.
 
 ## Documentation
 
