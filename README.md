@@ -41,7 +41,3 @@ Play Store releases are automatic. See the `publish-stores.yml` [runs](https://g
 - [Fork and self-host with your own branding](docs/SELF_HOSTING.md)
 - [Building, configuration, and releases](docs/BUILDING.md)
 - [REST API reference](docs/API.md)
-
-## Quick Deploy
-
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Aiko-IT-Systems/cloudflare-link-shortener)

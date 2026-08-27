@@ -40,9 +40,8 @@ a secure origin.
 
 ## 3. Deploy without editing configuration
 
-Use the [Deploy to Cloudflare](../README.md#quick-deploy) button, or connect
-your fork under **Workers & Pages → Create → Connect to Git**. Select `main`
-as the production branch and use these production-only settings:
+Connect your fork under **Workers & Pages → Create → Connect to Git**. Select
+`main` as the production branch and use these production-only settings:
 
 | Setting | Value |
 | --- | --- |
