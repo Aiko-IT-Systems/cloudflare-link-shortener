@@ -1,10 +1,8 @@
 # AITSYS Go
 
 [![Latest release](https://img.shields.io/github/v/release/Aiko-IT-Systems/cloudflare-link-shortener?display_name=tag&sort=semver&style=flat-square)](https://github.com/Aiko-IT-Systems/cloudflare-link-shortener/releases/latest)
-[![PR checks](https://img.shields.io/github/actions/workflow/status/Aiko-IT-Systems/cloudflare-link-shortener/pr-checks.yml?branch=main&label=PR%20checks&style=flat-square)](https://github.com/Aiko-IT-Systems/cloudflare-link-shortener/actions/workflows/pr-checks.yml)
 [![Release pipeline](https://img.shields.io/github/actions/workflow/status/Aiko-IT-Systems/cloudflare-link-shortener/release.yml?branch=main&label=release&style=flat-square)](https://github.com/Aiko-IT-Systems/cloudflare-link-shortener/actions/workflows/release.yml)
 [![Repository size](https://img.shields.io/github/repo-size/Aiko-IT-Systems/cloudflare-link-shortener?label=repository%20size&style=flat-square)](https://github.com/Aiko-IT-Systems/cloudflare-link-shortener)
-[![Lines of code](https://img.shields.io/tokei/lines/github/Aiko-IT-Systems/cloudflare-link-shortener?label=lines%20of%20code&style=flat-square)](https://github.com/Aiko-IT-Systems/cloudflare-link-shortener)
 [![License](https://img.shields.io/badge/license-Apache--2.0-7f52ff?style=flat-square)](LICENSE.md)
 
 <!-- Store badges — enable these once the public listings are ready.
