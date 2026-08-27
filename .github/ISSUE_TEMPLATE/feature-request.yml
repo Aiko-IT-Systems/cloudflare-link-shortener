@@ -5,7 +5,7 @@ labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
-      value: Do not include credentials, personal data, private URLs, or unpublished security details.
+      value: Do not include credentials, personal data, private URLs, or unpublished security details. Use the private Security vulnerability reports link for security reports.
   - type: dropdown
     id: component
     attributes:

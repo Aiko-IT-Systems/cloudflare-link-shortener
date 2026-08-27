@@ -8,6 +8,8 @@ body:
       value: |
         Thanks for helping improve AITSYS Go. Do not include API tokens, passwords,
         Discord message contents, private URLs, or unredacted logs in this form.
+        For a security vulnerability, use the private Security vulnerability reports
+        link instead.
   - type: checkboxes
     id: safety
     attributes:
@@ -34,6 +36,8 @@ body:
         - GitHub Actions or release artifacts
         - Branding assets
         - Documentation
+    validations:
+      required: true
   - type: textarea
     id: summary
     attributes:

@@ -8,16 +8,19 @@ body:
       value: |
         Please do not include credentials, personal data, private URLs, or security
         vulnerability details. For privacy or data requests, email privacy@aitsys.dev.
+        Use the private Security vulnerability reports link for security reports.
   - type: dropdown
     id: document
     attributes:
       label: Affected document or page
       options:
         - README.md
-        - BUILDING.md
-        - API.md
+        - docs/SELF_HOSTING.md
+        - docs/BUILDING.md
+        - docs/API.md
         - PRIVACY.md
         - Worker /privacy page
+        - Worker /api/v1/metadata endpoint
         - Other public documentation
     validations:
       required: true
