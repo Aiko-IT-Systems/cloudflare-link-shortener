@@ -9,7 +9,7 @@ This is the supported production setup. AITSYS Go has one production Worker and 
 | `src/worker` | Cloudflare Worker and static assets |
 | `src/extensions` | Shared Chrome, Edge, and Firefox extension source |
 | `src/android` | Android 10+ Kotlin/Compose app |
-| `src/tools` | PowerShell and Bash shell tools |
+| `src/cli` | PowerShell and Bash shell cli |
 
 Install the Node.js version recorded in `package.json`, then install locked dependencies from the repository root:
 
@@ -142,12 +142,12 @@ npm run discord:register
 
 This command is intentionally never run by Workers Builds, deployment, or GitHub Actions.
 
-## Shell tools and unified releases
+## Shell cli and unified releases
 
-Validate the distributable shell tools before changing them:
+Validate the distributable shell cli before changing them:
 
 ```powershell
-$files = Get-ChildItem src/tools -Filter *.ps1
+$files = Get-ChildItem src/cli -Filter *.ps1
 foreach ($file in $files) {
   $errors = $null
   [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref] $null, [ref] $errors) | Out-Null
@@ -156,11 +156,11 @@ foreach ($file in $files) {
 ```
 
 ```bash
-bash -n src/tools/short src/tools/short-admin
+bash -n src/cli/short src/cli/short-admin
 ```
 
-`.github/workflows/release.yml` is the single **Release AITSYS Go** workflow. It creates one `vX.Y.Z` GitHub Release containing the signed Android APK/AAB, Chrome/Edge/Firefox ZIPs, extension source ZIP, and tools ZIP. The root `package.json` is canonical: before building it synchronizes all browser manifest versions, commits `chore(release): vX.Y.Z` to `main`, tags that exact source revision, and then publishes only after every validation succeeds. The release workflow recognizes its own bot-authored version commit and skips a duplicate GitHub Release job, but intentionally does not use a CI-skip marker: Workers Builds must deploy that commit so the public Worker metadata reports the released version and SHA.
+`.github/workflows/release.yml` is the single **Release AITSYS Go** workflow. It creates one `vX.Y.Z` GitHub Release containing the signed Android APK/AAB, Chrome/Edge/Firefox ZIPs, extension source ZIP, and cli ZIP. The root `package.json` is canonical: before building it synchronizes all browser manifest versions, commits `chore(release): vX.Y.Z` to `main`, tags that exact source revision, and then publishes only after every validation succeeds. The release workflow recognizes its own bot-authored version commit and skips a duplicate GitHub Release job, but intentionally does not use a CI-skip marker: Workers Builds must deploy that commit so the public Worker metadata reports the released version and SHA.
 
-Qualifying pushes to `main` automatically make a patch release when they change `src/android/**`, `src/extensions/**`, `src/tools/**`, `scripts/check-extensions.mjs`, `package.json`, `package-lock.json`, or the unified workflow itself. Documentation and Worker-only changes do not create a GitHub Release. Use **Run workflow** on `main` to choose a patch, minor, or major increment. Releases are serialized so concurrent qualifying pushes cannot reuse a version.
+Qualifying pushes to `main` automatically make a patch release when they change `src/android/**`, `src/extensions/**`, `src/cli/**`, `scripts/check-extensions.mjs`, `package.json`, `package-lock.json`, or the unified workflow itself. Documentation and Worker-only changes do not create a GitHub Release. Use **Run workflow** on `main` to choose a patch, minor, or major increment. Releases are serialized so concurrent qualifying pushes cannot reuse a version.
 
 The workflow intentionally does **not** call Google Play, use a Play service account, or submit an Android build to any store. Play upload and track promotion remain an operator-controlled follow-up. The Android formula avoids run-number collisions: every Play upload still needs a never-before-used, increasing `versionCode`.

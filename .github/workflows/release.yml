@@ -6,7 +6,7 @@ on:
     paths:
       - "src/android/**"
       - "src/extensions/**"
-      - "src/tools/**"
+      - "src/cli/**"
       - "scripts/check-extensions.mjs"
       - "package.json"
       - "package-lock.json"
@@ -102,10 +102,10 @@ jobs:
           npm run extensions:check
           echo "- ✅ Chrome, Edge, and Firefox builds plus manifest validation" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Validate distributable shell tools
+      - name: Validate distributable shell cli
         shell: pwsh
         run: |
-          $files = Get-ChildItem -Path src/tools -Filter *.ps1
+          $files = Get-ChildItem -Path src/cli -Filter *.ps1
           foreach ($file in $files) {
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref] $null, [ref] $errors) | Out-Null
@@ -116,10 +116,10 @@ jobs:
           }
           echo "- ✅ PowerShell parser validation" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Validate Bash tools
+      - name: Validate Bash cli
         run: |
-          bash -n src/tools/short src/tools/short-admin
-          echo "- ✅ Bash syntax validation" >> "$GITHUB_STEP_SUMMARY"
+          bash -n src/cli/short src/cli/short-admin
+          echo "- ✅ Bash cli syntax validation" >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6
         with:
@@ -190,13 +190,13 @@ jobs:
           (cd dist/edge && zip -qr "../../release-assets/$prefix-edge.zip" .)
           (cd dist/firefox && zip -qr "../../release-assets/$prefix-firefox.zip" .)
           (cd src/extensions && zip -qr "../../release-assets/$prefix-extension-source.zip" . -x "*/node_modules/*" -x "*/dist/*")
-          (cd src/tools && zip -qr "../../release-assets/$prefix-tools.zip" .)
+          (cd src/cli && zip -qr "../../release-assets/$prefix-cli.zip" .)
           unzip -Z1 "release-assets/$prefix-extension-source.zip" | grep -qx "vite.config.ts"
           if unzip -Z1 "release-assets/$prefix-extension-source.zip" | grep -qE '(^|/)dist/'; then
             echo "::error::Extension source archive includes generated dist output."
             exit 1
           fi
-          for asset in "$prefix.apk" "$prefix.aab" "$prefix-chrome.zip" "$prefix-edge.zip" "$prefix-firefox.zip" "$prefix-extension-source.zip" "$prefix-tools.zip"; do
+          for asset in "$prefix.apk" "$prefix.aab" "$prefix-chrome.zip" "$prefix-edge.zip" "$prefix-firefox.zip" "$prefix-extension-source.zip" "$prefix-cli.zip"; do
             test -s "release-assets/$asset"
           done
           {
@@ -230,7 +230,7 @@ jobs:
             release-assets/aitsys-go-v${{ steps.version.outputs.version }}-edge.zip
             release-assets/aitsys-go-v${{ steps.version.outputs.version }}-firefox.zip
             release-assets/aitsys-go-v${{ steps.version.outputs.version }}-extension-source.zip
-            release-assets/aitsys-go-v${{ steps.version.outputs.version }}-tools.zip
+            release-assets/aitsys-go-v${{ steps.version.outputs.version }}-cli.zip
 
       - name: Summarize published GitHub Release
         env:

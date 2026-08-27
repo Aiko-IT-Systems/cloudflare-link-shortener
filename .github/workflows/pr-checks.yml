@@ -59,6 +59,4 @@ jobs:
             echo "- Generated Cloudflare Worker bindings"
             echo "- Chrome, Edge, and Firefox extension builds"
             echo "- Extension manifest validation"
-            echo
-            echo "This workflow performs no Cloudflare deployment and uses no production secrets."
           } >> "$GITHUB_STEP_SUMMARY"

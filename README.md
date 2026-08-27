@@ -35,4 +35,4 @@ npm test
 npm run typecheck
 ```
 
-The Worker lives in `src/worker`, browser extensions in `src/extensions`, the Android app in `src/android`, and shell tools in `src/tools`.
+The Worker lives in `src/worker`, browser extensions in `src/extensions`, the Android app in `src/android`, and shell cli in `src/cli`.
