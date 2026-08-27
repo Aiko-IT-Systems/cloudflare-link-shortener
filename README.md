@@ -31,7 +31,7 @@ Releases are built and published automatically from the `main` branch.
 
 Due to extension store limitations, extension zips are not signed.
 
-If a version was submitted, we'll update the release with the signed package once it is available. (Firefox will have an `.xpi` package, and Chrome & Edge an `.crx` package)
+If a version was submitted, we'll update the release with the signed package once it is available. (Firefox will have an `.xpi` package, and Chrome & Edge an `.crx` package. We are currently in the review process of these platforms)
 
 Play Store releases are automatic. See the `publish-stores.yml` [runs](https://github.com/Aiko-IT-Systems/cloudflare-link-shortener/actions/workflows/publish-stores.yml) to get access to the app sharing link if you don't have access to the Play Store version yet.
 
@@ -42,12 +42,6 @@ Play Store releases are automatic. See the `publish-stores.yml` [runs](https://g
 - [Building, configuration, and releases](docs/BUILDING.md)
 - [REST API reference](docs/API.md)
 
-## Quick local check
+## Quick Deploy
 
-```bash
-npm ci
-npm test
-npm run typecheck
-```
-
-The Worker lives in `src/worker`, browser extensions in `src/extensions`, the Android app in `src/android`, and shell cli in `src/cli`.
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Aiko-IT-Systems/cloudflare-link-shortener)
