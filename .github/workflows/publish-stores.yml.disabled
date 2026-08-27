@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Download Chrome release artifact
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.NYUW_TOKEN }}
           TAG: ${{ github.event.release.tag_name }}
         run: |
           mkdir release-assets
@@ -43,7 +43,7 @@ jobs:
     steps:
       - name: Download Firefox release artifacts
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.NYUW_TOKEN }}
           TAG: ${{ github.event.release.tag_name }}
         run: |
           mkdir release-assets
@@ -67,7 +67,7 @@ jobs:
     steps:
       - name: Download Edge release artifact
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.NYUW_TOKEN }}
           TAG: ${{ github.event.release.tag_name }}
         run: |
           mkdir release-assets
@@ -88,7 +88,7 @@ jobs:
     steps:
       - name: Download Android release artifact
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.NYUW_TOKEN }}
           TAG: ${{ github.event.release.tag_name }}
         run: |
           mkdir release-assets
@@ -96,16 +96,41 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --pattern "aitsys-go-$TAG.aab" \
             --dir release-assets
-      - name: Publish to Google Play
-        id: publish-google-play
+      - name: Decode Google Play service account credential
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64" ]; then
+            echo "::error::GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 is not configured."
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64" | base64 --decode > release-assets/google-play-service-account.json
+          chmod 600 release-assets/google-play-service-account.json
+
+      - name: Publish to Google Play testing tracks
+        id: publish-google-play-testing
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
-          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}
+          serviceAccountJson: release-assets/google-play-service-account.json
           packageName: ${{ vars.ANDROID_PACKAGE_NAME }}
           releaseFiles: release-assets/aitsys-go-${{ github.event.release.tag_name }}.aab
-          track: internal,alpha,internalsharing
+          tracks: internal,alpha
           status: completed
           releaseName: ${{ github.event.release.tag_name }}
+
+      - name: Publish to Google Play Internal App Sharing
+        id: publish-google-play-internal-sharing
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJson: release-assets/google-play-service-account.json
+          packageName: ${{ vars.ANDROID_PACKAGE_NAME }}
+          releaseFiles: release-assets/aitsys-go-${{ github.event.release.tag_name }}.aab
+          tracks: internalsharing
+
       - name: Output internal testing url
-        run: > 
-          echo "Internal testing URL: ${{ steps.publish-google-play.outputs.internalSharingDownloadUrl }}" >> $GITHUB_STEP_SUMMARY
+        run: |
+          echo "Internal App Sharing URL: ${{ steps.publish-google-play-internal-sharing.outputs.internalSharingDownloadUrl }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove decoded Google Play credential
+        if: always()
+        run: rm -f release-assets/google-play-service-account.json
