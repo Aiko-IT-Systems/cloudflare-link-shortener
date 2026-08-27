@@ -7,7 +7,7 @@ import { expired, homepage, notFound, passwordPrompt, privacyPolicy, robots, spl
 import { fetchTargetMetadata } from "./metadata";
 import { jsonError, jsonSuccess } from "./responses";
 import { createAccount, createLink, disableLink, getAccount, getAdminAccount, getLink, issueToken, linkDiscordUser, listAccounts, listLinks, listOwnedLinks, listTokens, ownsLink, refreshLinkMetadata, removeAccount, revokeToken, updateLink } from "./store";
-import { AuthPrincipal, LinkOwner, LinkRecord } from "./types";
+import { AccountRecord, AuthPrincipal, LinkOwner, LinkRecord } from "./types";
 import { createAccountSchema, createLinkSchema, disableLinkSchema, isReservedSlug, issueTokenSchema, linkDiscordUserSchema, normalizeSlug, SLUG_PATTERN, updateLinkSchema } from "./validation";
 
 type AppEnv = { Bindings: Env; Variables: { principal: AuthPrincipal } };
@@ -33,13 +33,32 @@ function cleanUpdates(updates: Record<string, unknown>): Record<string, unknown>
 	return Object.fromEntries(Object.entries(updates).map(([key, value]) => [key, value === null ? undefined : value]));
 }
 
+function publicAccount(account: { id: string; creatorName: string; createdAt: string; discordUserId?: string }): Omit<AccountRecord, "disabledAt" | "deletedAt" | "discordUserId"> & { discordUserId: string | null } {
+	return {
+		id: account.id,
+		creatorName: account.creatorName,
+		createdAt: account.createdAt,
+		discordUserId: account.discordUserId ?? null
+	};
+}
+
 app.get("/", (c) => homepage(getSiteConfig(c.env), c.req.url));
 app.get("/privacy", (c) => privacyPolicy(getSiteConfig(c.env)));
 app.get("/robots.txt", () => robots());
 app.post("/discord/interactions", (c) => handleDiscordInteraction(c.req.raw, c.env, new URL(c.req.url).origin));
 app.get("/api/v1/metadata", (c) => jsonSuccess({ apiVersion: 1, branding: getPublicSiteMetadata(c.env, c.req.url), build: buildInfo }));
+app.get("/api/v1/connection-test", (c) => jsonSuccess({
+		status: "ok",
+		apiVersion: 1
+	}));
 
 app.use("/api/v1/*", requireApiKey);
+
+app.get("/api/v1/me", async (c) => {
+	const principal = c.get("principal");
+	const account = principal.kind === "account" ? principal.account : await getAdminAccount(c.env);
+	return account ? jsonSuccess(publicAccount(account)) : jsonError("No active account is linked to these credentials.", "invalid_auth", 401);
+});
 
 app.post("/api/v1/accounts", async (c) => {
 	const denied = requireAdmin(c.get("principal"));

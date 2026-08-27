@@ -434,6 +434,18 @@ describe("link shortener", () => {
 		});
 	});
 
+	test("exposes an unauthenticated connection test with branding and build info", async () => {
+		const response = await app.fetch(new Request("https://short.example/api/v1/connection-test"), env({ SITE_NAME: "Test Go" }));
+		const body = await response.json() as { success: boolean; result: { status: string; apiVersion: number; branding: { siteName: string }; build: Record<string, string> } };
+
+		expect(response.status).toBe(200);
+		expect(body.success).toBe(true);
+		expect(body.result.status).toBe("ok");
+		expect(body.result.apiVersion).toBe(1);
+		expect(body.result.branding.siteName).toBe("Test Go");
+		expect(body.result.build.version).toBe("development");
+	});
+
 	test("issues revocable account tokens and isolates owned links", async () => {
 		const envValue = env();
 		const admin = authed({ method: "POST", body: JSON.stringify({ id: "friend", creatorName: "Friendly Cat" }) });
@@ -447,6 +459,17 @@ describe("link shortener", () => {
 		expect(issued.result.token).toMatch(/^aig_/);
 
 		const userHeaders = { Authorization: `Bearer ${issued.result.token}`, "Content-Type": "application/json" };
+		const meResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/me", { headers: userHeaders }), envValue);
+		expect(meResponse.status).toBe(200);
+		expect(await meResponse.json()).toEqual({
+			success: true,
+			result: {
+				id: "friend",
+				creatorName: "Friendly Cat",
+				createdAt: expect.any(String),
+				discordUserId: null
+			}
+		});
 		const ownResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", { method: "POST", headers: userHeaders, body: JSON.stringify({ destinationUrl: "https://example.com", creator: "Pretend Admin", slug: "friend-link" }) }), envValue);
 		const own = await ownResponse.json() as { result: LinkRecord };
 		expect(ownResponse.status).toBe(201);

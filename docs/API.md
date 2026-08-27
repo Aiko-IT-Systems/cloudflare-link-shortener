@@ -62,6 +62,73 @@ source currently deployed by Workers Builds: the shared release version, its
 commit SHA, and repository URL. Clients should retain fallback branding if
 `apiVersion` is unsupported.
 
+### `GET /api/v1/connection-test`
+
+Performs a lightweight unauthenticated connectivity check. It is intended for
+client setup screens and does not verify an API token or access account data.
+
+**Request**
+
+```http
+GET /api/v1/connection-test HTTP/1.1
+Host: short.example
+```
+
+**200 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"status": "ok",
+		"apiVersion": 1
+	}
+}
+```
+
+The response intentionally mirrors the public metadata needed to confirm that
+the configured base URL is an AITSYS Go-compatible Worker. Clients should not
+use it as proof that a bearer token is valid; use `GET /api/v1/me` for that.
+
+## Authenticated identity
+
+### `GET /api/v1/me`
+
+Returns the active account associated with the bearer token. The master token
+returns the configured administrator account; an issued token returns its own
+account. `disabledAt` and `deletedAt` are never included in a successful
+response.
+
+**Request**
+
+```http
+GET /api/v1/me HTTP/1.1
+Host: short.example
+Authorization: Bearer <master-or-issued-token>
+```
+
+**200 response**
+
+```json
+{
+	"success": true,
+	"result": {
+		"id": "friendly-cat",
+		"creatorName": "Friendly Cat",
+		"discordUserId": "123456789012345678",
+		"createdAt": "2026-08-26T20:00:00.000Z"
+	}
+}
+```
+
+If the bearer token is missing or invalid, the usual `401` authentication
+error is returned. A disabled or deleted issued-token account is also rejected
+by authentication and receives `401` (`invalid_auth`); the account is not
+revealed. A valid master token without an administrator profile also receives
+`401` (`invalid_auth`) until that profile is created. `discordUserId` is always
+present in a successful response and is `null` when the account is not linked
+to Discord.
+
 ## Account endpoints
 
 All account endpoints require the master credential.
