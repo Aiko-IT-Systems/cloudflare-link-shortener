@@ -21,3 +21,5 @@ src/android/.idea/
 *.jks
 *.keystore
 *.salive
+
+docs/internal/
