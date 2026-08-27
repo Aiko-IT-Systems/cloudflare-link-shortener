@@ -1,7 +1,7 @@
 {
 	"name": "cloudflare-link-shortener",
 	"description": "Transparent AITSYS link shortener on Cloudflare Workers",
-	"version": "2.0.2",
+	"version": "2.0.1",
 	"author": {
 		"name": "Lulalaby",
 		"email": "aiko@aitsys.dev",
@@ -11,7 +11,7 @@
 		"type": "git",
 		"url": "https://github.com/Aiko-IT-Systems/cloudflare-link-shortener"
 	},
-	"packageManager": "npm@12.0.2",
+	"packageManager": "npm@12.0.1",
 	"license": "MIT",
 	"private": true,
 	"scripts": {
