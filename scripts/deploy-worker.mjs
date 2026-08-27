@@ -1,5 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { generateWorkerConfig } from "./generate-worker-config.mjs";
 
 const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const localSha = () => {
@@ -19,10 +21,13 @@ for (const [name, value] of Object.entries(buildInfo)) {
 	if (!value) throw new Error(`Unable to determine Worker build ${name}.`);
 }
 
+await generateWorkerConfig();
+
 const define = (name, value) => `${name}:${JSON.stringify(value)}`;
-const command = process.platform === "win32" ? "npx.cmd" : "npx";
-const result = spawnSync(command, [
-	"wrangler", "deploy", "--cwd", "src/worker",
+const wranglerEntrypoint = fileURLToPath(new URL("../node_modules/wrangler/bin/wrangler.js", import.meta.url));
+const result = spawnSync(process.execPath, [
+	wranglerEntrypoint, "deploy", "--cwd", "src/worker",
+	...process.argv.slice(2),
 	"--define", define("__AITSYS_GO_BUILD_VERSION__", buildInfo.version),
 	"--define", define("__AITSYS_GO_BUILD_SHA__", buildInfo.sha),
 	"--define", define("__AITSYS_GO_BUILD_REPOSITORY__", buildInfo.repository)

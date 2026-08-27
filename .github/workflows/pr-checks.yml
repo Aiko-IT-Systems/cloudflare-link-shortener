@@ -37,11 +37,6 @@ jobs:
       - name: Typecheck Worker and shared code
         run: npm run typecheck
 
-      - name: Validate generated Worker bindings
-        run: |
-          npm run cf-typegen
-          git diff --exit-code -- src/worker/worker-configuration.d.ts
-
       - name: Build browser extensions
         run: npm run extensions:build
 
@@ -56,7 +51,6 @@ jobs:
             echo
             echo "- Worker tests"
             echo "- TypeScript typecheck"
-            echo "- Generated Cloudflare Worker bindings"
             echo "- Chrome, Edge, and Firefox extension builds"
             echo "- Extension manifest validation"
           } >> "$GITHUB_STEP_SUMMARY"

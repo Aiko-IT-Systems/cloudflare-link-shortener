@@ -1,0 +1,25 @@
+{
+	"name": "cloudflare-link-shortener",
+	"route": {
+		"pattern": "go.aitsys.dev",
+		"custom_domain": true,
+		"zone_id": "e9e86e9cc4298b9666b01b5cd3795099"
+	},
+	"account_id": "ba6a46b16b99f5f74858beafc22187c7",
+	"vars": {
+		"SITE_NAME": "AITSYS Go",
+		"BRAND_LOGO_URL": "/logo.png",
+		"BRAND_LOGO_ALT": "Aiko IT Systems",
+		"FAVICON_URL": "/favicon.png",
+		"BRAND_COLOR": "#fc0fc0",
+		"PRIVACY_EMAIL": "privacy@aitsys.dev",
+		"DISCORD_APPLICATION_ID": "1541927519933173760",
+		"DISCORD_ADMIN_USER_ID": "856780995629154305"
+	},
+	"kv_namespaces": [
+		{
+			"binding": "LINKS",
+			"id": "54872d4a38e6486e8f6cc053364d6f64"
+		}
+	]
+}

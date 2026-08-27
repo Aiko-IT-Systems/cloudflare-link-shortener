@@ -112,7 +112,7 @@ async function verifyDiscordRequest(request: Request, env: Env): Promise<Uint8Ar
 	if (!signature || !timestamp || !/^\d+$/.test(timestamp)) return undefined;
 	if (Math.abs(Date.now() - Number(timestamp) * 1000) > 5 * 60 * 1000) return undefined;
 	const raw = new Uint8Array(await request.arrayBuffer());
-	const keyHex = await env.DISCORD_PUBLIC_KEY.get();
+	const keyHex = env.DISCORD_PUBLIC_KEY;
 	if (!/^[a-f\d]{64}$/i.test(keyHex) || !/^[a-f\d]{128}$/i.test(signature)) return undefined;
 	const hex = (value: string): Uint8Array => Uint8Array.from(value.match(/.{1,2}/g) ?? [], (part) => Number.parseInt(part, 16));
 	const data = new Uint8Array(new TextEncoder().encode(timestamp).byteLength + raw.byteLength);

@@ -83,12 +83,8 @@ class MemoryKV {
 function env(overrides: Partial<Env> = {}): Env {
 	return {
 		LINKS: new MemoryKV() as KVNamespace,
-		LINK_SHORTENER_API_KEY: {
-			get: async () => "test-secret"
-		},
-		DISCORD_PUBLIC_KEY: {
-			get: async () => "0".repeat(64)
-		},
+		LINK_SHORTENER_API_KEY: "test-secret",
+		DISCORD_PUBLIC_KEY: "0".repeat(64),
 		ASSETS: {
 			fetch: async () => new Response("Not found", { status: 404 })
 		} as Fetcher,
@@ -524,7 +520,7 @@ describe("link shortener", () => {
 	test("verifies Discord interactions and queues multiple message links", async () => {
 		const keys = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
 		const publicKey = hex(await crypto.subtle.exportKey("raw", keys.publicKey));
-		const envValue = env({ DISCORD_APPLICATION_ID: "discord-app", DISCORD_PUBLIC_KEY: { get: async () => publicKey } as SecretsStoreSecret });
+		const envValue = env({ DISCORD_APPLICATION_ID: "discord-app", DISCORD_PUBLIC_KEY: publicKey });
 		const user = { id: "234567890123456789", username: "DiscordCat" };
 		const discordUrl = "https://custom-short.example/discord/interactions";
 		const invalid = await app.fetch(new Request("https://go.aitsys.dev/discord/interactions", { method: "POST", body: "{}" }), envValue);
@@ -555,7 +551,7 @@ describe("link shortener", () => {
 		const keys = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
 		const publicKey = hex(await crypto.subtle.exportKey("raw", keys.publicKey));
 		const user = { id: "123456789012345678", username: "Admin Cat" };
-		const envValue = env({ DISCORD_APPLICATION_ID: "discord-app", DISCORD_ADMIN_USER_ID: user.id, DISCORD_PUBLIC_KEY: { get: async () => publicKey } as SecretsStoreSecret });
+		const envValue = env({ DISCORD_APPLICATION_ID: "discord-app", DISCORD_ADMIN_USER_ID: user.id, DISCORD_PUBLIC_KEY: publicKey });
 		await create(envValue, { destinationUrl: "https://example.com", creator: "Legacy Cat", slug: "legacy-link" });
 		await createStoredLink(envValue, { slug: "legacy-discord-admin", destinationUrl: "https://example.org", creator: "Old Admin Cat", owner: { kind: "discord", id: user.id } });
 		await create(envValue, { destinationUrl: "https://example.net", creator: "Legacy Cat", slug: "legacy-link-two" });
