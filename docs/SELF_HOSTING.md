@@ -119,6 +119,12 @@ npm run typecheck
 npm run deploy -- --dry-run
 ```
 
+The dry run validates the generated configuration and bundle only. On a Worker
+that was already configured in the Cloudflare dashboard, a real **local** deploy
+may still show a remote-configuration prompt for routes or observability. Do
+not approve that prompt automatically: use the configured Workers Build for
+production, or reconcile the local profile with the dashboard settings first.
+
 After deployment, visit your `/privacy` page and `/api/v1/metadata` endpoint.
 Create one harmless test link, verify the destination preview and redirect,
 then delete or disable it.

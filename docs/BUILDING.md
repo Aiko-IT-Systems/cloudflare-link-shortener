@@ -102,6 +102,15 @@ Deploy only after the bindings, custom domain, and secrets are correct:
 npm run deploy
 ```
 
+> **Local deployment caveat:** `npm run deploy -- --dry-run` validates the
+> generated configuration and bundle, but it does not perform Wrangler's remote
+> dashboard-configuration reconciliation. If this Worker was previously
+> configured in the Cloudflare dashboard, a real local deploy can warn that it
+> would replace remote routes or observability settings. Treat that prompt as a
+> stop: do not approve it blindly. Prefer the configured Workers Build for
+> production deployments, or first reconcile the local profile with the
+> dashboard configuration you intend to keep.
+
 Then verify `https://<shortener-origin>/privacy`, `https://<shortener-origin>/api/v1/metadata`, a safe test redirect, and deployment logs. Never test a master token in a browser URL or a browser-console screenshot.
 
 ## Browser extensions
