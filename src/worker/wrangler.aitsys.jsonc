@@ -1,6 +1,11 @@
 {
 	"name": "cloudflare-link-shortener",
 	"account_id": "ba6a46b16b99f5f74858beafc22187c7",
+	"route": {
+		"pattern": "go.aitsys.dev",
+		"custom_domain": true,
+		"zone_id": "e9e86e9cc4298b9666b01b5cd3795099"
+	},
 	"vars": {
 		"SITE_NAME": "AITSYS Go",
 		"BRAND_LOGO_URL": "/logo.png",
