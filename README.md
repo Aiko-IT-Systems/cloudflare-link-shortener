@@ -24,6 +24,7 @@ Play Store releases are manually as well. If you want to install a release, use 
 ## Documentation
 
 - [Privacy policy](PRIVACY.md)
+- [Fork and self-host with your own branding](SELF_HOSTING.md)
 - [Building, configuration, and releases](BUILDING.md)
 - [REST API reference](API.md)
 
