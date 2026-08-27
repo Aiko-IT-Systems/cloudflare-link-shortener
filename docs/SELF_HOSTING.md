@@ -60,7 +60,7 @@ and short-lived Discord batch state; it is not disposable cache.
 The repository’s tracked `src/worker/wrangler.user.jsonc` starts as `{}`. Leave
 it that way for this dashboard path. It exists only for a fork that deliberately
 wants to commit non-secret local Wrangler overrides such as its Worker name,
-route, KV ID, or `vars`.
+account or KV ID, or `vars`. Domains and routes remain dashboard-owned.
 
 ## 4. Add production settings in Cloudflare
 

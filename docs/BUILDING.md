@@ -21,7 +21,7 @@ For Android, install Android Studio or JDK 17+ with Android SDK Platform 36 and 
 
 ## Cloudflare Worker production setup
 
-The effective Worker configuration is generated from `wrangler.template.jsonc`
+The effective Worker configuration is generated from `wrangler.jsonc`
 plus exactly one profile: a non-empty `wrangler.user.jsonc`, the canonical
 `wrangler.aitsys.jsonc`, or no override for a fork. The generated file and
 Wrangler redirect are ignored. Never add secret values to any of these files.
@@ -33,7 +33,7 @@ In **Workers & Pages**:
 1. Create or select the Worker that serves the shortener custom domain.
 2. Deploy once. Wrangler automatically provisions and binds `LINKS` if no KV ID is supplied; it holds links, accounts, token hashes, ownership indexes, and short-lived Discord batch state.
 3. Create two ordinary encrypted Worker secrets named `LINK_SHORTENER_API_KEY` and `DISCORD_PUBLIC_KEY`. The Discord registration bot token is deliberately never a Worker secret.
-4. Add the production custom-domain route. `go.aitsys.dev` is the canonical profile’s domain; another installation uses its own domain and zone.
+4. Add the production custom-domain route in the dashboard. `go.aitsys.dev` is the canonical deployment’s domain; another installation uses its own domain and zone.
 
 ### Runtime variables and bindings
 
@@ -59,7 +59,7 @@ Keep these choices unless the product design deliberately changes:
 - `workers_dev: false`: serve only through the custom domain, not a public `workers.dev` URL.
 - `preview_urls: false`: disable version preview URLs.
 - In **Settings → Builds → Branch control**, leave **non-production branch builds** disabled. Do not configure a preview deploy command or preview environment. The dashboard can show a “Previews Base” tab even when it is unused.
-- Keep `nodejs_compat`, Smart Placement, assets from `src/worker/public`, and minification as defined in `wrangler.template.jsonc`.
+- Keep `nodejs_compat`, Smart Placement, assets from `src/worker/public`, and minification as defined in `wrangler.jsonc`.
 - Invocation logs are enabled at 100% sampling. They are operational logs, not click analytics. Do not add Web Analytics, Analytics Engine, or a click counter without revising product behavior and the privacy policy.
 - Keep Worker cache disabled. Link state must be read fresh so disables, passwords, and expiry apply immediately.
 

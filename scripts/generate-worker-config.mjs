@@ -7,7 +7,7 @@ const canonicalRepository = "aiko-it-systems/cloudflare-link-shortener";
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..");
 const workerDirectory = resolve(repositoryRoot, "src/worker");
-const templatePath = resolve(workerDirectory, "wrangler.template.jsonc");
+const templatePath = resolve(workerDirectory, "wrangler.jsonc");
 const userPath = resolve(workerDirectory, "wrangler.user.jsonc");
 const aitsysPath = resolve(workerDirectory, "wrangler.aitsys.jsonc");
 const generatedPath = resolve(workerDirectory, "wrangler.generated.jsonc");
@@ -122,7 +122,7 @@ function readConfig(path, label) {
 }
 
 export async function generateWorkerConfig({ rootDirectory = repositoryRoot, remoteUrl = originRemote(rootDirectory) } = {}) {
-	const template = readConfig(templatePath, "wrangler.template.jsonc");
+	const template = readConfig(templatePath, "wrangler.jsonc");
 	const userConfig = readConfig(userPath, "wrangler.user.jsonc");
 	const aitsysConfig = readConfig(aitsysPath, "wrangler.aitsys.jsonc");
 	const profile = selectProfile({ userConfig, aitsysConfig, remoteUrl });

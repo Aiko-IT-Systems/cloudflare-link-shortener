@@ -3,7 +3,9 @@
 	"name": "cloudflare-link-shortener",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-08-04",
-	"compatibility_flags": ["nodejs_compat"],
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
 	"placement": {
 		"mode": "smart"
 	},
@@ -29,7 +31,10 @@
 	"keep_vars": true,
 	"minify": true,
 	"secrets": {
-		"required": ["LINK_SHORTENER_API_KEY", "DISCORD_PUBLIC_KEY"]
+		"required": [
+			"LINK_SHORTENER_API_KEY",
+			"DISCORD_PUBLIC_KEY"
+		]
 	},
 	"kv_namespaces": [
 		{
