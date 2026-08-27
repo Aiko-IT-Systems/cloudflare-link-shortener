@@ -28,7 +28,7 @@ function issuedTokenId(token: string): string | undefined {
 }
 
 export async function authenticate(env: Env, token: string): Promise<AuthPrincipal | undefined> {
-	const configuredToken = await env.LINK_SHORTENER_API_KEY.get();
+	const configuredToken = env.LINK_SHORTENER_API_KEY;
 	if (timingSafeEqual(token, configuredToken)) return { kind: "admin" };
 
 	const tokenId = issuedTokenId(token);

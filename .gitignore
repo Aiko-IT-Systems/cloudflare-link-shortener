@@ -1,6 +1,7 @@
 **/node_modules/**
 .wrangler/
 .wrangler-dev*.log
+src/worker/wrangler.generated.jsonc
 dist/
 .dev.vars
 .env
@@ -23,3 +24,4 @@ src/android/.idea/
 *.salive
 
 docs/internal/
+!.wrangler/deploy/config.json

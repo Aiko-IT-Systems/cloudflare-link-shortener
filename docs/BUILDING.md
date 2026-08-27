@@ -21,27 +21,23 @@ For Android, install Android Studio or JDK 17+ with Android SDK Platform 36 and 
 
 ## Cloudflare Worker production setup
 
-[`src/worker/wrangler.jsonc`](src/worker/wrangler.jsonc) is authoritative. Do not copy account IDs, KV IDs, Secrets Store IDs, Discord IDs, or secret values from another deployment. Create or select equivalent resources in the intended Cloudflare account and update only non-secret identifiers.
+The effective Worker configuration is generated from `wrangler.template.jsonc`
+plus exactly one profile: a non-empty `wrangler.user.jsonc`, the canonical
+`wrangler.aitsys.jsonc`, or no override for a fork. The generated file and
+Wrangler redirect are ignored. Never add secret values to any of these files.
 
 ### Backing resources
 
 In **Workers & Pages**:
 
 1. Create or select the Worker that serves the shortener custom domain.
-2. Create a KV namespace and bind it as `LINKS`. It holds links, accounts, token hashes, ownership indexes, and short-lived Discord batch state; it is not disposable cache.
-3. Create or select a Cloudflare Secrets Store. Create these records in it, then bind them to the Worker:
-
-   | Worker binding | Secret record name | Purpose |
-   | --- | --- | --- |
-   | `LINK_SHORTENER_API_KEY` | `LINK_SHORTENER_API_KEY` | Master administrator credential |
-   | `DISCORD_PUBLIC_KEY` | `LINK_SHORTENER_DISCORD_PUBLIC_KEY` | Discord interaction signature verification key |
-
-   The Discord registration bot token is deliberately **not** a Worker secret. It exists only on an administrator machine while registering commands.
-4. Add the production custom-domain route. `go.aitsys.dev` is this deployment’s example; another installation needs its own domain and zone.
+2. Deploy once. Wrangler automatically provisions and binds `LINKS` if no KV ID is supplied; it holds links, accounts, token hashes, ownership indexes, and short-lived Discord batch state.
+3. Create two ordinary encrypted Worker secrets named `LINK_SHORTENER_API_KEY` and `DISCORD_PUBLIC_KEY`. The Discord registration bot token is deliberately never a Worker secret.
+4. Add the production custom-domain route. `go.aitsys.dev` is the canonical profile’s domain; another installation uses its own domain and zone.
 
 ### Runtime variables and bindings
 
-Open **Workers & Pages → _Worker_ → Settings → Variables and Secrets** and use **Production**. These are runtime settings, not Workers Build variables. The checked-in `vars` block provides the production defaults; dashboard values must agree after deployment.
+Open **Workers & Pages → _Worker_ → Settings → Variables and Secrets** and use **Production**. These are runtime settings, not Workers Build variables. Forks own these values in the dashboard; the generic template never replaces them.
 
 | Variable | Value/type | Purpose |
 | --- | --- | --- |
@@ -54,7 +50,7 @@ Open **Workers & Pages → _Worker_ → Settings → Variables and Secrets** and
 | `DISCORD_APPLICATION_ID` | text Discord application ID | Rejects interactions for another application |
 | `DISCORD_ADMIN_USER_ID` | optional text Discord user ID | Enables the administrator profile and global Discord management |
 
-Bind `LINKS` plus both Secrets Store records under their exact binding names. The Worker requires all three bindings before production traffic is accepted. Do not create them as Build secrets: they are runtime bindings used by the Worker.
+The Worker requires `LINKS` plus both encrypted secrets before all functionality is available. Do not create them as Build secrets: they are runtime bindings used by the Worker.
 
 ### Runtime and privacy-preserving settings
 
@@ -63,7 +59,7 @@ Keep these choices unless the product design deliberately changes:
 - `workers_dev: false`: serve only through the custom domain, not a public `workers.dev` URL.
 - `preview_urls: false`: disable version preview URLs.
 - In **Settings → Builds → Branch control**, leave **non-production branch builds** disabled. Do not configure a preview deploy command or preview environment. The dashboard can show a “Previews Base” tab even when it is unused.
-- Keep `nodejs_compat`, Smart Placement, assets from `src/worker/public`, and minification as defined in `wrangler.jsonc`.
+- Keep `nodejs_compat`, Smart Placement, assets from `src/worker/public`, and minification as defined in `wrangler.template.jsonc`.
 - Invocation logs are enabled at 100% sampling. They are operational logs, not click analytics. Do not add Web Analytics, Analytics Engine, or a click counter without revising product behavior and the privacy policy.
 - Keep Worker cache disabled. Link state must be read fresh so disables, passwords, and expiry apply immediately.
 
@@ -97,7 +93,7 @@ Before an intentional production deployment:
 npm run cf-typegen
 npm test
 npm run typecheck
-npx wrangler deploy --dry-run --cwd src/worker
+npm run deploy -- --dry-run
 ```
 
 Deploy only after the bindings, custom domain, and secrets are correct:
