@@ -17,6 +17,7 @@ on:
           - chrome
           - firefox
           - android
+          - edge
 
 permissions:
   attestations: read
@@ -123,10 +124,10 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  chrome:
+  chrome: # Only publish to Chrome Web Store if explicitly requested, we are blocked while a version is pending review (github.event_name == 'release' || )
     name: Chrome Web Store
     needs: verify-release
-    if: github.event_name == 'release' || inputs.store == 'chrome'
+    if: inputs.store == 'chrome'
     runs-on: ubuntu-latest
     environment: chrome-web-store
     steps:
@@ -166,28 +167,25 @@ jobs:
           license: "Apache-2.0"
           compatibility: "firefox,android"
           approval-notes: ${{ secrets.APPROVAL_NOTES_INTERNAL }}
-  # edge:
-  #   name: Microsoft Edge Add-ons
-  #   runs-on: ubuntu-latest
-  #   environment: edge-addons
-  #   steps:
-  #     - name: Download Edge release artifact
-  #       env:
-  #         GH_TOKEN: ${{ secrets.NYUW_TOKEN }}
-  #         TAG: ${{ github.event.release.tag_name }}
-  #       run: |
-  #         mkdir release-assets
-  #         gh release download "$TAG" \
-  #           --repo "$GITHUB_REPOSITORY" \
-  #           --pattern "aitsys-go-$TAG-edge.zip" \
-  #           --dir release-assets
-  #     - uses: wdzeng/edge-addon@9881f57720358040d079eaa06a4596dc9c273eb6 # v2.1.1
-  #       with:
-  #         product-id: ${{ vars.EDGE_PRODUCT_ID }}
-  #         zip-path: release-assets/aitsys-go-${{ github.event.release.tag_name }}-edge.zip
-  #         api-key: ${{ secrets.EDGE_API_KEY }}
-  #         client-id: ${{ vars.EDGE_CLIENT_ID }}
-  #         notes-for-certification: ${{ secrets.APPROVAL_NOTES_INTERNAL }}
+  edge: # Only publish to Microsoft Edge Add-ons if explicitly requested, we are blocked while a version is pending review (github.event_name == 'release' || )
+    name: Microsoft Edge Add-ons
+    needs: verify-release
+    if: inputs.store == 'edge'
+    runs-on: ubuntu-latest
+    environment: edge-addons
+    steps:
+      - name: Download verified release assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: verified-release-assets-${{ needs.verify-release.outputs.tag }}
+          path: release-assets
+      - uses: wdzeng/edge-addon@9881f57720358040d079eaa06a4596dc9c273eb6 # v2.1.1
+        with:
+          product-id: ${{ vars.EDGE_PRODUCT_ID }}
+          zip-path: release-assets/aitsys-go-${{ needs.verify-release.outputs.tag }}-edge.zip
+          api-key: ${{ secrets.EDGE_API_KEY }}
+          client-id: ${{ vars.EDGE_CLIENT_ID }}
+          notes-for-certification: ${{ secrets.APPROVAL_NOTES_INTERNAL }}
   android:
     name: Google Play Store
     needs: verify-release
