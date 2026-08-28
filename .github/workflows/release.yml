@@ -215,11 +215,49 @@ jobs:
           (cd dist/chrome && zip -qr "../../release-assets/$prefix-chrome.zip" .)
           (cd dist/edge && zip -qr "../../release-assets/$prefix-edge.zip" .)
           (cd dist/firefox && zip -qr "../../release-assets/$prefix-firefox.zip" .)
-          (cd src/extensions && zip -qr "../../release-assets/$prefix-extension-source.zip" . -x "*/node_modules/*" -x "*/dist/*")
+          source_dir="release-assets/$prefix-extension-source"
+          mkdir -p "$source_dir/src"
+          cp package.json package-lock.json "$source_dir/"
+          cp -R src/extensions "$source_dir/src/"
+          cat > "$source_dir/SOURCE_BUILD_INSTRUCTIONS.txt" <<'EOF'
+          AITSYS Go Firefox extension source
+          =================================
+
+          Requirements
+          ------------
+
+          - Node.js 24
+          - npm 12
+
+          Build commands
+          --------------
+
+          From the directory containing this file, run:
+
+              npm ci
+              npm run extensions:build:firefox
+
+          The unpacked Firefox extension is generated at `dist/firefox`.
+
+          Vite transpiles the TypeScript source, bundles modules, processes HTML
+          and CSS, minifies generated JavaScript, and copies the Firefox manifest
+          and icons. No environment variables, credentials, network-hosted source
+          code, or runtime code generation are required.
+          EOF
+          (cd "$source_dir" && zip -qr "../$prefix-extension-source.zip" . -x "*/node_modules/*" -x "*/dist/*")
+          rm -rf "$source_dir"
           (cd src/cli && zip -qr "../../release-assets/$prefix-cli.zip" .)
-          unzip -Z1 "release-assets/$prefix-extension-source.zip" | grep -qx "vite.config.ts"
+          for source_file in package.json package-lock.json SOURCE_BUILD_INSTRUCTIONS.txt src/extensions/vite.config.ts src/extensions/static/firefox/manifest.json; do
+            unzip -Z1 "release-assets/$prefix-extension-source.zip" | grep -qx "$source_file"
+          done
+          unzip -p "release-assets/$prefix-extension-source.zip" package.json | node -e 'let input = ""; process.stdin.on("data", chunk => input += chunk).on("end", () => { if (JSON.parse(input).version !== process.argv[1]) process.exit(1); })' "$VERSION"
+          unzip -p "release-assets/$prefix-extension-source.zip" src/extensions/static/firefox/manifest.json | node -e 'let input = ""; process.stdin.on("data", chunk => input += chunk).on("end", () => { if (JSON.parse(input).version !== process.argv[1]) process.exit(1); })' "$VERSION"
           if unzip -Z1 "release-assets/$prefix-extension-source.zip" | grep -qE '(^|/)dist/'; then
             echo "::error::Extension source archive includes generated dist output."
+            exit 1
+          fi
+          if unzip -Z1 "release-assets/$prefix-extension-source.zip" | grep -qE '(^|/)node_modules/'; then
+            echo "::error::Extension source archive includes dependencies."
             exit 1
           fi
           for asset in "$prefix.apk" "$prefix.aab" "$prefix-chrome.zip" "$prefix-edge.zip" "$prefix-firefox.zip" "$prefix-extension-source.zip" "$prefix-cli.zip"; do
