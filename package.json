@@ -18,7 +18,8 @@
 		"deploy": "node scripts/deploy-worker.mjs",
 		"worker:config": "node scripts/generate-worker-config.mjs",
 		"dev": "node scripts/run-worker.mjs dev",
-		"test": "vitest run",
+		"test": "vitest run && npm run test:worker-runtime",
+		"test:worker-runtime": "vitest run --config vitest.workers.config.mts",
 		"test:watch": "vitest",
 		"typecheck": "tsc --noEmit",
 		"cf-typegen": "node scripts/run-worker.mjs types --strict-vars false",
@@ -37,6 +38,7 @@
 		"zod": "^4.0.0"
 	},
 	"devDependencies": {
+		"@cloudflare/vitest-plugin": "1.1.2",
 		"@types/node": "24.13.3",
 		"typescript": "7.0.2",
 		"vite": "8.2.2",

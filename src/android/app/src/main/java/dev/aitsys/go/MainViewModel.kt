@@ -13,6 +13,7 @@ import dev.aitsys.go.data.Branding
 import dev.aitsys.go.data.ConnectionTest
 import dev.aitsys.go.data.LinkDraft
 import dev.aitsys.go.data.LinkRecord
+import dev.aitsys.go.data.PasswordUpdate
 import dev.aitsys.go.data.SettingsRepository
 import dev.aitsys.go.data.ShareMode
 import dev.aitsys.go.data.UrlExtractor
@@ -41,6 +42,7 @@ data class UiState(
     val error: String? = null,
     val createdUrl: String? = null,
     val clipboardUrl: String? = null,
+    val pendingSharedDraft: LinkDraft? = null,
     val editing: LinkRecord? = null,
     val confirmDisable: LinkRecord? = null,
     val connectionTest: ConnectionTest? = null,
@@ -126,6 +128,7 @@ class MainViewModel(
                 draft = LinkDraft(),
                 links = emptyList(),
                 createdUrl = null,
+                pendingSharedDraft = null,
                 editing = null,
                 confirmDisable = null,
                 error = null,
@@ -156,8 +159,24 @@ class MainViewModel(
             return
         }
         val draft = LinkDraft(destinationUrl = url)
-        state = state.copy(screen = Screen.CREATE, draft = draft, error = null, createdUrl = null)
-        if (state.settings.shareMode == ShareMode.AUTOMATIC) create(draft)
+        state =
+            state.copy(
+                screen = Screen.CREATE,
+                draft = draft,
+                pendingSharedDraft = pendingSharedDraft(state.settings.shareMode, draft),
+                error = null,
+                createdUrl = null,
+            )
+    }
+
+    fun confirmSharedCreate() {
+        val draft = state.pendingSharedDraft ?: return
+        state = state.copy(pendingSharedDraft = null)
+        create(draft)
+    }
+
+    fun dismissSharedCreate() {
+        state = state.copy(pendingSharedDraft = null)
     }
 
     fun saveSettings(
@@ -358,6 +377,9 @@ class MainViewModel(
             }
         }
         if (draft.embedImageUrl.isNotBlank()) require(UrlExtractor.isHttpsUrl(draft.embedImageUrl)) { "Embed image must use HTTPS." }
+        if (draft.passwordUpdate == PasswordUpdate.REPLACE) {
+            require(draft.password.isNotBlank()) { "A replacement password cannot be blank." }
+        }
     }
 
     private fun runAction(block: suspend () -> Unit) =
@@ -380,6 +402,11 @@ class MainViewModel(
             }
         }
 }
+
+internal fun pendingSharedDraft(
+    shareMode: ShareMode,
+    draft: LinkDraft,
+): LinkDraft? = draft.takeIf { shareMode == ShareMode.AUTOMATIC }
 
 private fun brandingJson(value: Branding) =
     JSONObject().apply {

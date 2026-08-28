@@ -364,9 +364,13 @@ function page(
 		{
 			status,
 			headers: {
+				"Cache-Control": "no-store",
 				"Content-Type": "text/html; charset=utf-8",
+				"Content-Security-Policy": "default-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; img-src https: data:; object-src 'none'; script-src 'none'; style-src 'unsafe-inline'",
+				"Permissions-Policy": "camera=(), geolocation=(), microphone=()",
 				"Referrer-Policy": "no-referrer",
 				"X-Content-Type-Options": "nosniff",
+				"X-Frame-Options": "DENY",
 			},
 		},
 	);
@@ -401,7 +405,11 @@ export function privacyPolicy(config: SiteConfig): Response {
 		<dl>
 			<div class="meta">
 				<dt>Service and hosting</dt>
-				<dd>The service runs on Cloudflare Workers and uses Cloudflare KV to store the application data needed to operate it. Cloudflare may process normal technical request data while providing that infrastructure under its own privacy policy. AITSYS Go stores link destinations, slugs, optional settings, public creator names, ownership, and preview metadata. A short link and its preview details may be publicly visible. Issued API tokens are stored only as hashes.</dd>
+				<dd>The service runs on Cloudflare Workers and uses Cloudflare KV plus SQLite-backed Durable Objects to store and coordinate the application data needed to operate it. Cloudflare may process normal technical request data while providing that infrastructure under its own privacy policy. AITSYS Go stores link destinations, slugs, optional settings, public creator names, ownership, and preview metadata. A short link and its preview details may be publicly visible. Issued API tokens are stored only as hashes.</dd>
+			</div>
+			<div class="meta">
+				<dt>Link passwords and abuse prevention</dt>
+				<dd>Password-protected links store a randomly salted, keyed cryptographic verifier, not the password itself. Older plaintext records are upgraded after a successful unlock. Management APIs reveal only whether protection exists and never return password material. To limit guessing without globally locking a link, the Worker derives a keyed one-way identifier from the requesting network address and keeps failure state separately for that requester and link. The raw address is not stored in this state, which is automatically deleted after its 15-minute window or a cooldown of at most one hour.</dd>
 			</div>
 			<div class="meta">
 				<dt>Browser extension and Android app</dt>
@@ -499,8 +507,9 @@ export function passwordPrompt(
 	config: SiteConfig,
 	record: LinkRecord,
 	invalid = false,
+	retryAfterSeconds?: number,
 ): Response {
-	return page(
+	const response = page(
 		config,
 		"Password required",
 		`
@@ -512,9 +521,12 @@ export function passwordPrompt(
 			<button type="submit">Unlock link</button>
 		</form>
 	`,
-		invalid ? 401 : 200,
+		retryAfterSeconds ? 429 : invalid ? 401 : 200,
 		{ suppressSocialPreview: true },
 	);
+	if (retryAfterSeconds)
+		response.headers.set("Retry-After", String(retryAfterSeconds));
+	return response;
 }
 
 export function notFound(config: SiteConfig): Response {

@@ -17,7 +17,7 @@ Install the Node.js version recorded in `package.json`, then install locked depe
 npm ci
 ```
 
-For Android, install Android Studio or JDK 17+ with Android SDK Platform 36 and Build Tools 36.0.0. PowerShell 7+ and Bash are needed to validate both tool variants.
+For Android, install Android Studio or JDK 17+ with Android SDK Platform 37 and current Build Tools. PowerShell 7+ and Bash are needed to validate both tool variants.
 
 ## Cloudflare Worker production setup
 
@@ -31,8 +31,8 @@ Wrangler redirect are ignored. Never add secret values to any of these files.
 In **Workers & Pages**:
 
 1. Create or select the Worker that serves the shortener custom domain.
-2. Deploy once. Wrangler automatically provisions and binds `LINKS` if no KV ID is supplied; it holds links, accounts, token hashes, ownership indexes, and short-lived Discord batch state.
-3. Create two ordinary encrypted Worker secrets named `LINK_SHORTENER_API_KEY` and `DISCORD_PUBLIC_KEY`. The Discord registration bot token is deliberately never a Worker secret.
+2. Deploy once. Wrangler automatically provisions and binds `LINKS` if no KV ID is supplied. It also provisions the SQLite-backed `LinkCoordinator` Durable Object declared by `exports`; no Durable Object ID is entered manually.
+3. Create three ordinary encrypted Worker secrets named `LINK_SHORTENER_API_KEY`, `DISCORD_PUBLIC_KEY`, and `LINK_PASSWORD_PEPPER`. The Discord registration bot token is deliberately never a Worker secret.
 4. Add the production custom-domain route in the dashboard. `go.aitsys.dev` is the canonical deployment’s domain; another installation uses its own domain and zone.
 
 ### Runtime variables and bindings
@@ -50,7 +50,21 @@ Open **Workers & Pages → _Worker_ → Settings → Variables and Secrets** and
 | `DISCORD_APPLICATION_ID` | text Discord application ID | Rejects interactions for another application |
 | `DISCORD_ADMIN_USER_ID` | optional text Discord user ID | Enables the administrator profile and global Discord management |
 
-The Worker requires `LINKS` plus both encrypted secrets before all functionality is available. Do not create them as Build secrets: they are runtime bindings used by the Worker.
+The Worker requires `LINKS`, `LINK_COORDINATOR`, and all three encrypted secrets before all functionality is available. Do not create secrets as Build secrets: they are runtime bindings used by the Worker.
+
+`LINK_PASSWORD_PEPPER` must contain at least 32 UTF-8 bytes and must be independent from the administrator API key. Generate it locally, store it in the Production dashboard as an encrypted secret, and retain an encrypted backup:
+
+```powershell
+[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+```
+
+```bash
+openssl rand -base64 32
+```
+
+Do not rotate or delete this secret casually: changing it invalidates the keyed verifier for every currently password-protected link. Passwords themselves and verifier values must never be placed in configuration files.
+
+The Durable Object is sharded per slug or identity rather than globally. It coordinates link/account/Discord uniqueness, and password-form POSTs use a separate per-link, per-client object for temporary failure state. Normal unprotected redirects do not invoke it. Current Free-plan included usage and pricing are documented by [Cloudflare](https://developers.cloudflare.com/durable-objects/platform/pricing/).
 
 ### Runtime and privacy-preserving settings
 
@@ -86,6 +100,8 @@ Run the Worker locally:
 ```bash
 npm run dev
 ```
+
+For local development only, place the three required secret names in ignored `src/worker/.dev.vars` or provide them through the environment. Use disposable development values, keep the pepper at least 32 bytes, and never copy Production secrets into the repository.
 
 Before an intentional production deployment:
 

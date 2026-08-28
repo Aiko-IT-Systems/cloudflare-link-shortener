@@ -1,0 +1,22 @@
+{
+	"$schema": "../../../node_modules/wrangler/config-schema.json",
+	"name": "aitsys-go-worker-tests",
+	"main": "../src/index.ts",
+	"compatibility_date": "2026-08-04",
+	"compatibility_flags": ["nodejs_compat"],
+	"kv_namespaces": [{ "binding": "LINKS" }],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "LINK_COORDINATOR",
+				"class_name": "LinkCoordinator"
+			}
+		]
+	},
+	"exports": {
+		"LinkCoordinator": {
+			"type": "durable-object",
+			"storage": "sqlite"
+		}
+	}
+}

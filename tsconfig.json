@@ -23,5 +23,5 @@
 		]
 	},
 	"exclude": ["node_modules", "dist", "src/worker/test"],
-	"include": ["src/worker/src", "src/worker/worker-configuration.d.ts", "vitest.config.ts"]
+	"include": ["src/worker/src", "src/worker/worker-configuration.d.ts", "vitest.config.ts", "vitest.workers.config.mts"]
 }

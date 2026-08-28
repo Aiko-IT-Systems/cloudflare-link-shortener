@@ -60,4 +60,4 @@ short-admin -ListTokens
 
 Native Bash equivalents include `short-admin list-links`, `short-admin list-tokens`, `short-admin list-accounts`, and the account/token management commands shown by `short-admin --help`.
 
-All admin operations use the authenticated Worker API. Global link and token enumeration requires the master administrator key. Complete issued tokens are never stored or retrieved; token listings intentionally omit both the complete token and its SHA-256 digest.
+All admin operations use the authenticated Worker API. Global link and token enumeration requires the master administrator key. Complete issued tokens are never stored or retrieved; token listings intentionally omit both the complete token and its SHA-256 digest. Link listings can report that password protection is enabled, but the API and tools never return or print a link password or its verifier.

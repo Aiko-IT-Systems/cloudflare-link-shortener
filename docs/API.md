@@ -399,6 +399,12 @@ Authorization: Bearer <master-token>
 
 ## Link endpoints
 
+Every link representation includes `hasPassword`. It is `true` when the link is
+protected and `false` otherwise. No management response ever contains the
+password, its salt, or its keyed verifier. Clients must preserve password state
+by omitting `password` from an update; send a new non-empty string to replace it
+or `null` to remove it explicitly.
+
 ### `POST /api/v1/links`
 
 Creates a link. `destinationUrl` must be `https://`; omitting `slug` generates
@@ -418,6 +424,7 @@ Content-Type: application/json
   "destinationUrl": "https://www.example.com/docs",
   "slug": "example-docs",
   "title": "Example documentation",
+  "password": "fake-example-password",
   "expiresAt": "2027-01-31T12:00:00.000Z",
   "suppressSocialPreview": false,
   "embedTitle": "Example documentation",
@@ -447,6 +454,7 @@ Content-Type: application/json
 		"embedImageUrl": "https://www.example.com/preview.png",
 		"embedSiteName": "Example",
 		"metadataFetchedAt": "2026-08-26T20:10:00.000Z",
+		"hasPassword": true,
 		"expiresAt": "2027-01-31T12:00:00.000Z"
 	}
 }
@@ -486,7 +494,8 @@ Authorization: Bearer <issued-user-token>
 				"owner": {
 					"kind": "account",
 					"id": "friendly-cat"
-				}
+				},
+				"hasPassword": true
 			}
 		],
 		"cursor": "owner%3Aaccount%3Afriendly-cat%3Anext"
@@ -522,7 +531,8 @@ Authorization: Bearer <master-token>
 				"owner": {
 					"kind": "account",
 					"id": "friendly-cat"
-				}
+				},
+				"hasPassword": true
 			}
 		]
 	}
@@ -556,7 +566,8 @@ Authorization: Bearer <issued-user-token>
 			"kind": "account",
 			"id": "friendly-cat"
 		},
-		"title": "Example documentation"
+		"title": "Example documentation",
+		"hasPassword": true
 	}
 }
 ```
@@ -580,9 +591,10 @@ Authorization: Bearer <issued-user-token>
 Updates an accessible link. Include at least one field. Supported fields are
 `destinationUrl`, `title`, `password`, `expiresAt`,
 `suppressSocialPreview`, `embedTitle`, `embedDescription`, `embedImageUrl`, and
-`embedSiteName`. Use `null` to clear optional text, password, expiry, or manual
-metadata. A changed destination refreshes automatic metadata for fields not
-provided in the same request.
+`embedSiteName`. Omit `password` to leave current protection unchanged, send a
+non-empty string to replace it, or send `null` to remove it. Use `null` to clear
+other optional text, expiry, or manual metadata. A changed destination refreshes
+automatic metadata for fields not provided in the same request.
 
 **Request**
 
@@ -614,6 +626,7 @@ Content-Type: application/json
 			"kind": "account",
 			"id": "friendly-cat"
 		},
+		"hasPassword": false,
 		"suppressSocialPreview": true,
 		"metadataFetchedAt": "2026-08-26T21:15:00.000Z"
 	}
@@ -646,6 +659,7 @@ Authorization: Bearer <issued-user-token>
 			"kind": "account",
 			"id": "friendly-cat"
 		},
+		"hasPassword": false,
 		"embedTitle": "New example documentation",
 		"embedDescription": "Fetched from the fake destination.",
 		"metadataFetchedAt": "2026-08-26T21:20:00.000Z"
@@ -684,6 +698,7 @@ Content-Type: application/json
 			"kind": "account",
 			"id": "friendly-cat"
 		},
+		"hasPassword": false,
 		"disabledAt": "2026-08-26T21:25:00.000Z",
 		"disabledReason": "No longer maintained"
 	}

@@ -1,14 +1,18 @@
 # AITSYS Go Privacy Policy
 
-Last updated: 26 August 2026
+Last updated: 28 August 2026
 
 AITSYS Go creates and manages short links. AITSYS Go does not use advertising, analytics, click tracking, cookies, tracking pixels, or telemetry.
 
 ## The shortener service
 
-The service is hosted on Cloudflare Workers and uses Cloudflare KV to store the application data needed to operate the shortener. Cloudflare may process normal technical request data while providing that infrastructure under its own privacy policy.
+The service is hosted on Cloudflare Workers and uses Cloudflare KV plus SQLite-backed Durable Objects to store and coordinate the application data needed to operate the shortener. Cloudflare may process normal technical request data while providing that infrastructure under its own privacy policy.
 
-When a link is created or managed, AITSYS Go stores its destination URL, slug, creation time, public creator name, ownership information, optional fallback title, password, expiry, preview choices, disable status, and fetched or manually supplied preview metadata. A short link and its preview details may be publicly visible to anyone who opens that short link.
+When a link is created or managed, AITSYS Go stores its destination URL, slug, creation time, public creator name, ownership information, optional fallback title, expiry, preview choices, disable status, and fetched or manually supplied preview metadata. A short link and its preview details may be publicly visible to anyone who opens that short link.
+
+For a password-protected link, AITSYS Go stores a randomly salted, keyed cryptographic verifier rather than the password itself. The secret key used for that verifier is stored separately as an encrypted Worker secret. Existing plaintext passwords written by an older Worker are replaced with keyed verifiers after the first successful unlock. Link-management API responses disclose only whether a password exists; they never return the password or verifier.
+
+To prevent brute-force attempts without globally locking a link, the Worker derives a keyed one-way identifier from the requesting network address and keeps password-failure state separately for that requester and link. It does not store the raw address in this state. Failure state is automatically deleted after its 15-minute window or the applicable cooldown, which can increase to at most one hour. Durable Objects also retain opaque uniqueness claims for link slugs and account identifiers, and temporary reservations while a record is being created.
 
 Accounts store an account ID, public creator name, optional linked Discord user ID, and status. Issued user tokens are stored only as cryptographic hashes. The complete token is returned once when it is issued and cannot be retrieved later.
 

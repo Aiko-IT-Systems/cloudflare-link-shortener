@@ -16,9 +16,18 @@ const DEFAULT_CONFIG: SiteConfig = {
 	privacyEmail: "privacy@aitsys.dev",
 };
 
+const BRAND_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+
 function configuredValue(value: string | undefined, fallback: string): string {
 	const configured = value?.trim();
 	return configured || fallback;
+}
+
+function configuredBrandColor(value: string | undefined): string {
+	const configured = value?.trim();
+	return configured && BRAND_COLOR_PATTERN.test(configured)
+		? configured
+		: DEFAULT_CONFIG.brandColor;
 }
 
 export function getSiteConfig(env: Env): SiteConfig {
@@ -33,7 +42,7 @@ export function getSiteConfig(env: Env): SiteConfig {
 			DEFAULT_CONFIG.brandLogoAlt,
 		),
 		faviconUrl: configuredValue(env.FAVICON_URL, DEFAULT_CONFIG.faviconUrl),
-		brandColor: configuredValue(env.BRAND_COLOR, DEFAULT_CONFIG.brandColor),
+		brandColor: configuredBrandColor(env.BRAND_COLOR),
 		privacyEmail: configuredValue(
 			env.PRIVACY_EMAIL,
 			DEFAULT_CONFIG.privacyEmail,

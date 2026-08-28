@@ -115,7 +115,7 @@ function Show-Link {
 	Write-Host "Creator: $($Link.creator)"
 	Write-Host "Created: $($Link.createdAt)"
 	if ($Link.title) { Write-Host "Title: $($Link.title)" }
-	if ($Link.password) { Write-Host "Password: $($Link.password)" -ForegroundColor DarkYellow }
+	if ($Link.hasPassword) { Write-Host "Password protected: yes" -ForegroundColor DarkYellow }
 	if ($Link.expiresAt) { Write-Host "Expires: $($Link.expiresAt)" -ForegroundColor Yellow }
 	if ($Link.suppressSocialPreview) { Write-Host "Social preview: suppressed" }
 	if ($Link.disabledAt) { Write-Host "Disabled: $($Link.disabledAt)" -ForegroundColor Yellow }
@@ -270,7 +270,7 @@ function Get-ShortLinks {
 	foreach ($record in $items) {
 		$slug = $record.slug
 		$flags = @()
-		if ($record.password) { $flags += "pw=$($record.password)" }
+		if ($record.hasPassword) { $flags += "password protected" }
 		if ($record.expiresAt) { $flags += "expires=$($record.expiresAt)" }
 		if ($record.suppressSocialPreview) { $flags += "no-preview" }
 		if ($record.disabledAt) { $flags += "disabled" }

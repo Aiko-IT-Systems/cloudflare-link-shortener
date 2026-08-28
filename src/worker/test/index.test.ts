@@ -149,10 +149,84 @@ class MemoryKV {
 	}
 }
 
+class MemoryCoordinator {
+	private claimed = false;
+	private reservation?: string;
+	private failures = 0;
+	private windowStart?: number;
+	private lockedUntil?: number;
+
+	async reserve(key: string): Promise<boolean> {
+		if (this.claimed || this.reservation) return false;
+		this.reservation = key;
+		return true;
+	}
+
+	async commit(key: string): Promise<void> {
+		if (this.reservation !== key) return;
+		this.claimed = true;
+		this.reservation = undefined;
+	}
+
+	async release(key: string): Promise<void> {
+		if (!this.claimed && this.reservation === key) this.reservation = undefined;
+	}
+
+	async unclaim(key: string): Promise<void> {
+		if (this.reservation === key) this.reservation = undefined;
+		this.claimed = false;
+	}
+
+	async allowPasswordAttempt(now: number) {
+		return this.lockedUntil && this.lockedUntil > now
+			? {
+					allowed: false,
+					retryAfterSeconds: Math.ceil((this.lockedUntil - now) / 1000),
+			  }
+			: { allowed: true };
+	}
+
+	async recordPasswordFailure(now: number) {
+		if (!this.windowStart || now - this.windowStart > 15 * 60_000) {
+			this.windowStart = now;
+			this.failures = 0;
+		}
+		this.failures += 1;
+		if (this.failures < 5) return {};
+		const retryAfterSeconds = Math.min(
+			60 * 2 ** (this.failures - 5),
+			60 * 60,
+		);
+		this.lockedUntil = now + retryAfterSeconds * 1000;
+		return { retryAfterSeconds };
+	}
+
+	async clearPasswordFailures(): Promise<void> {
+		this.failures = 0;
+		this.windowStart = undefined;
+		this.lockedUntil = undefined;
+	}
+}
+
+class MemoryCoordinatorNamespace {
+	private readonly coordinators = new Map<string, MemoryCoordinator>();
+
+	getByName(name: string): MemoryCoordinator {
+		const existing = this.coordinators.get(name);
+		if (existing) return existing;
+		const created = new MemoryCoordinator();
+		this.coordinators.set(name, created);
+		return created;
+	}
+}
+
 function env(overrides: Partial<Env> = {}): Env {
 	return {
 		LINKS: new MemoryKV() as KVNamespace,
+		LINK_COORDINATOR:
+			new MemoryCoordinatorNamespace() as unknown as DurableObjectNamespace,
 		LINK_SHORTENER_API_KEY: "test-secret",
+		LINK_PASSWORD_PEPPER: "test-password-pepper-that-is-at-least-32-bytes",
 		DISCORD_PUBLIC_KEY: "0".repeat(64),
 		ASSETS: {
 			fetch: async () => new Response("Not found", { status: 404 }),
@@ -192,6 +266,25 @@ async function create(
 				body: JSON.stringify(payload),
 			}),
 		),
+		envValue,
+	);
+}
+
+async function submitPassword(
+	envValue: Env,
+	slug: string,
+	password: string,
+	clientAddress = "203.0.113.10",
+): Promise<Response> {
+	return app.fetch(
+		new Request(`https://go.aitsys.dev/${slug}`, {
+			method: "POST",
+			headers: {
+				"CF-Connecting-IP": clientAddress,
+				"Content-Type": "application/x-www-form-urlencoded",
+			},
+			body: `password=${encodeURIComponent(password)}`,
+		}),
 		envValue,
 	);
 }
@@ -434,34 +527,29 @@ describe("link shortener", () => {
 
 	test("requires a password before rendering the destination splash", async () => {
 		const envValue = env();
-		await create(envValue, {
+		const createResponse = await create(envValue, {
 			slug: "secret",
 			destinationUrl: "https://aitsys.dev",
 			creator: "Lulalaby",
 			password: "meow",
 		});
+		const created = (await createResponse.json()) as {
+			result: LinkRecord & { hasPassword?: boolean };
+		};
+		const stored = await envValue.LINKS.get<LinkRecord>("link:secret", "json");
+		expect(created.result.hasPassword).toBe(true);
+		expect(created.result.password).toBeUndefined();
+		expect(created.result.passwordVerifier).toBeUndefined();
+		expect(stored?.password).toBeUndefined();
+		expect(stored?.passwordVerifier?.algorithm).toBe("HMAC-SHA-256");
 
 		const promptResponse = await app.fetch(
 			new Request("https://go.aitsys.dev/secret"),
 			envValue,
 		);
 		const promptHtml = await promptResponse.text();
-		const badResponse = await app.fetch(
-			new Request("https://go.aitsys.dev/secret", {
-				method: "POST",
-				headers: { "Content-Type": "application/x-www-form-urlencoded" },
-				body: "password=wrong",
-			}),
-			envValue,
-		);
-		const goodResponse = await app.fetch(
-			new Request("https://go.aitsys.dev/secret", {
-				method: "POST",
-				headers: { "Content-Type": "application/x-www-form-urlencoded" },
-				body: "password=meow",
-			}),
-			envValue,
-		);
+		const badResponse = await submitPassword(envValue, "secret", "wrong");
+		const goodResponse = await submitPassword(envValue, "secret", "meow");
 		const goodHtml = await goodResponse.text();
 
 		expect(promptResponse.status).toBe(200);
@@ -470,6 +558,125 @@ describe("link shortener", () => {
 		expect(badResponse.status).toBe(401);
 		expect(goodResponse.status).toBe(200);
 		expect(goodHtml).toContain("Continue to destination");
+	});
+
+	test("never returns password material and requires explicit password updates", async () => {
+		const envValue = env();
+		await create(envValue, {
+			slug: "managed-secret",
+			destinationUrl: "https://example.com",
+			creator: "Security Cat",
+			password: "first password",
+		});
+
+		for (const path of [
+			"/api/v1/links/managed-secret",
+			"/api/v1/admin/links",
+		]) {
+			const response = await app.fetch(
+				new Request(`https://go.aitsys.dev${path}`, authed()),
+				envValue,
+			);
+			const text = await response.text();
+			expect(response.status, path).toBe(200);
+			expect(text).toContain('"hasPassword":true');
+			expect(text).not.toContain('"password":');
+			expect(text).not.toContain("passwordVerifier");
+		}
+
+		const titleOnly = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links/managed-secret", {
+				...authed({ method: "PATCH" }),
+				body: JSON.stringify({ title: "Still protected" }),
+			}),
+			envValue,
+		);
+		expect(await titleOnly.json()).toMatchObject({
+			result: { hasPassword: true, title: "Still protected" },
+		});
+		expect(
+			(await submitPassword(envValue, "managed-secret", "first password"))
+				.status,
+		).toBe(200);
+
+		const replaced = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links/managed-secret", {
+				...authed({ method: "PATCH" }),
+				body: JSON.stringify({ password: "replacement" }),
+			}),
+			envValue,
+		);
+		expect(await replaced.json()).toMatchObject({
+			result: { hasPassword: true },
+		});
+		expect(
+			(await submitPassword(envValue, "managed-secret", "replacement")).status,
+		).toBe(200);
+
+		const cleared = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links/managed-secret", {
+				...authed({ method: "PATCH" }),
+				body: JSON.stringify({ password: null }),
+			}),
+			envValue,
+		);
+		expect(await cleared.json()).toMatchObject({
+			result: { hasPassword: false },
+		});
+		expect(
+			(
+				await app.fetch(
+					new Request("https://go.aitsys.dev/managed-secret"),
+					envValue,
+				)
+			).status,
+		).toBe(200);
+	});
+
+	test("upgrades a legacy plaintext password after a successful unlock", async () => {
+		const envValue = env();
+		await envValue.LINKS.put(
+			"link:legacy-password",
+			JSON.stringify({
+				slug: "legacy-password",
+				destinationUrl: "https://example.com",
+				creator: "Legacy Cat",
+				createdAt: "2026-08-01T00:00:00.000Z",
+				password: "old secret",
+			}),
+		);
+		expect(
+			(await submitPassword(envValue, "legacy-password", "old secret")).status,
+		).toBe(200);
+		const upgraded = await envValue.LINKS.get<LinkRecord>(
+			"link:legacy-password",
+			"json",
+		);
+		expect(upgraded?.password).toBeUndefined();
+		expect(upgraded?.passwordVerifier?.algorithm).toBe("HMAC-SHA-256");
+	});
+
+	test("isolates password throttling by a hashed client identity", async () => {
+		const envValue = env();
+		await create(envValue, {
+			slug: "throttled",
+			destinationUrl: "https://example.com",
+			creator: "Rate Limit Cat",
+			password: "correct",
+		});
+		for (let attempt = 0; attempt < 4; attempt += 1)
+			expect(
+				(await submitPassword(envValue, "throttled", "wrong", "203.0.113.1"))
+					.status,
+			).toBe(401);
+		expect(
+			(await submitPassword(envValue, "throttled", "wrong", "203.0.113.1"))
+				.status,
+		).toBe(429);
+		expect(
+			(await submitPassword(envValue, "throttled", "wrong", "203.0.113.2"))
+				.status,
+		).toBe(401);
 	});
 
 	test("renders expired links without the destination button", async () => {
@@ -544,6 +751,16 @@ describe("link shortener", () => {
 		expect(html).toContain("may be publicly visible");
 		expect(html).toContain("browser extension storage, which is not encrypted");
 		expect(html).toContain("Android Keystore");
+		expect(html).toContain("randomly salted, keyed cryptographic verifier");
+		expect(html).toContain("never return password material");
+		expect(html).toContain(
+			"keyed one-way identifier from the requesting network address",
+		);
+		expect(html).toContain("automatically deleted");
+		expect(response.headers.get("Content-Security-Policy")).toContain(
+		"frame-ancestors 'none'",
+	);
+		expect(response.headers.get("X-Frame-Options")).toBe("DENY");
 		expect(html).toContain("excludes it from Android backup");
 		expect(html).toContain("up to 15 minutes");
 		expect(html).toContain("Google Play");
@@ -783,6 +1000,37 @@ describe("link shortener", () => {
 			((await emptyAccountList.json()) as { result: { items: unknown[] } })
 				.result.items,
 		).toEqual([]);
+	});
+
+	test("reuses a Discord identity after its previous account is removed", async () => {
+		const envValue = env();
+		const discordUserId = "234567890123456789";
+		const createAccountRequest = (id: string) =>
+			new Request("https://go.aitsys.dev/api/v1/accounts", {
+				...authed({ method: "POST" }),
+				body: JSON.stringify({
+					id,
+					creatorName: `${id} Cat`,
+					discordUserId,
+				}),
+			});
+		expect((await app.fetch(createAccountRequest("first-cat"), envValue)).status).toBe(
+			201,
+		);
+		expect(
+			(
+				await app.fetch(
+					new Request(
+						"https://go.aitsys.dev/api/v1/accounts/first-cat",
+						authed({ method: "DELETE" }),
+					),
+					envValue,
+				)
+			).status,
+		).toBe(200);
+		expect((await app.fetch(createAccountRequest("second-cat"), envValue)).status).toBe(
+			201,
+		);
 	});
 
 	test("lists all links and sanitized token records for administrators", async () => {
@@ -1043,6 +1291,11 @@ describe("link shortener", () => {
 			expect(body.data.flags).toBe(64);
 			expect(body.data.content).toContain(expectedContent);
 			if (name === "privacy") {
+				expect(body.data.content).toContain("salted, keyed verifier");
+				expect(body.data.content).toContain(
+					"keyed one-way client-address identifier",
+				);
+				expect(body.data.content).toContain("automatically deleted");
 				expect(body.data.content).toContain(
 					"Google Play-distributed Android installs use Google Play's in-app update service",
 				);

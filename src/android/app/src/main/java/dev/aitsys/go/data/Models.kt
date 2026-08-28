@@ -4,6 +4,8 @@ import org.json.JSONObject
 
 enum class ShareMode { CONFIGURE, AUTOMATIC }
 
+enum class PasswordUpdate { UNCHANGED, REPLACE, CLEAR }
+
 data class AppSettings(
     val apiBase: String = "https://go.aitsys.dev",
     val shareMode: ShareMode = ShareMode.CONFIGURE,
@@ -80,6 +82,7 @@ data class LinkRecord(
     val embedDescription: String? = null,
     val embedImageUrl: String? = null,
     val embedSiteName: String? = null,
+    val hasPassword: Boolean = false,
     val password: String? = null,
     val expiresAt: String? = null,
     val suppressSocialPreview: Boolean = false,
@@ -96,6 +99,7 @@ data class LinkDraft(
     val slug: String = "",
     val title: String = "",
     val password: String = "",
+    val passwordUpdate: PasswordUpdate = PasswordUpdate.UNCHANGED,
     val expiresAt: String = "",
     val suppressSocialPreview: Boolean = false,
     val embedTitle: String = "",
@@ -108,7 +112,15 @@ data class LinkDraft(
             put("destinationUrl", destinationUrl.trim())
             if (!forUpdate && slug.isNotBlank()) put("slug", slug.trim())
             putOptional("title", title, forUpdate)
-            putOptional("password", password, forUpdate)
+            if (forUpdate) {
+                when (passwordUpdate) {
+                    PasswordUpdate.UNCHANGED -> Unit
+                    PasswordUpdate.REPLACE -> put("password", password.trim())
+                    PasswordUpdate.CLEAR -> put("password", JSONObject.NULL)
+                }
+            } else {
+                putOptional("password", password, false)
+            }
             putOptional("expiresAt", expiresAt, forUpdate)
             put("suppressSocialPreview", suppressSocialPreview)
             putOptional("embedTitle", embedTitle, forUpdate)
@@ -156,6 +168,7 @@ internal fun JSONObject.linkRecord(): LinkRecord =
         embedDescription = nullableString("embedDescription"),
         embedImageUrl = nullableString("embedImageUrl"),
         embedSiteName = nullableString("embedSiteName"),
+        hasPassword = optBoolean("hasPassword") || nullableString("password") != null,
         password = nullableString("password"),
         expiresAt = nullableString("expiresAt"),
         suppressSocialPreview = optBoolean("suppressSocialPreview"),

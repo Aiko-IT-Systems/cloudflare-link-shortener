@@ -56,6 +56,11 @@ configuration automatically provisions and binds its `LINKS` KV namespace on
 first deployment. It holds links, accounts, token hashes, ownership indexes,
 and short-lived Discord batch state; it is not disposable cache.
 
+The deployment automatically provisions a SQLite-backed `LinkCoordinator`
+Durable Object as well. It coordinates creation-time uniqueness and temporary,
+per-client password-failure state. Ordinary unprotected redirects do not call
+the Durable Object. No namespace ID needs to be copied into configuration.
+
 The repository’s tracked `src/worker/wrangler.user.jsonc` starts as `{}`. Leave
 it that way for this dashboard path. It exists only for a fork that deliberately
 wants to commit non-secret local Wrangler overrides such as its Worker name,
@@ -70,13 +75,30 @@ Create these Environment Variable with **secret** toggled:
 
 | Secret name              | Value                                                                                      |
 |--------------------------|--------------------------------------------------------------------------------------------|
-| `LINK_SHORTENER_API_KEY` | A new, long random master admin token                                                      |
-| `DISCORD_PUBLIC_KEY`     | Your Discord application's public key, or a non-empty placeholder until Discord is enabled |
+| `LINK_SHORTENER_API_KEY` | A new, long random master admin token                                                         |
+| `DISCORD_PUBLIC_KEY` | Your Discord application's public key, or a non-empty placeholder until Discord is enabled |
+| `LINK_PASSWORD_PEPPER` | A separate random value containing at least 32 UTF-8 bytes |
 
 Keep the master token in a password manager. Never put it in a Wrangler config,
 the Git repository, browser extensions, Android settings, GitHub Actions, or a
 Discord message. Browser and Android clients use revocable **issued user
 tokens**, not the master credential.
+
+Generate the password pepper locally with one of these commands, then save it
+as an encrypted Production secret and in an encrypted backup:
+
+```powershell
+[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+```
+
+```bash
+openssl rand -base64 32
+```
+
+Keep it separate from the master token. Rotating or losing it invalidates every
+existing link-password verifier, so do not treat it as a disposable deployment
+value. The Worker stores only a random salt and keyed verifier for new link
+passwords; it upgrades older plaintext records after a successful unlock.
 
 Set these optional text variables for your own public identity:
 

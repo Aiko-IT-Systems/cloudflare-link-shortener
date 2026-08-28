@@ -49,7 +49,7 @@ command -v jq >/dev/null || { echo "jq is required." >&2; exit 1; }
 
 case "$command" in
   list-links)
-    list_pages '/api/v1/admin/links?limit=100' '.result.items[] | "\(.slug): \(.destinationUrl)" + (if .disabledAt then " [disabled]" else "" end)' ;;
+    list_pages '/api/v1/admin/links?limit=100' '.result.items[] | "\(.slug): \(.destinationUrl)" + (if .hasPassword then " [password protected]" else "" end) + (if .disabledAt then " [disabled]" else "" end)' ;;
   list-tokens)
     list_pages '/api/v1/tokens?limit=100' '.result.items[] | "\(.id) -> account \(.accountId)" + (if .label then "; label \(.label)" else "" end) + " (created \(.createdAt); " + (if .revokedAt then "revoked \(.revokedAt)" else "active" end) + ")"' ;;
   list-accounts)

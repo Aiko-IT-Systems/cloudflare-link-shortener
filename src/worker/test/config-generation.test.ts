@@ -10,8 +10,20 @@ import {
 const template = {
 	workers_dev: false,
 	preview_urls: false,
-	secrets: { required: ["LINK_SHORTENER_API_KEY", "DISCORD_PUBLIC_KEY"] },
+	secrets: {
+		required: [
+			"LINK_SHORTENER_API_KEY",
+			"DISCORD_PUBLIC_KEY",
+			"LINK_PASSWORD_PEPPER",
+		],
+	},
 	kv_namespaces: [{ binding: "LINKS" }],
+	durable_objects: {
+		bindings: [{ name: "LINK_COORDINATOR", class_name: "LinkCoordinator" }],
+	},
+	exports: {
+		LinkCoordinator: { type: "durable-object", storage: "sqlite" },
+	},
 };
 
 const aitsys = {

@@ -4,7 +4,7 @@ on:
   pull_request:
   workflow_dispatch:
   push:
-    branches-ignore: 
+    branches-ignore:
       - main
 
 permissions:
@@ -43,6 +43,22 @@ jobs:
       - name: Validate extension manifests and output
         run: npm run extensions:check
 
+      - name: Validate distributable shell cli
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Path src/cli -Filter *.ps1
+          foreach ($file in $files) {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref] $null, [ref] $errors) | Out-Null
+            if ($errors) {
+              $errors | Format-List *
+              throw "PowerShell syntax check failed for $($file.FullName)"
+            }
+          }
+
+      - name: Validate Bash cli
+        run: bash -n src/cli/short src/cli/short-admin
+
       - name: Write validation summary
         if: always()
         run: |
@@ -53,4 +69,6 @@ jobs:
             echo "- TypeScript typecheck"
             echo "- Chrome, Edge, and Firefox extension builds"
             echo "- Extension manifest validation"
+            echo "- PowerShell cli syntax validation"
+            echo "- Bash cli syntax validation"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+export { LinkCoordinator } from "./coordination";
 import { requireAdmin, requireApiKey } from "./auth";
 import { buildInfo } from "./build-info";
 import { runConnectionTest } from "./connection-test";
@@ -15,6 +16,11 @@ import {
 	unavailable,
 } from "./html";
 import { fetchTargetMetadata } from "./metadata";
+import {
+	hasLinkPassword,
+	passwordThrottleIdentifier,
+	verifyLinkPassword,
+} from "./passwords";
 import { jsonError, jsonSuccess } from "./responses";
 import {
 	createAccount,
@@ -30,12 +36,19 @@ import {
 	listOwnedLinks,
 	listTokens,
 	ownsLink,
+	putLink,
 	refreshLinkMetadata,
 	removeAccount,
 	revokeToken,
 	updateLink,
 } from "./store";
-import { AccountRecord, AuthPrincipal, LinkOwner, LinkRecord } from "./types";
+import {
+	AccountRecord,
+	AuthPrincipal,
+	LinkOwner,
+	LinkPage,
+	LinkRecord,
+} from "./types";
 import {
 	createAccountSchema,
 	createLinkSchema,
@@ -74,6 +87,32 @@ function managedLink(
 	record: LinkRecord | null,
 ): LinkRecord | undefined {
 	return record && canManageLink(principal, record) ? record : undefined;
+}
+
+function publicLink(record: LinkRecord) {
+	const { password: _password, passwordVerifier: _verifier, ...safe } = record;
+	return { ...safe, hasPassword: hasLinkPassword(record) };
+}
+
+function publicLinkPage(page: LinkPage) {
+	return { ...page, items: page.items.map(publicLink) };
+}
+
+async function passwordAttemptCoordinator(
+	env: Env,
+	request: Request,
+	slug: string,
+) {
+	const clientAddress =
+		request.headers.get("CF-Connecting-IP")?.trim().slice(0, 128) ||
+		"unknown-client";
+	const clientHash = await passwordThrottleIdentifier(
+		clientAddress,
+		env.LINK_PASSWORD_PEPPER,
+	);
+	return env.LINK_COORDINATOR.getByName(
+		`password:${slug}:${clientHash}`,
+	);
 }
 
 function cleanUpdates(
@@ -270,10 +309,12 @@ app.get("/api/v1/admin/links", async (c) => {
 	if (denied) return denied;
 	const limit = Number.parseInt(c.req.query("limit") ?? "25", 10);
 	return jsonSuccess(
-		await listLinks(
-			c.env,
-			c.req.query("cursor"),
-			Number.isFinite(limit) ? limit : 25,
+		publicLinkPage(
+			await listLinks(
+				c.env,
+				c.req.query("cursor"),
+				Number.isFinite(limit) ? limit : 25,
+			),
 		),
 	);
 });
@@ -298,11 +339,13 @@ app.get("/api/v1/links", async (c) => {
 	}
 	const limit = Number.parseInt(c.req.query("limit") ?? "10", 10);
 	return jsonSuccess(
-		await listOwnedLinks(
-			c.env,
-			owner!,
-			c.req.query("cursor"),
-			Number.isFinite(limit) ? limit : 10,
+		publicLinkPage(
+			await listOwnedLinks(
+				c.env,
+				owner!,
+				c.req.query("cursor"),
+				Number.isFinite(limit) ? limit : 10,
+			),
 		),
 	);
 });
@@ -348,7 +391,7 @@ app.post("/api/v1/links", async (c) => {
 		return jsonError("That slug already exists.", "duplicate_slug", 409);
 	if (result === "reserved")
 		return jsonError("That slug is reserved.", "reserved_slug", 400);
-	return jsonSuccess(result, 201);
+	return jsonSuccess(publicLink(result), 201);
 });
 
 app.get("/api/v1/links/:slug", async (c) => {
@@ -357,7 +400,7 @@ app.get("/api/v1/links/:slug", async (c) => {
 		return jsonError("Invalid slug.", "invalid_slug", 400);
 	const record = managedLink(c.get("principal"), await getLink(c.env, slug));
 	return record
-		? jsonSuccess(record)
+		? jsonSuccess(publicLink(record))
 		: jsonError("Link not found.", "not_found", 404);
 });
 
@@ -381,7 +424,7 @@ app.patch("/api/v1/links/:slug", async (c) => {
 		for (const [key, value] of Object.entries(metadata))
 			if (!(key in updates)) updates[key] = value;
 	}
-	return jsonSuccess((await updateLink(c.env, slug, updates))!);
+	return jsonSuccess(publicLink((await updateLink(c.env, slug, updates))!));
 });
 
 app.post("/api/v1/links/:slug/disable", async (c) => {
@@ -395,7 +438,9 @@ app.post("/api/v1/links/:slug/disable", async (c) => {
 	);
 	if (!parsed.success)
 		return jsonError("Invalid disable payload.", "invalid_payload", 400);
-	return jsonSuccess((await disableLink(c.env, slug, parsed.data.reason))!);
+	return jsonSuccess(
+		publicLink((await disableLink(c.env, slug, parsed.data.reason))!),
+	);
 });
 
 app.post("/api/v1/links/:slug/refresh-metadata", async (c) => {
@@ -405,11 +450,13 @@ app.post("/api/v1/links/:slug/refresh-metadata", async (c) => {
 	const record = managedLink(c.get("principal"), await getLink(c.env, slug));
 	if (!record) return jsonError("Link not found.", "not_found", 404);
 	return jsonSuccess(
-		(await refreshLinkMetadata(
-			c.env,
-			slug,
-			await fetchTargetMetadata(record.destinationUrl),
-		))!,
+		publicLink(
+			(await refreshLinkMetadata(
+				c.env,
+				slug,
+				await fetchTargetMetadata(record.destinationUrl),
+			))!,
+		),
 	);
 });
 
@@ -422,7 +469,7 @@ app.get("/:slug", async (c) => {
 	if (!record) return notFound(siteConfig);
 	if (record.disabledAt) return unavailable(siteConfig, record);
 	if (isExpired(record)) return expired(siteConfig, record);
-	if (record.password) return passwordPrompt(siteConfig, record);
+	if (hasLinkPassword(record)) return passwordPrompt(siteConfig, record);
 	return splash(siteConfig, record, c.req.url);
 });
 
@@ -435,15 +482,44 @@ app.post("/:slug", async (c) => {
 	if (!record) return notFound(siteConfig);
 	if (record.disabledAt) return unavailable(siteConfig, record);
 	if (isExpired(record)) return expired(siteConfig, record);
-	if (!record.password) return splash(siteConfig, record, c.req.url);
+	if (!hasLinkPassword(record)) return splash(siteConfig, record, c.req.url);
+	const coordinator = await passwordAttemptCoordinator(
+		c.env,
+		c.req.raw,
+		slug,
+	);
+	const allowed = await coordinator.allowPasswordAttempt(Date.now());
+	if (!allowed.allowed)
+		return passwordPrompt(
+			siteConfig,
+			record,
+			true,
+			allowed.retryAfterSeconds,
+		);
 	const body = (await c.req.parseBody().catch(() => ({}))) as Record<
 		string,
 		string | File
 	>;
 	const password = typeof body.password === "string" ? body.password : "";
-	return password === record.password
-		? splash(siteConfig, record, c.req.url)
-		: passwordPrompt(siteConfig, record, true);
+	const verification = await verifyLinkPassword(
+		record,
+		password,
+		c.env.LINK_PASSWORD_PEPPER,
+	);
+	if (verification.valid) {
+		await coordinator.clearPasswordFailures();
+		if (verification.upgraded) {
+			const upgraded = {
+				...record,
+				password: undefined,
+				passwordVerifier: verification.upgraded,
+			};
+			await putLink(c.env, upgraded);
+		}
+		return splash(siteConfig, record, c.req.url);
+	}
+	const failure = await coordinator.recordPasswordFailure(Date.now());
+	return passwordPrompt(siteConfig, record, true, failure.retryAfterSeconds);
 });
 
 app.notFound((c) => notFound(getSiteConfig(c.env)));

@@ -12,6 +12,8 @@ import {
 	canonicalizeWritableLinkTimestamps,
 } from "./timestamps";
 import { isReservedSlug, normalizeSlug, SLUG_PATTERN } from "./validation";
+import { hashLinkPassword } from "./passwords";
+import type { LinkCoordinator } from "./coordination";
 
 const randomSlug = customAlphabet(
 	"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
@@ -46,6 +48,37 @@ function ownerKey(owner: LinkOwner, record: LinkRecord): string {
 }
 function discordIndexKey(record: LinkRecord): string {
 	return `discord-link:${record.createdAt}:${record.slug}`;
+}
+
+function coordinator(
+	env: Env,
+	name: string,
+): DurableObjectStub<LinkCoordinator> {
+	return env.LINK_COORDINATOR.getByName(name);
+}
+
+async function reserve(env: Env, name: string, key: string): Promise<boolean> {
+	return coordinator(env, name).reserve(key);
+}
+
+async function release(env: Env, name: string, key: string): Promise<void> {
+	await coordinator(env, name).release(key);
+}
+
+async function commitReservation(
+	env: Env,
+	name: string,
+	key: string,
+): Promise<void> {
+	await coordinator(env, name).commit(key);
+}
+
+async function unclaimReservation(
+	env: Env,
+	name: string,
+	key: string,
+): Promise<void> {
+	await coordinator(env, name).unclaim(key);
 }
 
 export function ownsLink(
@@ -86,18 +119,36 @@ export async function createLink(
 	if (requestedSlug) {
 		if (!SLUG_PATTERN.test(requestedSlug) || isReservedSlug(requestedSlug))
 			return "reserved";
-		if (await getLink(env, requestedSlug)) return "duplicate";
-		const record = toRecord({ ...input, slug: requestedSlug });
-		await putLink(env, record);
-		return record;
+		const coordinationName = `slug:${requestedSlug}`;
+		if (!(await reserve(env, coordinationName, keyFor(requestedSlug))))
+			return "duplicate";
+		try {
+			if (await getLink(env, requestedSlug)) return "duplicate";
+			const record = await toRecord(env, { ...input, slug: requestedSlug });
+			await putLink(env, record);
+			await commitReservation(env, coordinationName, keyFor(requestedSlug));
+			return record;
+		} finally {
+			if (!(await getLink(env, requestedSlug)))
+				await release(env, coordinationName, keyFor(requestedSlug));
+		}
 	}
 
 	for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt += 1) {
 		const slug = randomSlug();
-		if (isReservedSlug(slug) || (await getLink(env, slug))) continue;
-		const record = toRecord({ ...input, slug });
-		await putLink(env, record);
-		return record;
+		if (isReservedSlug(slug)) continue;
+		const coordinationName = `slug:${slug}`;
+		if (!(await reserve(env, coordinationName, keyFor(slug)))) continue;
+		try {
+			if (await getLink(env, slug)) continue;
+			const record = await toRecord(env, { ...input, slug });
+			await putLink(env, record);
+			await commitReservation(env, coordinationName, keyFor(slug));
+			return record;
+		} finally {
+			if (!(await getLink(env, slug)))
+				await release(env, coordinationName, keyFor(slug));
+		}
 	}
 	throw new Error("Could not generate a unique slug.");
 }
@@ -111,7 +162,18 @@ export async function updateLink(
 ): Promise<LinkRecord | null> {
 	const record = await getLink(env, slug);
 	if (!record) return null;
-	const updated = canonicalizeWritableLinkTimestamps({ ...record, ...updates });
+	const next = { ...record, ...updates } as LinkRecord & { password?: string };
+	if (Object.prototype.hasOwnProperty.call(updates, "password")) {
+		const password = next.password;
+		delete next.password;
+		delete next.passwordVerifier;
+		if (typeof password === "string" && password.trim())
+			next.passwordVerifier = await hashLinkPassword(
+				password.trim(),
+				env.LINK_PASSWORD_PEPPER,
+			);
+	}
+	const updated = canonicalizeWritableLinkTimestamps(next);
 	await putLink(env, updated);
 	return updated;
 }
@@ -357,21 +419,44 @@ export async function createAccount(
 	creatorName: string,
 	discordUserId?: string,
 ): Promise<AccountRecord | "duplicate" | "discord_in_use"> {
-	if (await getAccount(env, id)) return "duplicate";
-	if (discordUserId && (await env.LINKS.get(discordAccountKey(discordUserId))))
-		return "discord_in_use";
-	const account: AccountRecord = {
-		id,
-		creatorName,
-		createdAt: new Date().toISOString(),
-		...(discordUserId ? { discordUserId } : {}),
-	};
-	await env.LINKS.put(accountKey(id), JSON.stringify(account));
-	if (discordUserId) {
-		await env.LINKS.put(discordAccountKey(discordUserId), id);
-		await migrateDiscordLinksToAccount(env, discordUserId, id);
+	const accountStorageKey = accountKey(id);
+	const accountName = `account:${id}`;
+	if (!(await reserve(env, accountName, accountStorageKey))) return "duplicate";
+	let discordReserved = false;
+	const discordName = discordUserId ? `discord:${discordUserId}` : undefined;
+	const discordStorageKey = discordUserId
+		? discordAccountKey(discordUserId)
+		: undefined;
+	try {
+		if (await getAccount(env, id)) return "duplicate";
+		if (
+			discordUserId &&
+			discordName &&
+			discordStorageKey &&
+			!(discordReserved = await reserve(env, discordName, discordStorageKey))
+		)
+			return "discord_in_use";
+		const account: AccountRecord = {
+			id,
+			creatorName,
+			createdAt: new Date().toISOString(),
+			...(discordUserId ? { discordUserId } : {}),
+		};
+		await env.LINKS.put(accountStorageKey, JSON.stringify(account));
+		if (discordUserId && discordStorageKey) {
+			await env.LINKS.put(discordStorageKey, id);
+			await migrateDiscordLinksToAccount(env, discordUserId, id);
+		}
+		await commitReservation(env, accountName, accountStorageKey);
+		if (discordReserved && discordName && discordStorageKey)
+			await commitReservation(env, discordName, discordStorageKey);
+		return account;
+	} finally {
+		if (!(await getAccount(env, id)))
+			await release(env, accountName, accountStorageKey);
+		if (discordReserved && discordName && discordStorageKey && !(await env.LINKS.get(discordStorageKey)))
+			await release(env, discordName, discordStorageKey);
 	}
-	return account;
 }
 
 export async function linkDiscordUser(
@@ -384,15 +469,39 @@ export async function linkDiscordUser(
 	const mappedAccountId = await env.LINKS.get(discordAccountKey(discordUserId));
 	if (mappedAccountId && mappedAccountId !== account.id)
 		return "discord_in_use";
-	if (account.discordUserId && account.discordUserId !== discordUserId)
-		await env.LINKS.delete(discordAccountKey(account.discordUserId));
-	const updated = { ...account, discordUserId };
-	await Promise.all([
-		env.LINKS.put(accountKey(accountId), JSON.stringify(updated)),
-		env.LINKS.put(discordAccountKey(discordUserId), accountId),
-	]);
-	await migrateDiscordLinksToAccount(env, discordUserId, accountId);
-	return updated;
+	const discordStorageKey = discordAccountKey(discordUserId);
+	const discordName = `discord:${discordUserId}`;
+	const discordReserved = mappedAccountId
+		? false
+		: await reserve(env, discordName, discordStorageKey);
+	if (!mappedAccountId && !discordReserved) return "discord_in_use";
+	try {
+		const currentMapping = await env.LINKS.get(discordStorageKey);
+		if (currentMapping && currentMapping !== account.id)
+			return "discord_in_use";
+		const previousDiscordUserId = account.discordUserId;
+		const updated = { ...account, discordUserId };
+		await Promise.all([
+			env.LINKS.put(accountKey(accountId), JSON.stringify(updated)),
+			env.LINKS.put(discordStorageKey, accountId),
+		]);
+		await migrateDiscordLinksToAccount(env, discordUserId, accountId);
+		if (discordReserved)
+			await commitReservation(env, discordName, discordStorageKey);
+		if (previousDiscordUserId && previousDiscordUserId !== discordUserId) {
+			const previousKey = discordAccountKey(previousDiscordUserId);
+			await env.LINKS.delete(previousKey);
+			await unclaimReservation(
+				env,
+				`discord:${previousDiscordUserId}`,
+				previousKey,
+			);
+		}
+		return updated;
+	} finally {
+		if (discordReserved && !(await env.LINKS.get(discordStorageKey)))
+			await release(env, discordName, discordStorageKey);
+	}
 }
 
 export async function getAdminAccount(env: Env): Promise<AccountRecord | null> {
@@ -508,10 +617,22 @@ export async function removeAccount(
 			? [env.LINKS.delete(adminAccountKey())]
 			: []),
 	]);
+	if (account.discordUserId) {
+		const mappingKey = discordAccountKey(account.discordUserId);
+		await unclaimReservation(
+			env,
+			`discord:${account.discordUserId}`,
+			mappingKey,
+		);
+	}
 	return { account: deleted, revokedTokenCount };
 }
 
-function toRecord(input: LinkInput & { slug: string }): LinkRecord {
+async function toRecord(
+	env: Env,
+	input: LinkInput & { slug: string },
+): Promise<LinkRecord> {
+	const password = input.password?.trim();
 	return canonicalizeLinkTimestamps({
 		slug: input.slug,
 		destinationUrl: input.destinationUrl,
@@ -528,7 +649,14 @@ function toRecord(input: LinkInput & { slug: string }): LinkRecord {
 		...(input.metadataFetchedAt
 			? { metadataFetchedAt: input.metadataFetchedAt }
 			: {}),
-		...(input.password ? { password: input.password } : {}),
+		...(password
+			? {
+					passwordVerifier: await hashLinkPassword(
+						password,
+						env.LINK_PASSWORD_PEPPER,
+					),
+			  }
+			: {}),
 		...(input.expiresAt ? { expiresAt: input.expiresAt } : {}),
 		...(input.suppressSocialPreview ? { suppressSocialPreview: true } : {}),
 	});

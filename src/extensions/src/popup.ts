@@ -44,7 +44,16 @@ form.addEventListener("submit", async (event) => {
 		const { apiBase } = await getSettings();
 		const shortUrl = `${apiBase}/${slug}`;
 		await navigator.clipboard.writeText(shortUrl);
-		status.innerHTML = `<a href="${shortUrl}" target="_blank" rel="noreferrer">${shortUrl}</a><br>Copied to clipboard.`;
+		const link = document.createElement("a");
+		link.href = shortUrl;
+		link.target = "_blank";
+		link.rel = "noopener noreferrer";
+		link.textContent = shortUrl;
+		status.replaceChildren(
+			link,
+			document.createElement("br"),
+			document.createTextNode("Copied to clipboard."),
+		);
 	} catch (error) {
 		status.textContent =
 			error instanceof Error ? error.message : "Could not create the link.";

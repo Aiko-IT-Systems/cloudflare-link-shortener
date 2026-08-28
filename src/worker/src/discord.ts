@@ -16,6 +16,7 @@ import {
 	updateLinkSchema,
 } from "./validation";
 import { fetchTargetMetadata } from "./metadata";
+import { hasLinkPassword } from "./passwords";
 import { canonicalTimestamp } from "./timestamps";
 import { buildInfo } from "./build-info";
 import { runConnectionTest } from "./connection-test";
@@ -144,6 +145,7 @@ async function handlePublicCommand(
 			[
 				`## ${config.siteName} privacy`,
 				"AITSYS Go does not use advertising, analytics, click tracking, cookies, or telemetry.",
+				"Password-protected links store a randomly salted, keyed verifier instead of the password. Management APIs never return password material. Failed unlocks use a keyed one-way client-address identifier for per-client throttling, and that temporary state is automatically deleted after its window or cooldown.",
 				"Google Play-distributed Android installs use Google Play's in-app update service. Google Play processes device metadata, the installed app version, and installed module or asset-pack information to check for and install updates; AITSYS Go does not receive that update-check data.",
 				`Read the full policy: ${privacyUrl}`,
 				`Privacy contact: ${config.privacyEmail}`,
@@ -447,7 +449,7 @@ async function renderManage(
 					`short:clear-password:${record.slug}`,
 					"Clear password",
 					2,
-					!record.password,
+					!hasLinkPassword(record),
 				),
 				button(
 					`short:disable:${record.slug}`,
@@ -553,11 +555,12 @@ async function handleModal(
 		if (!record || !canManage(account, record, isDiscordAdmin(env, user)))
 			return ephemeral("Link not found.");
 		const values = submittedValues(interaction.data?.components ?? []);
-		const parsed = updateLinkSchema.safeParse({
+		const updateInput: Record<string, unknown> = {
 			title: values.title || null,
-			password: values.password || undefined,
 			expiresAt: values.expiresAt || null,
-		});
+		};
+		if (values.password) updateInput.password = values.password;
+		const parsed = updateLinkSchema.safeParse(updateInput);
 		if (!parsed.success)
 			return ephemeral(
 				"The updated details were invalid. Check the expiry format.",

@@ -7,7 +7,7 @@ export function jsonSuccess<T>(result: T, status = 200): Response {
 			success: true,
 			result: patchApiTimestamps(result),
 		} satisfies ApiSuccess<T>,
-		{ status },
+		{ status, headers: { "Cache-Control": "no-store" } },
 	);
 }
 
@@ -21,6 +21,6 @@ export function jsonError(
 			success: false,
 			errors: [{ message, code }],
 		} satisfies ApiError,
-		{ status },
+		{ status, headers: { "Cache-Control": "no-store" } },
 	);
 }

@@ -101,6 +101,7 @@ import coil3.compose.AsyncImage
 import dev.aitsys.go.data.Branding
 import dev.aitsys.go.data.LinkDraft
 import dev.aitsys.go.data.LinkRecord
+import dev.aitsys.go.data.PasswordUpdate
 import dev.aitsys.go.data.ShareMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -239,6 +240,23 @@ fun AitsysGoApp(
 
         if (!state.appLocked) state.editing?.let { EditDialog(it, model) }
         if (!state.appLocked) {
+            state.pendingSharedDraft?.let { draft ->
+                AlertDialog(
+                    onDismissRequest = model::dismissSharedCreate,
+                    title = { Text("Create link from shared content?") },
+                    text = {
+                        Text(
+                            "Another app shared this URL. Review it before AITSYS Go creates a link with your issued token:\n\n${draft.destinationUrl}",
+                        )
+                    },
+                    confirmButton = {
+                        Button(onClick = model::confirmSharedCreate) { Text("Create link") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = model::dismissSharedCreate) { Text("Review first") }
+                    },
+                )
+            }
             state.confirmDisable?.let { record ->
                 AlertDialog(
                     onDismissRequest = { model.confirmDisable(null) },
@@ -363,6 +381,7 @@ private fun LinkForm(
     draft: LinkDraft,
     update: (LinkDraft) -> Unit,
     showSlug: Boolean = true,
+    editingHasPassword: Boolean = false,
 ) {
     var advanced by remember { mutableStateOf(false) }
     OutlinedTextField(
@@ -398,10 +417,16 @@ private fun LinkForm(
     OutlinedTextField(
         draft.password,
         {
-            update(draft.copy(password = it))
+            update(
+                draft.copy(
+                    password = it,
+                    passwordUpdate =
+                        if (it.isBlank()) PasswordUpdate.UNCHANGED else PasswordUpdate.REPLACE,
+                ),
+            )
         },
         label = {
-            Text("Password (optional)")
+            Text(if (editingHasPassword) "New password (optional)" else "Password (optional)")
         },
         visualTransformation = PasswordVisualTransformation(),
         singleLine = true,
@@ -770,7 +795,7 @@ private fun LinkCardContent(
                     )
                 }
             }
-            if (!record.password.isNullOrEmpty()) {
+            if (record.hasPassword) {
                 Text(
                     "Password Protected",
                     maxLines = 1,
@@ -856,10 +881,15 @@ private fun SettingsScreen(
         Text("Share behavior", fontWeight = FontWeight.Bold)
         ShareChoice("Configure before creating", ShareMode.CONFIGURE, shareMode) { shareMode = it }
         ShareChoice(
-            "Create automatically, then show the result",
+            "Confirm a shared link, then create it immediately",
             ShareMode.AUTOMATIC,
             shareMode,
         ) { shareMode = it }
+        Text(
+            "External shares never create a link without confirmation. Configure mode opens the form without creating anything.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button({ model.saveSettings(apiBase, token, shareMode) }) { Text("Save") }
             OutlinedButton({ model.testConnection(apiBase, token, silent = false, testAuth = true) }) { Text("Test connection") }
@@ -1091,7 +1121,8 @@ private fun EditDialog(
                 destinationUrl = record.destinationUrl,
                 slug = record.slug,
                 title = record.title.orEmpty(),
-                password = record.password.orEmpty(),
+                password = "",
+                passwordUpdate = PasswordUpdate.UNCHANGED,
                 expiresAt = record.expiresAt.orEmpty(),
                 suppressSocialPreview = record.suppressSocialPreview,
                 embedTitle = record.embedTitle.orEmpty(),
@@ -1109,7 +1140,35 @@ private fun EditDialog(
                 Modifier.verticalScroll(rememberScrollState()).height(430.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                LinkForm(draft, { draft = it }, showSlug = false)
+                LinkForm(
+                    draft,
+                    { draft = it },
+                    showSlug = false,
+                    editingHasPassword = record.hasPassword,
+                )
+                if (record.hasPassword) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = draft.passwordUpdate == PasswordUpdate.CLEAR,
+                            onCheckedChange = { clear ->
+                                draft =
+                                    draft.copy(
+                                        password = "",
+                                        passwordUpdate =
+                                            if (clear) PasswordUpdate.CLEAR else PasswordUpdate.UNCHANGED,
+                                    )
+                            },
+                        )
+                        Text("Remove current password")
+                    }
+                    if (draft.passwordUpdate == PasswordUpdate.UNCHANGED) {
+                        Text(
+                            "The current password remains unchanged.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         },
         confirmButton = { Button({ model.update(record, draft) }) { Text("Save") } },

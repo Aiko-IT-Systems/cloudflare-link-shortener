@@ -15,11 +15,19 @@ export type LinkRecord = {
 	embedImageUrl?: string;
 	embedSiteName?: string;
 	metadataFetchedAt?: string;
+	/** @deprecated Legacy plaintext value; upgraded after a successful unlock. */
 	password?: string;
+	passwordVerifier?: PasswordVerifier;
 	expiresAt?: string;
 	suppressSocialPreview?: boolean;
 	disabledAt?: string;
 	disabledReason?: string;
+};
+
+export type PasswordVerifier = {
+	algorithm: "HMAC-SHA-256";
+	salt: string;
+	digest: string;
 };
 
 export type AccountRecord = {

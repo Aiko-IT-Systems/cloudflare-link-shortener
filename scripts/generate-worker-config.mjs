@@ -137,8 +137,24 @@ export function validateConfig(config) {
 		throw new Error(
 			"The generated configuration must include the LINKS KV binding.",
 		);
+	if (
+		!config.durable_objects?.bindings?.some(
+			(binding) =>
+				binding?.name === "LINK_COORDINATOR" &&
+				binding?.class_name === "LinkCoordinator",
+		) ||
+		config.exports?.LinkCoordinator?.type !== "durable-object" ||
+		config.exports?.LinkCoordinator?.storage !== "sqlite"
+	)
+		throw new Error(
+			"The generated configuration must include the SQLite-backed LinkCoordinator Durable Object binding and export.",
+		);
 	const requiredSecrets = new Set(config.secrets?.required ?? []);
-	for (const secretName of ["LINK_SHORTENER_API_KEY", "DISCORD_PUBLIC_KEY"]) {
+	for (const secretName of [
+		"LINK_SHORTENER_API_KEY",
+		"DISCORD_PUBLIC_KEY",
+		"LINK_PASSWORD_PEPPER",
+	]) {
 		if (!requiredSecrets.has(secretName))
 			throw new Error(
 				`The generated configuration must require ${secretName}.`,

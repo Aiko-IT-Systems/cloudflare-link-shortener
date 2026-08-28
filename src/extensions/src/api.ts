@@ -25,6 +25,8 @@ export const defaultBranding: Branding = {
 	privacyEmail: "privacy@aitsys.dev",
 };
 
+const slugPattern = /^[A-Za-z0-9][A-Za-z0-9_-]{1,63}$/;
+
 export async function getSettings(): Promise<Settings> {
 	return {
 		...defaultSettings,
@@ -87,6 +89,8 @@ export async function createLink(
 		throw new Error(
 			body?.errors?.[0]?.message ?? `Request failed (${response.status}).`,
 		);
+	if (!slugPattern.test(body.result.slug))
+		throw new Error("This shortener returned an invalid link slug.");
 	return body.result;
 }
 
