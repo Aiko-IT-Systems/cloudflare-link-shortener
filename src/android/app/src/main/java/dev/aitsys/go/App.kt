@@ -689,7 +689,7 @@ private fun LinkCardContent(
                     model =
                         if (previewMode) {
                             // TODO: COMMENT OUT BEFORE PUSH
-                            R.drawable.preview_embed_image
+                            //R.drawable.preview_embed_image
                         } else {
                             record.embedImageUrl
                         },
