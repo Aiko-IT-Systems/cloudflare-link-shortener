@@ -159,7 +159,7 @@ $headers = @{
 }
 
 try {
-	$response = Invoke-RestMethod -Method Post -Uri "$ApiBase/api/v1/links" -Headers $headers -ContentType "application/json" -Body ($body | ConvertTo-Json -Compress)
+	$response = Invoke-RestMethod -Method Post -Uri "$ApiBase/api/v1/links" -HttpVersion "2.0" -Headers $headers -ContentType "application/json" -Body ($body | ConvertTo-Json -Compress)
 }
 catch {
 	$message = $_.ErrorDetails.Message

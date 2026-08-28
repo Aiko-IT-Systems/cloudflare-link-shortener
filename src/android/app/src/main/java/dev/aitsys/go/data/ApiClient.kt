@@ -4,15 +4,29 @@ import android.util.Patterns
 import dev.aitsys.go.API_VERSION
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
-import java.net.HttpURLConnection
 import java.net.URI
-import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
 import kotlin.String
+
+private val httpClient =
+    OkHttpClient.Builder()
+        .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_3))
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
+        .build()
+
+private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
 class ApiException(
     message: String,
@@ -160,47 +174,19 @@ class ApiClient(
                     null
                 }
 
-            val connection = URL(origin + path).openConnection() as HttpURLConnection
+            val requestBody = body?.toString()?.toRequestBody(jsonMediaType)
+            val requestBuilder =
+                Request.Builder()
+                    .url(origin + path)
+                    .header("Accept", "application/json")
+                    .method(method, requestBody)
+            if (authorizationToken != null) {
+                requestBuilder.header("Authorization", "Bearer $authorizationToken")
+            }
 
-            try {
-                connection.requestMethod = method
-                connection.connectTimeout = 10_000
-                connection.readTimeout = 20_000
-                connection.setRequestProperty("Accept", "application/json")
-
-                if (authorizationToken != null) {
-                    connection.setRequestProperty(
-                        "Authorization",
-                        "Bearer $authorizationToken",
-                    )
-                }
-
-                if (body != null) {
-                    connection.doOutput = true
-                    connection.setRequestProperty(
-                        "Content-Type",
-                        "application/json; charset=utf-8",
-                    )
-                    connection.outputStream.use {
-                        it.write(body.toString().toByteArray(StandardCharsets.UTF_8))
-                    }
-                }
-
-                val status = connection.responseCode
-
-                val stream =
-                    if (status in 200..299) {
-                        connection.inputStream
-                    } else {
-                        connection.errorStream
-                    }
-
-                val text =
-                    stream
-                        ?.bufferedReader(StandardCharsets.UTF_8)
-                        ?.use { it.readText() }
-                        .orEmpty()
-
+            httpClient.newCall(requestBuilder.build()).execute().use { response ->
+                val status = response.code
+                val text = response.body.string()
                 val json =
                     runCatching {
                         JSONObject(text)
@@ -226,8 +212,6 @@ class ApiClient(
                 }
 
                 read(json)
-            } finally {
-                connection.disconnect()
             }
         }
 

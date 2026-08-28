@@ -27,9 +27,10 @@ function Invoke-LinkApi {
 	)
 
 	$params = @{
-		Method  = $Method
-		Uri     = "$ApiBase$Path"
-		Headers = @{ Authorization = "Bearer $ApiToken" }
+		Method      = $Method
+		Uri         = "$ApiBase$Path"
+		Headers     = @{ Authorization = "Bearer $ApiToken" }
+		HttpVersion = "2.0"
 	}
 
 	if ($null -ne $Body) {
