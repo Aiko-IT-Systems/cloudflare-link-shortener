@@ -24,6 +24,8 @@ The Android app stores its issued user token encrypted with an Android Keystore 
 
 The app can optionally require the device's biometric authentication or device PIN, pattern, or password after it leaves the foreground. It does not create, store, or transmit an app-specific passcode. The app has no analytics, ads, telemetry, contacts access, or location access.
 
+Google Play-distributed installs use Google Play's in-app update service to check for and install available updates. Google Play processes device metadata, the installed application version, and the list of installed modules or asset packs for that purpose. Google states that this data is encrypted, is not transferred to third parties, and is deleted after a fixed retention period. AITSYS Go does not receive this update-check data. Sideloaded builds do not receive updates through this service.
+
 ## Discord
 
 The private Discord user app receives Discord interaction data to provide the requested command or message action. A stable Discord user ID is used for ownership checks and the current Discord username is stored as a public link author. If a selected message has multiple URLs, AITSYS Go temporarily stores the remaining URLs and invoking user ID for up to 15 minutes so that the batch can be continued or aborted.

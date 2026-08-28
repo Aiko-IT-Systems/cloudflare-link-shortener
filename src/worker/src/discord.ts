@@ -144,6 +144,7 @@ async function handlePublicCommand(
 			[
 				`## ${config.siteName} privacy`,
 				"AITSYS Go does not use advertising, analytics, click tracking, cookies, or telemetry.",
+				"Google Play-distributed Android installs use Google Play's in-app update service. Google Play processes device metadata, the installed app version, and installed module or asset-pack information to check for and install updates; AITSYS Go does not receive that update-check data.",
 				`Read the full policy: ${privacyUrl}`,
 				`Privacy contact: ${config.privacyEmail}`,
 			].join("\n"),

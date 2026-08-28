@@ -133,7 +133,7 @@ cd src/android
 ./gradlew test lint assembleDebug
 ```
 
-The debug APK is at `app/build/outputs/apk/debug/app-debug.apk`. Release builds need an upload key outside source control. Local signing uses ignored `signing.properties`; CI uses only these secret names: `ANDROID_UPLOAD_KEYSTORE_BASE64`, `ANDROID_UPLOAD_KEY_ALIAS`, `ANDROID_UPLOAD_KEYSTORE_PASSWORD`, and `ANDROID_UPLOAD_KEY_PASSWORD`. Android derives `versionName` from the root package version and computes `versionCode` as `major × 1,000,000 + minor × 1,000 + patch`; do not override either in Gradle. The release workflow builds and verifies an APK and AAB; it does not submit to Google Play.
+The debug APK is at `app/build/outputs/apk/debug/app-debug.apk`. Release builds need an upload key outside source control. Local signing uses ignored `signing.properties`; CI uses only these secret names: `ANDROID_UPLOAD_KEYSTORE_BASE64`, `ANDROID_UPLOAD_KEY_ALIAS`, `ANDROID_UPLOAD_KEYSTORE_PASSWORD`, and `ANDROID_UPLOAD_KEY_PASSWORD`. Android derives `versionName` from the root package version and computes `versionCode` as `major × 1,000,000 + minor × 1,000 + patch`; do not override either in Gradle. The release workflow builds and verifies an APK and AAB; it does not submit to Google Play. Play-distributed installs can offer flexible in-app updates (or an immediate flow for a Play release assigned high update priority); sideloaded and debug builds simply receive no available update from Play.
 
 ## Discord command registration
 

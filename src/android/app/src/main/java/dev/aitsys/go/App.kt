@@ -127,6 +127,9 @@ fun AitsysGoApp(
     model: MainViewModel,
     requestUnlock: () -> Unit,
     requestEnableAppLock: () -> Unit,
+    flexibleUpdateReady: Boolean,
+    installFlexibleUpdate: () -> Unit,
+    dismissFlexibleUpdate: () -> Unit,
 ) {
     val state = model.state
     val context = LocalContext.current
@@ -245,6 +248,15 @@ fun AitsysGoApp(
                     dismissButton = { TextButton(onClick = { model.confirmDisable(null) }) { Text("Cancel") } },
                 )
             }
+        }
+        if (!state.appLocked && flexibleUpdateReady) {
+            AlertDialog(
+                onDismissRequest = dismissFlexibleUpdate,
+                title = { Text("Update ready") },
+                text = { Text("Google Play has downloaded an AITSYS Go update. Restart the app to install it now?") },
+                confirmButton = { Button(onClick = installFlexibleUpdate) { Text("Restart and install") } },
+                dismissButton = { TextButton(onClick = dismissFlexibleUpdate) { Text("Later") } },
+            )
         }
     }
 }
@@ -932,7 +944,7 @@ private fun SettingsScreen(
         Text("Debug Information", fontWeight = FontWeight.Bold)
         val connection = state.connectionTest
         val build = connection?.build
-        val repositoryUrl = build?.repository?.takeIf(String::isNotBlank)
+        val repositoryUrl = build?.repository?.let(IntentSecurity::normalizedHttpsUrl)
 
         val shortSha =
             build?.sha
@@ -1121,22 +1133,32 @@ private fun open(
     context: Context,
     url: String,
 ) {
-    context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+    val safeUrl = IntentSecurity.normalizedHttpsUrl(url) ?: return
+    runCatching {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, safeUrl.toUri()).apply {
+                addCategory(Intent.CATEGORY_BROWSABLE)
+            },
+        )
+    }
 }
 
 private fun share(
     context: Context,
     url: String,
 ) {
-    context.startActivity(
-        Intent.createChooser(
-            Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, url)
-            },
-            "Share short link",
-        ),
-    )
+    val safeUrl = IntentSecurity.normalizedHttpsUrl(url) ?: return
+    runCatching {
+        context.startActivity(
+            Intent.createChooser(
+                Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, safeUrl)
+                },
+                "Share short link",
+            ),
+        )
+    }
 }
 
 @Composable

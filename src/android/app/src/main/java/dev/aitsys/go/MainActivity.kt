@@ -3,28 +3,48 @@ package dev.aitsys.go
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.fragment.app.FragmentActivity
 
 class MainActivity : FragmentActivity() {
     private lateinit var model: MainViewModel
+    private lateinit var inAppUpdates: InAppUpdateController
     private var authenticationInProgress = false
     private var onAuthenticationSuccess: (() -> Unit)? = null
+    private var flexibleUpdateReady by mutableStateOf(false)
+    private val updateLauncher =
+        registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         model = ViewModelProvider(this)[MainViewModel::class.java]
+        inAppUpdates =
+            InAppUpdateController(
+                context = this,
+                updateLauncher = updateLauncher,
+                onFlexibleUpdateReady = { flexibleUpdateReady = true },
+            ).also(InAppUpdateController::register)
         setContent {
             AitsysGoApp(
                 model = model,
                 requestUnlock = { authenticate { model.unlock() } },
                 requestEnableAppLock = { authenticate { model.enableAppLock() } },
+                flexibleUpdateReady = flexibleUpdateReady,
+                installFlexibleUpdate = {
+                    flexibleUpdateReady = false
+                    inAppUpdates.completeFlexibleUpdate()
+                },
+                dismissFlexibleUpdate = { flexibleUpdateReady = false },
             )
         }
-        handleIntent(intent)
+        if (savedInstanceState == null) handleIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -38,10 +58,33 @@ class MainActivity : FragmentActivity() {
         if (!isChangingConfigurations && !authenticationInProgress) model.lock()
     }
 
-    private fun handleIntent(intent: Intent?) {
-        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
-            model.receiveSharedText(intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString())
-        }
+    override fun onResume() {
+        super.onResume()
+        if (::inAppUpdates.isInitialized) inAppUpdates.checkForUpdate()
+    }
+
+    override fun onDestroy() {
+        if (::inAppUpdates.isInitialized) inAppUpdates.unregister()
+        super.onDestroy()
+    }
+
+    private fun handleIntent(incomingIntent: Intent?) {
+        if (incomingIntent == null || !IntentSecurity.isPlainTextShare(incomingIntent.action, incomingIntent.type)) return
+
+        val sharedText =
+            runCatching {
+                IntentSecurity.validatedSharedText(
+                    incomingIntent.getCharSequenceExtra(Intent.EXTRA_TEXT),
+                )
+            }.getOrNull()
+
+        setIntent(
+            Intent(this, MainActivity::class.java).apply {
+                action = Intent.ACTION_MAIN
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            },
+        )
+        model.receiveSharedText(sharedText)
     }
 
     private fun authenticate(onSuccess: () -> Unit) {

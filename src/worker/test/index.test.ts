@@ -534,6 +534,8 @@ describe("link shortener", () => {
 		expect(html).toContain("Privacy");
 		expect(html).toContain('href="mailto:privacy@cats.example"');
 		expect(html).toContain("privacy@cats.example");
+		expect(html).toContain("Google Play's in-app update service");
+		expect(html).toContain("device metadata");
 		expect(html).toContain(
 			"does not use advertising, analytics, click tracking, cookies, or telemetry",
 		);
@@ -1040,6 +1042,12 @@ describe("link shortener", () => {
 			expect(body.type).toBe(4);
 			expect(body.data.flags).toBe(64);
 			expect(body.data.content).toContain(expectedContent);
+			if (name === "privacy") {
+				expect(body.data.content).toContain(
+					"Google Play-distributed Android installs use Google Play's in-app update service",
+				);
+				expect(body.data.content).toContain("does not receive that update-check data");
+			}
 		}
 	});
 

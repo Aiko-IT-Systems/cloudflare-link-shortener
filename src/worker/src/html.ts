@@ -405,7 +405,7 @@ export function privacyPolicy(config: SiteConfig): Response {
 			</div>
 			<div class="meta">
 				<dt>Browser extension and Android app</dt>
-				<dd>The browser extension stores its configured API base URL and issued user token in browser extension storage, which is not encrypted. It sends the selected page URL and entered fields only to that configured API. The Android app stores its issued token encrypted with Android Keystore, excludes it from Android backup, and keeps ordinary settings and cached public branding locally. It sends entered link data or shared URLs only to the configured API. Both clients fetch public branding metadata from that API.</dd>
+				<dd>The browser extension stores its configured API base URL and issued user token in browser extension storage, which is not encrypted. It sends the selected page URL and entered fields only to that configured API. The Android app stores its issued token encrypted with Android Keystore, excludes it from Android backup, and keeps ordinary settings and cached public branding locally. It sends entered link data or shared URLs only to the configured API. Both clients fetch public branding metadata from that API. Google Play-distributed Android installs use Google Play's in-app update service. Google Play processes device metadata, the installed app version, and installed module or asset-pack information to check for and install updates; AITSYS Go does not receive that update-check data. Sideloaded builds do not receive updates through this service.</dd>
 			</div>
 			<div class="meta">
 				<dt>Discord and distribution</dt>
