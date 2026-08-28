@@ -43,13 +43,13 @@ a secure origin.
 Connect your fork under **Workers & Pages → Create → Connect to Git**. Select
 `main` as the production branch and use these production-only settings:
 
-| Setting | Value |
-| --- | --- |
-| Build command | none |
-| Deploy command | `npm run deploy` |
-| Root directory | `/` |
-| Non-production branch builds | disabled |
-| Build cache | enabled |
+| Setting                      | Value            |
+|------------------------------|------------------|
+| Build command                | none             |
+| Deploy command               | `npm run deploy` |
+| Root directory               | `/`              |
+| Non-production branch builds | disabled         |
+| Build cache                  | enabled          |
 
 Do not configure a preview deploy command or preview environment. The Worker
 configuration automatically provisions and binds its `LINKS` KV namespace on
@@ -68,10 +68,10 @@ under **Runtime variables and secrets**
 
 Create these Environment Variable with **secret** toggled:
 
-| Secret name | Value |
-| --- | --- |
-| `LINK_SHORTENER_API_KEY` | A new, long random master admin token |
-| `DISCORD_PUBLIC_KEY` | Your Discord application's public key, or a non-empty placeholder until Discord is enabled |
+| Secret name              | Value                                                                                      |
+|--------------------------|--------------------------------------------------------------------------------------------|
+| `LINK_SHORTENER_API_KEY` | A new, long random master admin token                                                      |
+| `DISCORD_PUBLIC_KEY`     | Your Discord application's public key, or a non-empty placeholder until Discord is enabled |
 
 Keep the master token in a password manager. Never put it in a Wrangler config,
 the Git repository, browser extensions, Android settings, GitHub Actions, or a
@@ -80,14 +80,14 @@ tokens**, not the master credential.
 
 Set these optional text variables for your own public identity:
 
-| Variable | Example | Used for |
-| --- | --- | --- |
-| `SITE_NAME` | `Mochi Go` | Redirect pages, titles, and client branding |
-| `BRAND_LOGO_URL` | `/logo.png` or `https://cdn.example/logo.svg` | Header/social logo and client metadata |
-| `BRAND_LOGO_ALT` | `Mochi Labs` | Accessible logo description |
-| `FAVICON_URL` | `/favicon.png` | Worker-generated page favicon |
-| `BRAND_COLOR` | `#8b5cf6` | Accent colour and client metadata |
-| `PRIVACY_EMAIL` | `privacy@example.com` | Privacy page and metadata contact |
+| Variable         | Example                                       | Used for                                    |
+|------------------|-----------------------------------------------|---------------------------------------------|
+| `SITE_NAME`      | `Mochi Go`                                    | Redirect pages, titles, and client branding |
+| `BRAND_LOGO_URL` | `/logo.png` or `https://cdn.example/logo.svg` | Header/social logo and client metadata      |
+| `BRAND_LOGO_ALT` | `Mochi Labs`                                  | Accessible logo description                 |
+| `FAVICON_URL`    | `/favicon.png`                                | Worker-generated page favicon               |
+| `BRAND_COLOR`    | `#8b5cf6`                                     | Accent colour and client metadata           |
+| `PRIVACY_EMAIL`  | `privacy@example.com`                         | Privacy page and metadata contact           |
 
 For root-relative logo or favicon paths, replace the corresponding files under
 `src/worker/public/` and keep the paths in sync. Absolute HTTPS URLs are useful
@@ -153,13 +153,13 @@ contact follow your Worker branding.
 Open this project's [GitHub Releases](https://github.com/Aiko-IT-Systems/cloudflare-link-shortener/releases) and download the assets
 that match the version you want to test:
 
-| Asset | Use |
-| --- | --- |
-| `*-chrome.zip` | Load unpacked in Chrome or another Chromium browser |
-| `*-edge.zip` | Load unpacked in Microsoft Edge |
-| `*-firefox.zip` or a later signed `.xpi` | Install/test in Firefox as applicable |
-| `*.apk` | Install directly on an Android device for testing |
-| `*.aab` | Google Play upload bundle; not directly installable |
+| Asset                                    | Use                                                 |
+|------------------------------------------|-----------------------------------------------------|
+| `*-chrome.zip`                           | Load unpacked in Chrome or another Chromium browser |
+| `*-edge.zip`                             | Load unpacked in Microsoft Edge                     |
+| `*-firefox.zip` or a later signed `.xpi` | Install/test in Firefox as applicable               |
+| `*.apk`                                  | Install directly on an Android device for testing   |
+| `*.aab`                                  | Google Play upload bundle; not directly installable |
 
 After installation, open the app or extension settings and set the base URL to
 your own origin plus an issued user token. Do not use AITSYS's public endpoint
@@ -169,22 +169,66 @@ The prebuilt clients are compatible with any correctly configured Worker using
 this API. If you change client code or need a custom package identity, build
 from your fork instead; see [BUILDING.md](BUILDING.md).
 
-## 9. Optional Discord setup
+## 9. Optional Discord app and command publishing
 
-Only configure this after the Worker is live:
+Configure Discord only after the Worker is live at your final HTTPS origin. This
+project uses Discord's **User Install** context and exposes commands only in
+private channels (DMs and group DMs), not as a server-installed bot.
 
-1. Create your own Discord application and set its **Interactions Endpoint
-   URL** to `https://go.example.com/api/v1/discord/interactions`.
-2. Set its public key as the encrypted Worker secret `DISCORD_PUBLIC_KEY`.
-3. Set `DISCORD_APPLICATION_ID` and, if wanted, `DISCORD_ADMIN_USER_ID` in
-   the Production dashboard variables, then deploy again.
-4. On an administrator machine only, register commands using a local Discord
-   registration token as described in [BUILDING.md](BUILDING.md#discord-command-registration).
-5. Link Discord identities to accounts before users invoke commands. The Worker
-   rejects Discord commands from identities without an active linked account.
+### Configure the Discord application
 
-The Discord bot/registration token must never be stored in Cloudflare bindings
-or GitHub secrets for the Worker.
+1. Create your own Discord application. On **Installation**, enable **User
+   Install** and include the `applications.commands` scope in its default
+   install settings. The app does not need a Gateway connection.
+2. On **General Information**, copy the application ID and public key. Set the
+   public key as the encrypted Production Worker secret
+   `DISCORD_PUBLIC_KEY`.
+3. In the Worker Production dashboard variables, set
+   `DISCORD_APPLICATION_ID` to that application ID. Set
+   `DISCORD_ADMIN_USER_ID` to your Discord user ID if you want the first
+   administrator profile and global Discord link management.
+4. Deploy the Worker, then set the Discord application's **Interactions
+   Endpoint URL** to:
+
+   ```text
+   https://go.example.com/api/v1/discord/interactions
+   ```
+
+   Replace `go.example.com` with your Worker origin. Discord verifies this URL
+   when you save it; a failed verification usually means the Worker is not
+   deployed yet, the URL is wrong, or `DISCORD_PUBLIC_KEY` does not match this
+   application.
+
+### Publish the global commands
+
+On an administrator machine, from the repository root, use a Discord bot token
+only for this one-time registration/update operation:
+
+```powershell
+$env:DISCORD_APPLICATION_ID = '<your-discord-application-id>'
+$env:DISCORD_BOT_TOKEN = '<your-discord-bot-token>'
+npm run discord:register
+```
+
+This sends Discord a complete replacement for this application's global command
+list. Run it after every upstream or fork change to
+`scripts/register-discord-commands.mjs`; do not run it against an application
+whose other global commands you need to keep.
+
+The registered commands are:
+
+- `/about`, `/privacy`, and `/debug`: public informational commands. They work
+  without a linked AITSYS Go account and respond ephemerally. `/debug` reports
+  safe connection-test data only; it never exposes secrets or tokens.
+- `/shorten`, **Shorten link** (message context command), and `/manage`:
+  link-management commands. They require an active AITSYS Go account linked to
+  the invoking Discord identity. The configured administrator can bootstrap
+  that profile through `/manage`.
+
+Install the application to a test user, then invoke `/about` and `/debug` in a
+DM before inviting other users. The Discord bot/registration token must never
+be stored in Cloudflare bindings, GitHub secrets for the Worker, source control,
+or screenshots.
 
 ## Ongoing safety checklist
 
