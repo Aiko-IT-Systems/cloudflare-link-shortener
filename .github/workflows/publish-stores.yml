@@ -102,7 +102,7 @@ jobs:
         with:
           name: verified-release-assets-${{ github.event.release.tag_name }}
           path: release-assets
-      - uses: wdzeng/chrome-extension@d13687a31d7884b5fb01c87a90986f8c365e6e0a # v2.0.0
+      - uses: wdzeng/chrome-extension@ccb488e04fba014a4b574a533ccee8bc1b772f0a # v2.0.1
         with:
           extension-id: ${{ vars.CHROME_EXTENSION_ID }}
           publisher-id: ${{ vars.CHROME_PUBLISHER_ID }}
