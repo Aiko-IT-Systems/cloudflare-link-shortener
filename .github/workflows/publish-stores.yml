@@ -10,7 +10,7 @@ on:
         required: true
         type: string
       release_notes:
-        description: Optional release-note intro/addendum for a manual store submission
+        description: Optional release-note intro/addendum; use \n for line breaks
         required: false
         type: string
       publish-chrome:
@@ -114,6 +114,18 @@ jobs:
             --json body \
             --jq '.body // ""' > release-assets/github-release-body.md
 
+      - name: Verify release asset attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for asset in release-assets/*; do
+            gh attestation verify "$asset" \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+              --deny-self-hosted-runners
+          done
+          echo "- ✅ Verified GitHub attestations for every release asset." >> "$GITHUB_STEP_SUMMARY"
+
       - name: Add release notes to whats-new directory for Google Play submission
         env:
           RELEASE_NOTES: ${{ inputs.release_notes }}
@@ -127,17 +139,6 @@ jobs:
           node scripts/prepare-play-release-notes.mjs "${args[@]}"
           note_characters="$(node -e "const fs=require('fs'); const text=fs.readFileSync('release-assets/whats-new/whatsnew-en-US','utf8'); console.log(Array.from(text.split('\\n').slice(1,-1).join('\\n')).length)")"
           echo "- ✅ Generated Play release notes (${note_characters} characters)" >> "$GITHUB_STEP_SUMMARY"
-      - name: Verify release asset attestations
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          for asset in release-assets/*; do
-            gh attestation verify "$asset" \
-              --repo "$GITHUB_REPOSITORY" \
-              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
-              --deny-self-hosted-runners
-          done
-          echo "- ✅ Verified GitHub attestations for every release asset." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify exact expected version in extension artifacts
         env:

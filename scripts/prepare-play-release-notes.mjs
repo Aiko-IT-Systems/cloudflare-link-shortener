@@ -11,7 +11,7 @@ function usage() {
   node scripts/prepare-play-release-notes.mjs --compose-only --output <file> [options]
 
 Options:
-  --operator-notes <text>       Extra operator-written notes
+  --operator-notes <text>       Extra notes; literal \n sequences become line breaks
   --locale <locale>             Play locale (default: en-US)
   --limit <number>              Maximum note characters (default: 500)
   --compose-only                Write only the custom GitHub release body
@@ -65,9 +65,13 @@ function rejectBinary(text, source) {
 }
 
 export function composeOperatorNotes({ text = "" } = {}) {
-	if (!text.trim()) return "";
-	rejectBinary(text, "operator notes");
-	return text.trim();
+	const expanded = text
+		.replaceAll("\r\n", "\n")
+		.replace(/\\r\\n/g, "\n")
+		.replace(/\\n/g, "\n");
+	if (!expanded.trim()) return "";
+	rejectBinary(expanded, "operator notes");
+	return expanded.trim();
 }
 
 function stripMarkdownLine(line) {

@@ -20,7 +20,7 @@ on:
         type: choice
         options: [patch, minor, major]
       release_notes:
-        description: Optional human-written release-note intro (prepended to generated notes)
+        description: Optional release-note intro; use \n for line breaks (prepended to generated notes)
         required: false
         type: string
 

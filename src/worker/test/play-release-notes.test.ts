@@ -61,4 +61,10 @@ describe("Play release-note normalizer", () => {
 			"Manual context",
 		);
 	});
+
+	it("expands escaped workflow input line breaks", () => {
+		expect(
+			composeOperatorNotes({ text: "First line\\nSecond line\\r\\nThird line" }),
+		).toBe("First line\nSecond line\nThird line");
+	});
 });
