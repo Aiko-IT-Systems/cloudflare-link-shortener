@@ -9,15 +9,34 @@ on:
         description: Existing published release tag to publish (vMAJOR.MINOR.PATCH)
         required: true
         type: string
-      store:
-        description: Publish this release to exactly one store
-        required: true
-        type: choice
-        options:
-          - chrome
-          - firefox
-          - android
-          - edge
+      release_notes:
+        description: Optional release-note intro/addendum for a manual store submission
+        required: false
+        type: string
+      release_notes_file:
+        description: Optional repository-relative Markdown release-note file for a manual submission
+        required: false
+        type: string
+      publish-chrome:
+        description: Publish to Chrome Web Store
+        required: false
+        default: false
+        type: boolean
+      publish-firefox:
+        description: Publish to Firefox Add-ons Store
+        required: false
+        default: false
+        type: boolean
+      publish-edge:
+        description: Publish to Microsoft Edge Add-ons Store
+        required: false
+        default: false
+        type: boolean
+      publish-android:
+        description: Publish to Google Play Store
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   attestations: read
@@ -52,11 +71,16 @@ jobs:
             echo
             echo "- **Release:** \`$TAG\`"
             if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-              echo "- **Manual target:** \`${{ inputs.store }}\`"
+              echo "- **Manual targets:** \`chrome: ${{ inputs.publish-chrome }}, firefox: ${{ inputs.publish-firefox }}, edge: ${{ inputs.publish-edge }}, android: ${{ inputs.publish-android }}\`"
             else
               echo "- **Trigger:** published GitHub Release"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check out note converter
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Download the complete release asset set
         env:
@@ -89,7 +113,26 @@ jobs:
             "aitsys-go-$TAG-cli.zip"; do
             test -s "release-assets/$asset"
           done
+          gh release view "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json body \
+            --jq '.body // ""' > release-assets/github-release-body.md
 
+      - name: Add release notes to whats-new directory for Google Play submission
+        env:
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          RELEASE_NOTES_FILE: ${{ inputs.release_notes_file }}
+        run: |
+          mkdir -p release-assets/whats-new
+          args=(
+            --input release-assets/github-release-body.md
+            --output release-assets/whats-new/whatsnew-en-US
+          )
+          if [ -n "$RELEASE_NOTES" ]; then args+=(--operator-notes "$RELEASE_NOTES"); fi
+          if [ -n "$RELEASE_NOTES_FILE" ]; then args+=(--operator-notes-file "$RELEASE_NOTES_FILE"); fi
+          node scripts/prepare-play-release-notes.mjs "${args[@]}"
+          note_characters="$(node -e "const fs=require('fs'); const text=fs.readFileSync('release-assets/whats-new/whatsnew-en-US','utf8'); console.log(Array.from(text.split('\\n').slice(1,-1).join('\\n')).length)")"
+          echo "- ✅ Generated Play release notes (${note_characters} characters)" >> "$GITHUB_STEP_SUMMARY"
       - name: Verify release asset attestations
         env:
           GH_TOKEN: ${{ github.token }}
@@ -127,7 +170,7 @@ jobs:
   chrome: # Only publish to Chrome Web Store if explicitly requested, we are blocked while a version is pending review (github.event_name == 'release' || )
     name: Chrome Web Store
     needs: verify-release
-    if: inputs.store == 'chrome'
+    if: inputs.publish-chrome == 'true'
     runs-on: ubuntu-latest
     environment: chrome-web-store
     steps:
@@ -147,7 +190,7 @@ jobs:
   firefox:
     name: Firefox Add-ons
     needs: verify-release
-    if: github.event_name == 'release' || inputs.store == 'firefox'
+    if: inputs.publish-firefox == 'true'
     runs-on: ubuntu-latest
     environment: firefox-amo
     steps:
@@ -170,7 +213,7 @@ jobs:
   edge: # Only publish to Microsoft Edge Add-ons if explicitly requested, we are blocked while a version is pending review (github.event_name == 'release' || )
     name: Microsoft Edge Add-ons
     needs: verify-release
-    if: inputs.store == 'edge'
+    if: inputs.publish-edge == 'true'
     runs-on: ubuntu-latest
     environment: edge-addons
     steps:
@@ -189,7 +232,7 @@ jobs:
   android:
     name: Google Play Store
     needs: verify-release
-    if: github.event_name == 'release' || inputs.store == 'android'
+    if: github.event_name == 'release' || inputs.publish-android == 'true'
     runs-on: ubuntu-latest
     environment: google-play-store
     steps:
@@ -218,6 +261,8 @@ jobs:
           tracks: internal,alpha
           status: completed
           releaseName: ${{ needs.verify-release.outputs.tag }}
+          inAppUpdatePriority: 5
+          whatsNewDirectory: release-assets/whats-new
       - name: Publish to Google Play Internal App Sharing
         id: publish-google-play-internal-sharing
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5

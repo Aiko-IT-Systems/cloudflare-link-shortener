@@ -19,6 +19,14 @@ on:
         default: patch
         type: choice
         options: [patch, minor, major]
+      release_notes:
+        description: Optional human-written release-note intro (prepended to generated notes)
+        required: false
+        type: string
+      release_notes_file:
+        description: Optional repository-relative Markdown file with release-note text
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -258,6 +266,24 @@ jobs:
         with:
           subject-path: release-assets/*
 
+      - name: Prepare custom GitHub release notes
+        id: release-notes
+        env:
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          RELEASE_NOTES_FILE: ${{ inputs.release_notes_file }}
+        run: |
+          args=(--compose-only --output release-assets/custom-release-body.md)
+          if [ -n "$RELEASE_NOTES" ]; then args+=(--operator-notes "$RELEASE_NOTES"); fi
+          if [ -n "$RELEASE_NOTES_FILE" ]; then args+=(--operator-notes-file "$RELEASE_NOTES_FILE"); fi
+          node scripts/prepare-play-release-notes.mjs "${args[@]}"
+          if [ -s release-assets/custom-release-body.md ]; then
+            echo "body_path=release-assets/custom-release-body.md" >> "$GITHUB_OUTPUT"
+            echo "- ✅ Added operator release notes; GitHub will prepend them to generated notes" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "body_path=" >> "$GITHUB_OUTPUT"
+            echo "- ℹ️ No operator release notes supplied; GitHub-generated notes only" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Sign the validated release commit and tag
         env:
           NYUW_GPG: ${{ secrets.NYUW_GPG }}
@@ -310,6 +336,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: AITSYS Go v${{ steps.version.outputs.version }}
           generate_release_notes: true
+          body_path: ${{ steps.release-notes.outputs.body_path }}
           files: |
             release-assets/aitsys-go-v${{ steps.version.outputs.version }}.apk
             release-assets/aitsys-go-v${{ steps.version.outputs.version }}.aab

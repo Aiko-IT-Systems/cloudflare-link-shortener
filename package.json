@@ -30,6 +30,7 @@
 		"extensions:check": "node scripts/check-extensions.mjs",
 		"release:sync-version": "node scripts/sync-release-version.mjs",
 		"release:check-version": "node scripts/sync-release-version.mjs --check",
+		"release:play-notes": "node scripts/prepare-play-release-notes.mjs",
 		"discord:register": "node scripts/register-discord-commands.mjs",
 		"android:clean": "node scripts/clean-android.mjs"
 	},
