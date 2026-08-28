@@ -1,7 +1,7 @@
 {
 	"name": "cloudflare-link-shortener",
 	"description": "Transparent AITSYS link shortener on Cloudflare Workers",
-	"version": "2.1.1",
+	"version": "2.1.2",
 	"author": {
 		"name": "Lulalaby",
 		"email": "aiko@aitsys.dev",
