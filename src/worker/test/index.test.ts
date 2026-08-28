@@ -902,7 +902,8 @@ describe("link shortener", () => {
 			DISCORD_PUBLIC_KEY: publicKey,
 		});
 		const user = { id: "234567890123456789", username: "DiscordCat" };
-		const discordUrl = "https://custom-short.example/api/v1/discord/interactions";
+		const discordUrl =
+			"https://custom-short.example/api/v1/discord/interactions";
 		const invalid = await app.fetch(
 			new Request("https://go.aitsys.dev/api/v1/discord/interactions", {
 				method: "POST",
@@ -996,6 +997,50 @@ describe("link shortener", () => {
 		expect(JSON.stringify(next.data.components)).toContain(
 			"https://custom-short.example/first",
 		);
+	});
+
+	test("serves public Discord information commands without a linked account", async () => {
+		const keys = await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
+			"sign",
+			"verify",
+		]);
+		const publicKey = hex(await crypto.subtle.exportKey("raw", keys.publicKey));
+		const envValue = env({
+			DISCORD_APPLICATION_ID: "discord-app",
+			DISCORD_ADMIN_USER_ID: "admin-user",
+			DISCORD_PUBLIC_KEY: publicKey,
+			PRIVACY_EMAIL: "privacy@example.test",
+		});
+		await envValue.LINKS.put("admin-account", "admin-account");
+		const user = { id: "unlinked-user", username: "Curious Cat" };
+		const expectations = [
+			["about", "self-hosted link shortener"],
+			["privacy", "privacy@example.test"],
+			["debug", "Status: **ok**"],
+		] as const;
+
+		for (const [name, expectedContent] of expectations) {
+			const result = await app.fetch(
+				await discordRequest(
+					{
+						type: 2,
+						application_id: "discord-app",
+						user,
+						data: { name },
+					},
+					keys.privateKey,
+				),
+				envValue,
+			);
+			expect(result.status).toBe(200);
+			const body = (await result.json()) as {
+				type: number;
+				data: { content: string; flags: number };
+			};
+			expect(body.type).toBe(4);
+			expect(body.data.flags).toBe(64);
+			expect(body.data.content).toContain(expectedContent);
+		}
 	});
 
 	test("bootstraps one administrator profile and migrates every link", async () => {

@@ -17,6 +17,9 @@ import {
 } from "./validation";
 import { fetchTargetMetadata } from "./metadata";
 import { canonicalTimestamp } from "./timestamps";
+import { buildInfo } from "./build-info";
+import { runConnectionTest } from "./connection-test";
+import { getSiteConfig } from "./config";
 
 const EPHEMERAL = 1 << 6;
 const COMPONENTS_V2 = 1 << 15;
@@ -112,6 +115,63 @@ function section(
 }
 function shortUrl(origin: string, slug: string): string {
 	return `${origin}/${encodeURIComponent(slug)}`;
+}
+
+async function handlePublicCommand(
+	interaction: Interaction,
+	env: Env,
+	origin: string,
+	cf: unknown,
+): Promise<Response | undefined> {
+	const name = interaction.data?.name?.toLowerCase();
+	const config = getSiteConfig(env);
+	const privacyUrl = new URL("/privacy", origin).toString();
+
+	if (name === "about") {
+		return ephemeral(
+			[
+				`## ${config.siteName}`,
+				"A privacy-first, self-hosted link shortener for communities, friends, and teams.",
+				`Website: ${origin}`,
+				`Privacy: ${privacyUrl}`,
+				`Source: ${buildInfo.repository}`,
+			].join("\n"),
+		);
+	}
+
+	if (name === "privacy") {
+		return ephemeral(
+			[
+				`## ${config.siteName} privacy`,
+				"AITSYS Go does not use advertising, analytics, click tracking, cookies, or telemetry.",
+				`Read the full policy: ${privacyUrl}`,
+				`Privacy contact: ${config.privacyEmail}`,
+			].join("\n"),
+		);
+	}
+
+	if (name === "debug") {
+		const test = await runConnectionTest(env, cf);
+		const kv = test.checks.kv;
+		const location = test.cloudflare
+			? [test.cloudflare.colo, test.cloudflare.country]
+					.filter((value): value is string => value !== null)
+					.join(" / ") || "unavailable"
+			: "unavailable";
+		return ephemeral(
+			[
+				`## ${config.siteName} diagnostics`,
+				`Status: **${test.status}**`,
+				`API version: ${test.apiVersion}`,
+				`Configuration: ${test.checks.configuration.ok ? "ok" : "degraded"}`,
+				`KV: ${kv.ok ? `ok (${kv.latencyMs ?? "unknown"} ms)` : "degraded"}`,
+				`Worker: ${test.build.version}`,
+				`Build: \`${test.build.sha.slice(0, 7)}\``,
+				`Cloudflare: ${location}`,
+				`Duration: ${test.durationMs} ms`,
+			].join("\n"),
+		);
+	}
 }
 
 function createdLinkResponse(
@@ -724,6 +784,15 @@ export async function handleDiscordInteraction(
 	)
 		return new Response("Unknown application.", { status: 401 });
 	if (interaction.type === 1) return response({ type: 1 });
+	if (interaction.type === 2) {
+		const publicResponse = await handlePublicCommand(
+			interaction,
+			env,
+			origin,
+			(request as Request & { cf?: unknown }).cf,
+		);
+		if (publicResponse) return publicResponse;
+	}
 	const user = userOf(interaction);
 	if (!user) return new Response("Missing user.", { status: 400 });
 	const account = await getAccountByDiscordUserId(env, user.id);

@@ -31,6 +31,27 @@ const commands = [
 		integration_types: [1],
 		contexts: [2],
 	},
+	{
+		name: "about",
+		description: "Learn about this AITSYS Go instance",
+		type: 1,
+		integration_types: [1],
+		contexts: [2],
+	},
+	{
+		name: "privacy",
+		description: "View privacy information",
+		type: 1,
+		integration_types: [1],
+		contexts: [2],
+	},
+	{
+		name: "debug",
+		description: "Check this AITSYS Go instance",
+		type: 1,
+		integration_types: [1],
+		contexts: [2],
+	},
 ];
 
 const response = await fetch(
@@ -50,4 +71,4 @@ if (!response.ok)
 	throw new Error(
 		`Discord command registration failed (${response.status}): ${await response.text()}`,
 	);
-console.log("Registered 3 global user-install Discord commands.");
+console.log("Registered 6 global user-install Discord commands.");
