@@ -152,7 +152,7 @@ export function normalizePlayNotes(
 			limited = `${limited.trimEnd()}…`;
 		}
 	}
-	return `<${locale}>\n${limited}\n</${locale}>`;
+	return limited;
 }
 
 async function main() {

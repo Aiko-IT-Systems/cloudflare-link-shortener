@@ -16,7 +16,7 @@ describe("Play release-note normalizer", () => {
 			{ locale: "en-US" },
 		);
 
-		expect(result).toBe("<en-US>\n• Added safer sharing\n</en-US>");
+		expect(result).toBe("• Added safer sharing");
 		expect(result).not.toContain("example.test");
 		expect(result).not.toContain("automation");
 	});
@@ -27,7 +27,7 @@ describe("Play release-note normalizer", () => {
 			locale: "de-DE",
 		});
 		expect(result).toBe(
-			"<de-DE>\n• Important update\n• Generated fix\n</de-DE>",
+			"• Important update\n• Generated fix",
 		);
 	});
 
@@ -53,7 +53,7 @@ describe("Play release-note normalizer", () => {
 			"- Public fix\nGITHUB_TOKEN=do-not-copy\nsecrets.PLAY_KEY\ngithub.event.release.body",
 			{},
 		);
-		expect(result).toBe("<en-US>\n• Public fix\n</en-US>");
+		expect(result).toBe("• Public fix");
 	});
 
 	it("trims operator-written notes", () => {
