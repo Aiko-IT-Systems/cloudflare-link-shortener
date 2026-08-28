@@ -18,9 +18,13 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 import kotlin.String
 
+internal val supportedHttpProtocols = listOf(Protocol.HTTP_2, Protocol.HTTP_1_1)
+
 private val httpClient =
     OkHttpClient.Builder()
-        .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_3))
+        // OkHttp requires HTTP/1.1 as the fallback for normal ALPN negotiation.
+        // HTTP/3 is not implemented by this Android OkHttp transport.
+        .protocols(supportedHttpProtocols)
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(20, TimeUnit.SECONDS)

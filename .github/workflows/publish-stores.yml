@@ -5,6 +5,7 @@ on:
     types: [published]
 
 permissions:
+  attestations: read
   contents: read
 
 concurrency:
@@ -12,45 +13,114 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # chrome:
-  #   name: Chrome Web Store
-  #   runs-on: ubuntu-latest
-  #   environment: chrome-web-store
-  #   steps:
-  #     - name: Download Chrome release artifact
-  #       env:
-  #         GH_TOKEN: ${{ secrets.NYUW_TOKEN }}
-  #         TAG: ${{ github.event.release.tag_name }}
-  #       run: |
-  #         mkdir release-assets
-  #         gh release download "$TAG" \
-  #           --repo "$GITHUB_REPOSITORY" \
-  #           --pattern "aitsys-go-$TAG-chrome.zip" \
-  #           --dir release-assets
-  #     - uses: wdzeng/chrome-extension@d13687a31d7884b5fb01c87a90986f8c365e6e0a # v2.0.0
-  #       with:
-  #         extension-id: ${{ vars.CHROME_EXTENSION_ID }}
-  #         publisher-id: ${{ vars.CHROME_PUBLISHER_ID }}
-  #         zip-path: release-assets/aitsys-go-${{ github.event.release.tag_name }}-chrome.zip
-  #         client-id: ${{ vars.CHROME_CLIENT_ID }}
-  #         client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
-  #         refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
-  firefox:
-    name: Firefox Add-ons
+  verify-release:
+    name: Verify release provenance and version
     runs-on: ubuntu-latest
-    environment: firefox-amo
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - name: Download Firefox release artifacts
+      - name: Validate release tag and derive version
+        id: version
         env:
-          GH_TOKEN: ${{ secrets.NYUW_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ ! "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error::Release tag must be exactly vMAJOR.MINOR.PATCH; received '$TAG'."
+            exit 1
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download the complete release asset set
+        env:
+          GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
         run: |
           mkdir release-assets
           gh release download "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
+            --pattern "aitsys-go-$TAG.apk" \
+            --pattern "aitsys-go-$TAG.aab" \
+            --pattern "aitsys-go-$TAG-chrome.zip" \
+            --pattern "aitsys-go-$TAG-edge.zip" \
             --pattern "aitsys-go-$TAG-firefox.zip" \
             --pattern "aitsys-go-$TAG-extension-source.zip" \
+            --pattern "aitsys-go-$TAG-cli.zip" \
             --dir release-assets
+          for asset in \
+            "aitsys-go-$TAG.apk" \
+            "aitsys-go-$TAG.aab" \
+            "aitsys-go-$TAG-chrome.zip" \
+            "aitsys-go-$TAG-edge.zip" \
+            "aitsys-go-$TAG-firefox.zip" \
+            "aitsys-go-$TAG-extension-source.zip" \
+            "aitsys-go-$TAG-cli.zip"; do
+            test -s "release-assets/$asset"
+          done
+
+      - name: Verify release asset attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for asset in release-assets/*; do
+            gh attestation verify "$asset" \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+              --deny-self-hosted-runners
+          done
+          echo "- ✅ Verified GitHub attestations for every release asset." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify exact expected version in extension artifacts
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          for target in chrome edge firefox; do
+            unzip -p "release-assets/aitsys-go-v$VERSION-$target.zip" manifest.json | \
+              node -e 'let input = ""; process.stdin.on("data", chunk => input += chunk).on("end", () => { if (JSON.parse(input).version !== process.argv[1]) process.exit(1); })' "$VERSION"
+          done
+          unzip -p "release-assets/aitsys-go-v$VERSION-extension-source.zip" package.json | \
+            node -e 'let input = ""; process.stdin.on("data", chunk => input += chunk).on("end", () => { if (JSON.parse(input).version !== process.argv[1]) process.exit(1); })' "$VERSION"
+          unzip -p "release-assets/aitsys-go-v$VERSION-extension-source.zip" src/extensions/static/firefox/manifest.json | \
+            node -e 'let input = ""; process.stdin.on("data", chunk => input += chunk).on("end", () => { if (JSON.parse(input).version !== process.argv[1]) process.exit(1); })' "$VERSION"
+          echo "- ✅ Release tag and extension artifacts all declare v$VERSION." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stage verified release assets for publication
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verified-release-assets-${{ github.event.release.tag_name }}
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 1
+
+  chrome:
+    name: Chrome Web Store
+    needs: verify-release
+    runs-on: ubuntu-latest
+    environment: chrome-web-store
+    steps:
+      - name: Download verified release assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: verified-release-assets-${{ github.event.release.tag_name }}
+          path: release-assets
+      - uses: wdzeng/chrome-extension@d13687a31d7884b5fb01c87a90986f8c365e6e0a # v2.0.0
+        with:
+          extension-id: ${{ vars.CHROME_EXTENSION_ID }}
+          publisher-id: ${{ vars.CHROME_PUBLISHER_ID }}
+          zip-path: release-assets/aitsys-go-${{ github.event.release.tag_name }}-chrome.zip
+          client-id: ${{ vars.CHROME_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+  firefox:
+    name: Firefox Add-ons
+    needs: verify-release
+    runs-on: ubuntu-latest
+    environment: firefox-amo
+    steps:
+      - name: Download verified release assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: verified-release-assets-${{ github.event.release.tag_name }}
+          path: release-assets
       - uses: wdzeng/firefox-addon@3184ee491b500e080885e046051366a4228c6e5d # v1.2.1
         with:
           addon-guid: ${{ vars.FIREFOX_ADDON_GUID }}
@@ -86,19 +156,15 @@ jobs:
   #         notes-for-certification: ${{ secrets.APPROVAL_NOTES_INTERNAL }}
   android:
     name: Google Play Store
+    needs: verify-release
     runs-on: ubuntu-latest
     environment: google-play-store
     steps:
-      - name: Download Android release artifact
-        env:
-          GH_TOKEN: ${{ secrets.NYUW_TOKEN }}
-          TAG: ${{ github.event.release.tag_name }}
-        run: |
-          mkdir release-assets
-          gh release download "$TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern "aitsys-go-$TAG.aab" \
-            --dir release-assets
+      - name: Download verified release assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: verified-release-assets-${{ github.event.release.tag_name }}
+          path: release-assets
       - name: Decode Google Play service account credential
         env:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}

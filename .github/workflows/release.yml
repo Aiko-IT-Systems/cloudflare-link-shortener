@@ -40,30 +40,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          token: ${{ secrets.NYUW_TOKEN }}
+          # The default read-only workflow token is enough to fetch main. Keep
+          # the NyuwBot token out of Git's persisted credential helper.
+          persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: npm
-
-      - name: Import NyuwBot signing key
-        id: signing-key
-        env:
-          NYUW_GPG: ${{ secrets.NYUW_GPG }}
-        run: |
-          if [ -z "$NYUW_GPG" ]; then
-            echo "::error::NYUW_GPG is not configured."
-            exit 1
-          fi
-          printf '%s' "$NYUW_GPG" | gpg --batch --import
-          fingerprint="$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "sec" { found = 1; next } found && $1 == "fpr" { print $10; exit }')"
-          if [ -z "$fingerprint" ]; then
-            echo "::error::NYUW_GPG did not import a usable secret key."
-            exit 1
-          fi
-          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
-          echo "- ✅ Imported NyuwBot signing key `${fingerprint: -16}`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install locked Node dependencies
         run: npm ci
@@ -90,22 +74,20 @@ jobs:
             echo "- **Source:** \`${{ github.event_name }}\` on \`main\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Commit the exact release source locally
+      - name: Stage the exact release source locally
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          GPG_FINGERPRINT: ${{ steps.signing-key.outputs.fingerprint }}
         run: |
-          git config user.name "NyuwBot"
-          git config user.email "nyuw@aitsys.dev"
-          git config user.signingkey "$GPG_FINGERPRINT"
           git add package.json package-lock.json src/extensions/static/chrome/manifest.json src/extensions/static/edge/manifest.json src/extensions/static/firefox/manifest.json
           git diff --cached --check
-          git commit -S -m "chore(release): v$VERSION"
-          git verify-commit HEAD
+          if git diff --cached --quiet; then
+            echo "::error::The release version did not stage any source changes."
+            exit 1
+          fi
           {
             echo
             echo "### Source revision"
-            echo "- Created local release commit \`$(git rev-parse --short HEAD)\`; it will be pushed only after all validation passes."
+            echo "- Staged the exact release source; the signed commit is created only after all validation passes."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate Worker and central version contract
@@ -276,15 +258,49 @@ jobs:
         with:
           subject-path: release-assets/*
 
-      - name: Push the validated release commit and tag
+      - name: Sign the validated release commit and tag
         env:
+          NYUW_GPG: ${{ secrets.NYUW_GPG }}
+          VERSION: ${{ steps.version.outputs.version }}
           TAG: ${{ steps.version.outputs.tag }}
         run: |
+          if [ -z "$NYUW_GPG" ]; then
+            echo "::error::NYUW_GPG is not configured."
+            exit 1
+          fi
+          export GNUPGHOME="$(mktemp -d)"
+          cleanup() {
+            gpgconf --homedir "$GNUPGHOME" --kill all || true
+            rm -rf "$GNUPGHOME"
+          }
+          trap cleanup EXIT
+          printf '%s' "$NYUW_GPG" | gpg --batch --import
+          fingerprint="$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "sec" { found = 1; next } found && $1 == "fpr" { print $10; exit }')"
+          if [ -z "$fingerprint" ]; then
+            echo "::error::NYUW_GPG did not import a usable secret key."
+            exit 1
+          fi
+          git config user.name "NyuwBot"
+          git config user.email "nyuw@aitsys.dev"
+          git config user.signingkey "$fingerprint"
+          git commit -S -m "chore(release): v$VERSION"
+          git verify-commit HEAD
           git diff --check
           git tag -s "$TAG" -m "AITSYS Go $TAG"
           git verify-tag "$TAG"
-          git push origin HEAD:main
-          git push origin "$TAG"
+          echo "- ✅ Created and verified NyuwBot-signed release commit and tag \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Push the validated release commit and tag
+        env:
+          NYUW_TOKEN: ${{ secrets.NYUW_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if [ -z "$NYUW_TOKEN" ]; then
+            echo "::error::NYUW_TOKEN is not configured."
+            exit 1
+          fi
+          git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$NYUW_TOKEN" | base64 --wrap=0)" \
+            push "https://github.com/${GITHUB_REPOSITORY}.git" HEAD:main "refs/tags/$TAG"
           echo "- ✅ Pushed validated release commit and tag \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish the unified GitHub Release

@@ -3,6 +3,8 @@ package dev.aitsys.go.data
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
 
 class ApiClientTest {
     @Test fun normalizesIssuedToken() {
@@ -24,5 +26,10 @@ class ApiClientTest {
         assertThrows(IllegalArgumentException::class.java) { ApiClient.normalizeOrigin("http://go.aitsys.dev") }
         assertThrows(IllegalArgumentException::class.java) { ApiClient.normalizeOrigin("https://go.aitsys.dev/api") }
         assertThrows(IllegalArgumentException::class.java) { ApiClient.normalizeOrigin("https://user@example.com") }
+    }
+
+    @Test fun usesHttp11AsTheNegotiatedHttpsFallback() {
+        assertEquals(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1), supportedHttpProtocols)
+        assertEquals(supportedHttpProtocols, OkHttpClient.Builder().protocols(supportedHttpProtocols).build().protocols)
     }
 }
