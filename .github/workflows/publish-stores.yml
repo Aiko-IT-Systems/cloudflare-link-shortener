@@ -27,7 +27,6 @@ jobs:
   #           --repo "$GITHUB_REPOSITORY" \
   #           --pattern "aitsys-go-$TAG-chrome.zip" \
   #           --dir release-assets
-
   #     - uses: wdzeng/chrome-extension@d13687a31d7884b5fb01c87a90986f8c365e6e0a # v2.0.0
   #       with:
   #         extension-id: ${{ vars.CHROME_EXTENSION_ID }}
@@ -62,6 +61,7 @@ jobs:
           jwt-secret: ${{ secrets.FIREFOX_JWT_SECRET }}
           license: "Apache-2.0"
           compatibility: "firefox,android"
+          approval-notes: ${{ secrets.APPROVAL_NOTES_INTERNAL }}
   # edge:
   #   name: Microsoft Edge Add-ons
   #   runs-on: ubuntu-latest
@@ -83,6 +83,7 @@ jobs:
   #         zip-path: release-assets/aitsys-go-${{ github.event.release.tag_name }}-edge.zip
   #         api-key: ${{ secrets.EDGE_API_KEY }}
   #         client-id: ${{ vars.EDGE_CLIENT_ID }}
+  #         notes-for-certification: ${{ secrets.APPROVAL_NOTES_INTERNAL }}
   android:
     name: Google Play Store
     runs-on: ubuntu-latest
