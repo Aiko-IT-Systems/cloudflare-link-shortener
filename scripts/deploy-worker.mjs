@@ -11,10 +11,20 @@ const localSha = () => {
 		return "local";
 	}
 };
+const getRepo = () => {
+	try {
+		const gitURL = new URL(execFileSync("git", ["remote", "get-url", "origin"], { encoding: "utf8" }).trim());
+		gitURL.username = "";
+		gitURL.password = "";
+		return gitURL.toString();
+	} catch {
+		return typeof packageJson.repository === "string" ? packageJson.repository : packageJson.repository?.url;
+	}
+}
 const buildInfo = {
 	version: packageJson.version,
 	sha: process.env.WORKERS_CI_COMMIT_SHA || process.env.GITHUB_SHA || localSha(),
-	repository: typeof packageJson.repository === "string" ? packageJson.repository : packageJson.repository?.url
+	repository: getRepo()
 };
 
 for (const [name, value] of Object.entries(buildInfo)) {
