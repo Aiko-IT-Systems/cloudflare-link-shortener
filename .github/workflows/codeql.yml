@@ -32,7 +32,11 @@ jobs:
           - language: javascript-typescript
             build_mode: none
           - language: java-kotlin
-            build_mode: manual
+            # The Android project currently targets API 37 preview, which is
+            # not available in the hosted runner's SDK repository. Source
+            # extraction still gives CodeQL Java/Kotlin coverage without a
+            # misleading or permanently brittle SDK install step.
+            build_mode: none
 
     steps:
       - name: Check out source
@@ -40,37 +44,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Java
-        if: matrix.language == 'java-kotlin'
-        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: gradle
-
-      - name: Set up Android SDK
-        if: matrix.language == 'java-kotlin'
-        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
-
-      - name: Install Android SDK packages
-        if: matrix.language == 'java-kotlin'
-        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
-
-      - name: Ensure Gradle wrapper is executable
-        if: matrix.language == 'java-kotlin'
-        run: chmod +x src/android/gradlew
-
       - name: Initialize CodeQL
         uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build_mode }}
           queries: security-extended
-
-      - name: Compile Android for CodeQL
-        if: matrix.language == 'java-kotlin'
-        working-directory: src/android
-        run: ./gradlew --no-daemon :app:clean :app:compileDebugKotlin
 
       - name: Analyze source
         uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
