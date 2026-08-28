@@ -31,12 +31,6 @@ jobs:
             build_mode: none
           - language: javascript-typescript
             build_mode: none
-          - language: java-kotlin
-            # The Android project currently targets API 37 preview, which is
-            # not available in the hosted runner's SDK repository. Source
-            # extraction still gives CodeQL Java/Kotlin coverage without a
-            # misleading or permanently brittle SDK install step.
-            build_mode: none
 
     steps:
       - name: Check out source
