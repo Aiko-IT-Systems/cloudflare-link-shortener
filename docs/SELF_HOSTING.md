@@ -64,9 +64,9 @@ account or KV ID, or `vars`. Domains and routes remain dashboard-owned.
 ## 4. Add production settings in Cloudflare
 
 Open **Workers & Pages → _your Worker_ → Settings → Variables and Secrets** and
-select **Production**. These are runtime settings, not Workers Build variables.
+under **Runtime variables and secrets**
 
-Create these two values as **encrypted secrets**:
+Create these Environment Variable with **secret** toggled:
 
 | Secret name | Value |
 | --- | --- |
