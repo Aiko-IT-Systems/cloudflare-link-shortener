@@ -1,4 +1,9 @@
 {
     "java.configuration.updateBuildConfiguration": "automatic",
-    "postman.settings.dotenv-detection-notification-visibility": false
+    "postman.settings.dotenv-detection-notification-visibility": false,
+    "java.import.gradle.wrapper.enabled": true,
+    "java.import.gradle.java.home": "C:\\Users\\Lulalaby\\.jdks\\jbr-21.0.11",
+    "kotlin.java.home": "C:\\\\Users\\\\Lulalaby\\\\.jdks\\\\jbr-21.0.11",
+    "kotlin.scripts.buildScriptsEnabled": true,
+    "kotlin.scripts.enabled": true
 }

@@ -30,7 +30,8 @@
 		"extensions:check": "node scripts/check-extensions.mjs",
 		"release:sync-version": "node scripts/sync-release-version.mjs",
 		"release:check-version": "node scripts/sync-release-version.mjs --check",
-		"discord:register": "node scripts/register-discord-commands.mjs"
+		"discord:register": "node scripts/register-discord-commands.mjs",
+		"android:clean": "node scripts/clean-android.mjs"
 	},
 	"dependencies": {
 		"hono": "^4.6.20",
