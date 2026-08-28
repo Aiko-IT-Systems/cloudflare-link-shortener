@@ -125,8 +125,9 @@ app.get("/api/v1/connection-test", async (c) => {
 			: null,
 
 		durationMs: Number(
-			(performance.now() - startedAt).toFixed(2)
-		)
+			(performance.now() - startedAt).toFixed(2),
+		),
+		build: buildInfo
 	});
 });
 
