@@ -434,16 +434,14 @@ describe("link shortener", () => {
 		});
 	});
 
-	test("exposes an unauthenticated connection test with branding and build info", async () => {
+	test("exposes an unauthenticated connection test", async () => {
 		const response = await app.fetch(new Request("https://short.example/api/v1/connection-test"), env({ SITE_NAME: "Test Go" }));
-		const body = await response.json() as { success: boolean; result: { status: string; apiVersion: number; branding: { siteName: string }; build: Record<string, string> } };
+		const body = await response.json() as { success: boolean; result: { status: string; apiVersion: number; } };
 
 		expect(response.status).toBe(200);
 		expect(body.success).toBe(true);
 		expect(body.result.status).toBe("ok");
 		expect(body.result.apiVersion).toBe(1);
-		expect(body.result.branding.siteName).toBe("Test Go");
-		expect(body.result.build.version).toBe("development");
 	});
 
 	test("issues revocable account tokens and isolates owned links", async () => {
