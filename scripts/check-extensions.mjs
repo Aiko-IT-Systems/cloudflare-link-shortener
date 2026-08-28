@@ -1,25 +1,63 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const packageVersion = JSON.parse(readFileSync(resolve("package.json"), "utf8")).version;
+const packageVersion = JSON.parse(
+	readFileSync(resolve("package.json"), "utf8"),
+).version;
 
 for (const target of ["chrome", "edge", "firefox"]) {
 	const root = resolve("dist", target);
 	const manifestPath = resolve(root, "manifest.json");
-	if (!existsSync(manifestPath)) throw new Error(`${target}: manifest.json is missing. Run the extension build first.`);
+	if (!existsSync(manifestPath))
+		throw new Error(
+			`${target}: manifest.json is missing. Run the extension build first.`,
+		);
 	const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-	if (manifest.version !== packageVersion) throw new Error(`${target}: manifest version ${manifest.version ?? "<missing>"} must equal package.json version ${packageVersion}.`);
-	if (manifest.manifest_version !== 3) throw new Error(`${target}: Manifest V3 is required.`);
-	if (!manifest.action?.default_popup || !existsSync(resolve(root, manifest.action.default_popup))) throw new Error(`${target}: popup is missing.`);
-	if (!manifest.host_permissions?.includes("https://*/*")) throw new Error(`${target}: all HTTPS host access is required.`);
-	if (manifest.optional_host_permissions?.length) throw new Error(`${target}: host access must be declared at install time.`);
-	if (!manifest.permissions?.includes("storage") || !manifest.permissions?.includes("activeTab")) throw new Error(`${target}: required minimum permissions are missing.`);
-	if (target === "edge" && manifest.name !== "AITSYS Go for Microsoft Edge") throw new Error("edge: manifest must use the Microsoft Edge store name.");
+	if (manifest.version !== packageVersion)
+		throw new Error(
+			`${target}: manifest version ${manifest.version ?? "<missing>"} must equal package.json version ${packageVersion}.`,
+		);
+	if (manifest.manifest_version !== 3)
+		throw new Error(`${target}: Manifest V3 is required.`);
+	if (
+		!manifest.action?.default_popup ||
+		!existsSync(resolve(root, manifest.action.default_popup))
+	)
+		throw new Error(`${target}: popup is missing.`);
+	if (!manifest.host_permissions?.includes("https://*/*"))
+		throw new Error(`${target}: all HTTPS host access is required.`);
+	if (manifest.optional_host_permissions?.length)
+		throw new Error(`${target}: host access must be declared at install time.`);
+	if (
+		!manifest.permissions?.includes("storage") ||
+		!manifest.permissions?.includes("activeTab")
+	)
+		throw new Error(`${target}: required minimum permissions are missing.`);
+	if (target === "edge" && manifest.name !== "AITSYS Go for Microsoft Edge")
+		throw new Error("edge: manifest must use the Microsoft Edge store name.");
 	if (target === "firefox") {
-		const collected = manifest.browser_specific_settings?.gecko?.data_collection_permissions?.required ?? [];
-		if (!collected.includes("authenticationInfo") || !collected.includes("browsingActivity")) throw new Error("firefox: data-collection declarations must cover the issued token and submitted page URL.");
-		if (manifest.browser_specific_settings?.gecko?.strict_min_version !== "140.0" || manifest.browser_specific_settings?.gecko_android?.strict_min_version !== "142.0") throw new Error("firefox: built-in data consent requires Firefox 140+ and Android 142+.");
+		const collected =
+			manifest.browser_specific_settings?.gecko?.data_collection_permissions
+				?.required ?? [];
+		if (
+			!collected.includes("authenticationInfo") ||
+			!collected.includes("browsingActivity")
+		)
+			throw new Error(
+				"firefox: data-collection declarations must cover the issued token and submitted page URL.",
+			);
+		if (
+			manifest.browser_specific_settings?.gecko?.strict_min_version !==
+				"140.0" ||
+			manifest.browser_specific_settings?.gecko_android?.strict_min_version !==
+				"142.0"
+		)
+			throw new Error(
+				"firefox: built-in data consent requires Firefox 140+ and Android 142+.",
+			);
 	}
 }
 
-console.log(`Chrome, Edge, and Firefox extension manifests are valid for v${packageVersion}.`);
+console.log(
+	`Chrome, Edge, and Firefox extension manifests are valid for v${packageVersion}.`,
+);

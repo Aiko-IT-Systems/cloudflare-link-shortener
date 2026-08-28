@@ -1,17 +1,29 @@
 import { LinkRecord } from "./types";
 
-type EmbedMetadata = Pick<LinkRecord, "embedTitle" | "embedDescription" | "embedImageUrl" | "embedSiteName" | "metadataFetchedAt">;
+type EmbedMetadata = Pick<
+	LinkRecord,
+	| "embedTitle"
+	| "embedDescription"
+	| "embedImageUrl"
+	| "embedSiteName"
+	| "metadataFetchedAt"
+>;
 
 const MAX_HTML_BYTES = 64 * 1024;
 const FETCH_TIMEOUT_MS = 2500;
 
-function trimForMeta(value: string | undefined, maxLength: number): string | undefined {
+function trimForMeta(
+	value: string | undefined,
+	maxLength: number,
+): string | undefined {
 	const trimmed = value?.replace(/\s+/g, " ").trim();
 	if (!trimmed) {
 		return undefined;
 	}
 
-	return trimmed.length > maxLength ? `${trimmed.slice(0, maxLength - 1).trim()}...` : trimmed;
+	return trimmed.length > maxLength
+		? `${trimmed.slice(0, maxLength - 1).trim()}...`
+		: trimmed;
 }
 
 function decodeHtml(value: string): string {
@@ -19,7 +31,7 @@ function decodeHtml(value: string): string {
 		.replace(/&amp;/g, "&")
 		.replace(/&lt;/g, "<")
 		.replace(/&gt;/g, ">")
-		.replace(/&quot;/g, "\"")
+		.replace(/&quot;/g, '"')
 		.replace(/&#39;/g, "'")
 		.replace(/&#x27;/g, "'");
 }
@@ -59,7 +71,10 @@ function titleContent(headHtml: string): string | undefined {
 	return match ? decodeHtml(match[1]) : undefined;
 }
 
-function resolveHttpsUrl(value: string | undefined, destinationUrl: string): string | undefined {
+function resolveHttpsUrl(
+	value: string | undefined,
+	destinationUrl: string,
+): string | undefined {
 	if (!value) {
 		return undefined;
 	}
@@ -72,7 +87,10 @@ function resolveHttpsUrl(value: string | undefined, destinationUrl: string): str
 	}
 }
 
-async function readPrefix(stream: ReadableStream<Uint8Array> | null, maxBytes: number): Promise<string> {
+async function readPrefix(
+	stream: ReadableStream<Uint8Array> | null,
+	maxBytes: number,
+): Promise<string> {
 	if (!stream) {
 		return "";
 	}
@@ -90,7 +108,8 @@ async function readPrefix(stream: ReadableStream<Uint8Array> | null, maxBytes: n
 			}
 
 			const remaining = maxBytes - bytesRead;
-			const chunk = value.byteLength > remaining ? value.slice(0, remaining) : value;
+			const chunk =
+				value.byteLength > remaining ? value.slice(0, remaining) : value;
 			bytesRead += chunk.byteLength;
 			output += decoder.decode(chunk, { stream: bytesRead < maxBytes });
 		}
@@ -101,31 +120,49 @@ async function readPrefix(stream: ReadableStream<Uint8Array> | null, maxBytes: n
 	return output + decoder.decode();
 }
 
-export function extractEmbedMetadata(html: string, destinationUrl: string): Omit<EmbedMetadata, "metadataFetchedAt"> {
+export function extractEmbedMetadata(
+	html: string,
+	destinationUrl: string,
+): Omit<EmbedMetadata, "metadataFetchedAt"> {
 	const headHtml = /<head\b[^>]*>([\s\S]*?)<\/head>/i.exec(html)?.[1] ?? html;
 	const embedTitle = trimForMeta(
-		metaContent(headHtml, ["og:title", "twitter:title"]) ?? titleContent(headHtml),
-		120
+		metaContent(headHtml, ["og:title", "twitter:title"]) ??
+			titleContent(headHtml),
+		120,
 	);
 	const embedDescription = trimForMeta(
-		metaContent(headHtml, ["og:description", "twitter:description", "description"]),
-		240
+		metaContent(headHtml, [
+			"og:description",
+			"twitter:description",
+			"description",
+		]),
+		240,
 	);
 	const embedImageUrl = resolveHttpsUrl(
-		metaContent(headHtml, ["og:image:secure_url", "og:image", "twitter:image", "twitter:image:src"]),
-		destinationUrl
+		metaContent(headHtml, [
+			"og:image:secure_url",
+			"og:image",
+			"twitter:image",
+			"twitter:image:src",
+		]),
+		destinationUrl,
 	);
-	const embedSiteName = trimForMeta(metaContent(headHtml, ["og:site_name"]), 80);
+	const embedSiteName = trimForMeta(
+		metaContent(headHtml, ["og:site_name"]),
+		80,
+	);
 
 	return {
 		...(embedTitle ? { embedTitle } : {}),
 		...(embedDescription ? { embedDescription } : {}),
 		...(embedImageUrl ? { embedImageUrl } : {}),
-		...(embedSiteName ? { embedSiteName } : {})
+		...(embedSiteName ? { embedSiteName } : {}),
 	};
 }
 
-export async function fetchTargetMetadata(destinationUrl: string): Promise<Partial<EmbedMetadata>> {
+export async function fetchTargetMetadata(
+	destinationUrl: string,
+): Promise<Partial<EmbedMetadata>> {
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -133,9 +170,9 @@ export async function fetchTargetMetadata(destinationUrl: string): Promise<Parti
 		const response = await fetch(destinationUrl, {
 			headers: {
 				Accept: "text/html,application/xhtml+xml",
-				"User-Agent": "AITSYS-Go/1.0 (+https://go.aitsys.dev/)"
+				"User-Agent": "AITSYS-Go/1.0 (+https://go.aitsys.dev/)",
 			},
-			signal: controller.signal
+			signal: controller.signal,
 		});
 
 		const contentType = response.headers.get("Content-Type") ?? "";

@@ -27,8 +27,8 @@ function Invoke-LinkApi {
 	)
 
 	$params = @{
-		Method = $Method
-		Uri = "$ApiBase$Path"
+		Method  = $Method
+		Uri     = "$ApiBase$Path"
 		Headers = @{ Authorization = "Bearer $ApiToken" }
 	}
 
@@ -39,7 +39,8 @@ function Invoke-LinkApi {
 
 	try {
 		Invoke-RestMethod @params
-	} catch {
+	}
+ catch {
 		$response = $_.Exception.Response
 		if ($response) {
 			$status = [int] $response.StatusCode
@@ -78,7 +79,7 @@ function New-ShortLink {
 
 	$body = @{
 		destinationUrl = $destinationUrl.Trim()
-		creator = $creator.Trim()
+		creator        = $creator.Trim()
 	}
 
 	if (-not [string]::IsNullOrWhiteSpace($title)) { $body.title = $title.Trim() }

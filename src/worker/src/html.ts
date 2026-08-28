@@ -18,12 +18,18 @@ function escapeHtml(value: string): string {
 		.replace(/'/g, "&#39;");
 }
 
-function metaTags(title: string, config: SiteConfig, meta: PageMeta = {}): string {
+function metaTags(
+	title: string,
+	config: SiteConfig,
+	meta: PageMeta = {},
+): string {
 	if (meta.suppressSocialPreview) {
 		return "";
 	}
 
-	const description = meta.description ?? `Transparent ${config.siteName} short link preview. No click analytics, cookies, or tracking pixels.`;
+	const description =
+		meta.description ??
+		`Transparent ${config.siteName} short link preview. No click analytics, cookies, or tracking pixels.`;
 	const siteName = meta.siteName ?? config.siteName;
 	const tags = [
 		["property", "og:type", "website"],
@@ -32,7 +38,7 @@ function metaTags(title: string, config: SiteConfig, meta: PageMeta = {}): strin
 		["property", "og:site_name", siteName],
 		["name", "twitter:card", meta.imageUrl ? "summary_large_image" : "summary"],
 		["name", "twitter:title", title],
-		["name", "twitter:description", description]
+		["name", "twitter:description", description],
 	];
 
 	if (meta.pageUrl) {
@@ -45,12 +51,22 @@ function metaTags(title: string, config: SiteConfig, meta: PageMeta = {}): strin
 	}
 
 	return tags
-		.map(([attribute, name, content]) => `<meta ${attribute}="${escapeHtml(name)}" content="${escapeHtml(content)}">`)
+		.map(
+			([attribute, name, content]) =>
+				`<meta ${attribute}="${escapeHtml(name)}" content="${escapeHtml(content)}">`,
+		)
 		.join("\n\t\t");
 }
 
-function page(config: SiteConfig, title: string, body: string, status = 200, meta: PageMeta = {}): Response {
-	return new Response(`<!doctype html>
+function page(
+	config: SiteConfig,
+	title: string,
+	body: string,
+	status = 200,
+	meta: PageMeta = {},
+): Response {
+	return new Response(
+		`<!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
@@ -337,38 +353,49 @@ function page(config: SiteConfig, title: string, body: string, status = 200, met
 				<div class="brand">
 					<div class="brand-lockup">
 						<img class="brand-logo" src="${escapeHtml(config.brandLogoUrl)}" alt="${escapeHtml(config.brandLogoAlt)}">
-						<span class="brand-name">${escapeHtml(config.siteName.replace('Go', '').trim())}</span> <span class="brand-go">GO</span>
+						<span class="brand-name">${escapeHtml(config.siteName.replace("Go", "").trim())}</span> <span class="brand-go">GO</span>
 					</div>
 				</div>
 				${body}
 			</div>
 		</main>
 	</body>
-</html>`, {
-		status,
-		headers: {
-			"Content-Type": "text/html; charset=utf-8",
-			"Referrer-Policy": "no-referrer",
-			"X-Content-Type-Options": "nosniff"
-		}
-	});
+</html>`,
+		{
+			status,
+			headers: {
+				"Content-Type": "text/html; charset=utf-8",
+				"Referrer-Policy": "no-referrer",
+				"X-Content-Type-Options": "nosniff",
+			},
+		},
+	);
 }
 
 export function homepage(config: SiteConfig, pageUrl: string): Response {
 	const brandImageUrl = new URL(config.brandLogoUrl, pageUrl).href;
-	return page(config, "Private link shortener", `
+	return page(
+		config,
+		"Private link shortener",
+		`
 		<p>A small link redirector for projects, release posts, docs, and community links.</p>
 		<p>Short links show the destination before leaving this site, who added the link, and when it was created. No click analytics, no cookies, no tracking pixels.</p>
-	`, 200, {
-		description: `Transparent ${config.siteName} short links with a privacy-first splash page.`,
-		imageUrl: brandImageUrl,
-		pageUrl,
-		siteName: config.siteName
-	});
+	`,
+		200,
+		{
+			description: `Transparent ${config.siteName} short links with a privacy-first splash page.`,
+			imageUrl: brandImageUrl,
+			pageUrl,
+			siteName: config.siteName,
+		},
+	);
 }
 
 export function privacyPolicy(config: SiteConfig): Response {
-	return page(config, "Privacy policy", `
+	return page(
+		config,
+		"Privacy policy",
+		`
 		<h1>Privacy <span class="accent">policy</span></h1>
 		<p>${escapeHtml(config.siteName)} creates and manages short links. It does not use advertising, analytics, click tracking, cookies, or telemetry.</p>
 		<dl>
@@ -390,17 +417,28 @@ export function privacyPolicy(config: SiteConfig): Response {
 			</div>
 		</dl>
 		<p class="note">The Android app can optionally require the device's biometric authentication or device PIN, pattern, or password. It does not create, store, or transmit an app-specific passcode.</p>
-	`, 200, {
-		description: `${config.siteName} privacy policy. No advertising, analytics, click tracking, cookies, or telemetry.`,
-		suppressSocialPreview: true
-	});
+	`,
+		200,
+		{
+			description: `${config.siteName} privacy policy. No advertising, analytics, click tracking, cookies, or telemetry.`,
+			suppressSocialPreview: true,
+		},
+	);
 }
 
-export function splash(config: SiteConfig, record: LinkRecord, pageUrl: string): Response {
+export function splash(
+	config: SiteConfig,
+	record: LinkRecord,
+	pageUrl: string,
+): Response {
 	const label = record.embedTitle ?? record.title ?? record.destinationUrl;
-	const description = record.embedDescription
-		?? `Short link to ${record.destinationUrl}. No click analytics, cookies, or tracking pixels.`;
-	return page(config, label, `
+	const description =
+		record.embedDescription ??
+		`Short link to ${record.destinationUrl}. No click analytics, cookies, or tracking pixels.`;
+	return page(
+		config,
+		label,
+		`
 		<h1>Leaving <span class="accent">GO</span></h1>
 		<p>This short link points to the destination below. Nothing is tracked here: no click counter, no cookies, and no analytics storage.</p>
 		<dl>
@@ -418,33 +456,54 @@ export function splash(config: SiteConfig, record: LinkRecord, pageUrl: string):
 			</div>
 		</dl>
 		<a class="button" href="${escapeHtml(record.destinationUrl)}" rel="noreferrer">Continue to destination</a>
-	`, 200, {
-		description,
-		imageUrl: record.embedImageUrl,
-		pageUrl,
-		siteName: record.embedSiteName,
-		suppressSocialPreview: record.suppressSocialPreview
-	});
+	`,
+		200,
+		{
+			description,
+			imageUrl: record.embedImageUrl,
+			pageUrl,
+			siteName: record.embedSiteName,
+			suppressSocialPreview: record.suppressSocialPreview,
+		},
+	);
 }
 
 export function unavailable(config: SiteConfig, record: LinkRecord): Response {
-	return page(config, "Link unavailable", `
+	return page(
+		config,
+		"Link unavailable",
+		`
 		<h1 class="one-line">Link <span class="accent">disabled</span></h1>
 		<p>The short link <code>/${escapeHtml(record.slug)}</code> exists, but it is no longer available.</p>
 		${record.disabledReason ? `<p class="note">${escapeHtml(record.disabledReason)}</p>` : ""}
-	`, 410);
+	`,
+		410,
+	);
 }
 
 export function expired(config: SiteConfig, record: LinkRecord): Response {
-	return page(config, "Link expired", `
+	return page(
+		config,
+		"Link expired",
+		`
 		<h1 class="one-line">Link <span class="accent">expired</span></h1>
 		<p>The short link <code>/${escapeHtml(record.slug)}</code> exists, but its expiry time has passed.</p>
 		${record.expiresAt ? `<p class="note">Expired at ${escapeHtml(new Date(record.expiresAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }))} UTC.</p>` : ""}
-	`, 410, { suppressSocialPreview: record.suppressSocialPreview });
+	`,
+		410,
+		{ suppressSocialPreview: record.suppressSocialPreview },
+	);
 }
 
-export function passwordPrompt(config: SiteConfig, record: LinkRecord, invalid = false): Response {
-	return page(config, "Password required", `
+export function passwordPrompt(
+	config: SiteConfig,
+	record: LinkRecord,
+	invalid = false,
+): Response {
+	return page(
+		config,
+		"Password required",
+		`
 		<h1 class="one-line">Password <span class="accent">required</span></h1>
 		<p>The short link <code>/${escapeHtml(record.slug)}</code> is protected. Enter the password to view the destination splash.</p>
 		${invalid ? `<p class="note">That password did not match.</p>` : ""}
@@ -452,21 +511,29 @@ export function passwordPrompt(config: SiteConfig, record: LinkRecord, invalid =
 			<input type="password" name="password" placeholder="Password" autocomplete="current-password" required>
 			<button type="submit">Unlock link</button>
 		</form>
-	`, invalid ? 401 : 200, { suppressSocialPreview: true });
+	`,
+		invalid ? 401 : 200,
+		{ suppressSocialPreview: true },
+	);
 }
 
 export function notFound(config: SiteConfig): Response {
-	return page(config, "Link not found", `
+	return page(
+		config,
+		"Link not found",
+		`
 		<h1 class="one-line">Link <span class="accent">not found</span></h1>
 		<p>That short link does not exist, or it was typed with an extra character hiding somewhere.</p>
 		<a class="button" href="/">Back home</a>
-	`, 404);
+	`,
+		404,
+	);
 }
 
 export function robots(): Response {
 	return new Response("User-agent: *\nDisallow: /\n", {
 		headers: {
-			"Content-Type": "text/plain; charset=utf-8"
-		}
+			"Content-Type": "text/plain; charset=utf-8",
+		},
 	});
 }

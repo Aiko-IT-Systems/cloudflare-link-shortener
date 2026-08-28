@@ -31,7 +31,7 @@ function Invoke-Git {
 }
 
 function Get-GhRepo {
-	$output = & gh repo view --json name,url,owner 2>$null
+	$output = & gh repo view --json name, url, owner 2>$null
 	if ($LASTEXITCODE -ne 0) {
 		return $null
 	}
@@ -114,7 +114,8 @@ $repo = Get-GhRepo
 if ([string]::IsNullOrWhiteSpace($DestinationUrl)) {
 	if ($repo) {
 		$DestinationUrl = $repo.url
-	} else {
+	}
+ else {
 		$remoteUrl = Invoke-Git remote get-url $Remote
 		$DestinationUrl = Convert-RemoteToWebUrl $remoteUrl
 	}
@@ -123,7 +124,8 @@ if ([string]::IsNullOrWhiteSpace($DestinationUrl)) {
 if ([string]::IsNullOrWhiteSpace($Creator)) {
 	if ($repo) {
 		$Creator = $repo.owner.login
-	} else {
+	}
+ else {
 		$Creator = Get-GitHubOwner $DestinationUrl
 	}
 }
@@ -131,15 +133,16 @@ if ([string]::IsNullOrWhiteSpace($Creator)) {
 if ([string]::IsNullOrWhiteSpace($Title)) {
 	if ($repo) {
 		$Title = $repo.name
-	} else {
+	}
+ else {
 		$Title = Get-GitHubRepoName $DestinationUrl
 	}
 }
 
 $body = @{
 	destinationUrl = $DestinationUrl.Trim()
-	creator = $Creator.Trim()
-	title = $Title.Trim()
+	creator        = $Creator.Trim()
+	title          = $Title.Trim()
 }
 
 $expiry = Convert-Expiry -At $ExpiresAt -In $ExpiresIn
@@ -157,7 +160,8 @@ $headers = @{
 
 try {
 	$response = Invoke-RestMethod -Method Post -Uri "$ApiBase/api/v1/links" -Headers $headers -ContentType "application/json" -Body ($body | ConvertTo-Json -Compress)
-} catch {
+}
+catch {
 	$message = $_.ErrorDetails.Message
 	if ([string]::IsNullOrWhiteSpace($message)) {
 		$message = $_.Exception.Message

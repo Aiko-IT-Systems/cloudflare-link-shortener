@@ -10,8 +10,8 @@ export default defineConfig(({ mode }) => ({
 		rollupOptions: {
 			input: {
 				popup: resolve(import.meta.dirname, "index.html"),
-				options: resolve(import.meta.dirname, "options.html")
-			}
-		}
-	}
+				options: resolve(import.meta.dirname, "options.html"),
+			},
+		},
+	},
 }));

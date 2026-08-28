@@ -6,22 +6,46 @@ import { LinkRecord } from "../src/types";
 class MemoryKV {
 	private readonly values = new Map<string, string>();
 
-	get(key: string, options?: Partial<KVNamespaceGetOptions<undefined>>): Promise<string | null>;
+	get(
+		key: string,
+		options?: Partial<KVNamespaceGetOptions<undefined>>,
+	): Promise<string | null>;
 	get(key: string, type: "text"): Promise<string | null>;
 	get<T = unknown>(key: string, type: "json"): Promise<T | null>;
 	get(key: string, type: "arrayBuffer"): Promise<ArrayBuffer | null>;
 	get(key: string, type: "stream"): Promise<ReadableStream | null>;
-	get(key: string, options?: KVNamespaceGetOptions<"text">): Promise<string | null>;
-	get<T = unknown>(key: string, options?: KVNamespaceGetOptions<"json">): Promise<T | null>;
-	get(key: string, options?: KVNamespaceGetOptions<"arrayBuffer">): Promise<ArrayBuffer | null>;
-	get(key: string, options?: KVNamespaceGetOptions<"stream">): Promise<ReadableStream | null>;
-	async get<T>(key: string, typeOrOptions?: "json" | "text" | "arrayBuffer" | "stream" | Partial<KVNamespaceGetOptions<undefined>>): Promise<T | string | ArrayBuffer | ReadableStream | null> {
+	get(
+		key: string,
+		options?: KVNamespaceGetOptions<"text">,
+	): Promise<string | null>;
+	get<T = unknown>(
+		key: string,
+		options?: KVNamespaceGetOptions<"json">,
+	): Promise<T | null>;
+	get(
+		key: string,
+		options?: KVNamespaceGetOptions<"arrayBuffer">,
+	): Promise<ArrayBuffer | null>;
+	get(
+		key: string,
+		options?: KVNamespaceGetOptions<"stream">,
+	): Promise<ReadableStream | null>;
+	async get<T>(
+		key: string,
+		typeOrOptions?:
+			| "json"
+			| "text"
+			| "arrayBuffer"
+			| "stream"
+			| Partial<KVNamespaceGetOptions<undefined>>,
+	): Promise<T | string | ArrayBuffer | ReadableStream | null> {
 		const value = this.values.get(key);
 		if (value === undefined) {
 			return null;
 		}
 
-		const type = typeof typeOrOptions === "string" ? typeOrOptions : typeOrOptions?.type;
+		const type =
+			typeof typeOrOptions === "string" ? typeOrOptions : typeOrOptions?.type;
 
 		if (type === "json") {
 			return JSON.parse(value) as T;
@@ -30,7 +54,10 @@ class MemoryKV {
 		return value;
 	}
 
-	async put(key: string, value: string | ArrayBuffer | ArrayBufferView | ReadableStream): Promise<void> {
+	async put(
+		key: string,
+		value: string | ArrayBuffer | ArrayBufferView | ReadableStream,
+	): Promise<void> {
 		if (typeof value === "string") {
 			this.values.set(key, value);
 			return;
@@ -43,7 +70,9 @@ class MemoryKV {
 		this.values.delete(key);
 	}
 
-	async list<Metadata = unknown>(options?: KVNamespaceListOptions): Promise<KVNamespaceListResult<Metadata, string>> {
+	async list<Metadata = unknown>(
+		options?: KVNamespaceListOptions,
+	): Promise<KVNamespaceListResult<Metadata, string>> {
 		const prefix = options?.prefix ?? "";
 		const matching = Array.from(this.values.keys())
 			.filter((key) => key.startsWith(prefix))
@@ -57,25 +86,65 @@ class MemoryKV {
 			keys,
 			list_complete: end >= matching.length,
 			cacheStatus: null,
-			...(end < matching.length ? { cursor: `${end}` } : {})
+			...(end < matching.length ? { cursor: `${end}` } : {}),
 		};
 	}
 
-	getWithMetadata<Metadata = unknown>(key: string, options?: Partial<KVNamespaceGetOptions<undefined>>): Promise<KVNamespaceGetWithMetadataResult<string, Metadata>>;
-	getWithMetadata<Metadata = unknown>(key: string, type: "text"): Promise<KVNamespaceGetWithMetadataResult<string, Metadata>>;
-	getWithMetadata<T = unknown, Metadata = unknown>(key: string, type: "json"): Promise<KVNamespaceGetWithMetadataResult<T, Metadata>>;
-	getWithMetadata<Metadata = unknown>(key: string, type: "arrayBuffer"): Promise<KVNamespaceGetWithMetadataResult<ArrayBuffer, Metadata>>;
-	getWithMetadata<Metadata = unknown>(key: string, type: "stream"): Promise<KVNamespaceGetWithMetadataResult<ReadableStream, Metadata>>;
-	getWithMetadata<Metadata = unknown>(key: string, options: KVNamespaceGetOptions<"text">): Promise<KVNamespaceGetWithMetadataResult<string, Metadata>>;
-	getWithMetadata<T = unknown, Metadata = unknown>(key: string, options: KVNamespaceGetOptions<"json">): Promise<KVNamespaceGetWithMetadataResult<T, Metadata>>;
-	getWithMetadata<Metadata = unknown>(key: string, options: KVNamespaceGetOptions<"arrayBuffer">): Promise<KVNamespaceGetWithMetadataResult<ArrayBuffer, Metadata>>;
-	getWithMetadata<Metadata = unknown>(key: string, options: KVNamespaceGetOptions<"stream">): Promise<KVNamespaceGetWithMetadataResult<ReadableStream, Metadata>>;
-	async getWithMetadata<T, Metadata = unknown>(key: string, typeOrOptions?: "json" | "text" | "arrayBuffer" | "stream" | Partial<KVNamespaceGetOptions<undefined>>): Promise<KVNamespaceGetWithMetadataResult<T | string | ArrayBuffer | ReadableStream, Metadata>> {
+	getWithMetadata<Metadata = unknown>(
+		key: string,
+		options?: Partial<KVNamespaceGetOptions<undefined>>,
+	): Promise<KVNamespaceGetWithMetadataResult<string, Metadata>>;
+	getWithMetadata<Metadata = unknown>(
+		key: string,
+		type: "text",
+	): Promise<KVNamespaceGetWithMetadataResult<string, Metadata>>;
+	getWithMetadata<T = unknown, Metadata = unknown>(
+		key: string,
+		type: "json",
+	): Promise<KVNamespaceGetWithMetadataResult<T, Metadata>>;
+	getWithMetadata<Metadata = unknown>(
+		key: string,
+		type: "arrayBuffer",
+	): Promise<KVNamespaceGetWithMetadataResult<ArrayBuffer, Metadata>>;
+	getWithMetadata<Metadata = unknown>(
+		key: string,
+		type: "stream",
+	): Promise<KVNamespaceGetWithMetadataResult<ReadableStream, Metadata>>;
+	getWithMetadata<Metadata = unknown>(
+		key: string,
+		options: KVNamespaceGetOptions<"text">,
+	): Promise<KVNamespaceGetWithMetadataResult<string, Metadata>>;
+	getWithMetadata<T = unknown, Metadata = unknown>(
+		key: string,
+		options: KVNamespaceGetOptions<"json">,
+	): Promise<KVNamespaceGetWithMetadataResult<T, Metadata>>;
+	getWithMetadata<Metadata = unknown>(
+		key: string,
+		options: KVNamespaceGetOptions<"arrayBuffer">,
+	): Promise<KVNamespaceGetWithMetadataResult<ArrayBuffer, Metadata>>;
+	getWithMetadata<Metadata = unknown>(
+		key: string,
+		options: KVNamespaceGetOptions<"stream">,
+	): Promise<KVNamespaceGetWithMetadataResult<ReadableStream, Metadata>>;
+	async getWithMetadata<T, Metadata = unknown>(
+		key: string,
+		typeOrOptions?:
+			| "json"
+			| "text"
+			| "arrayBuffer"
+			| "stream"
+			| Partial<KVNamespaceGetOptions<undefined>>,
+	): Promise<
+		KVNamespaceGetWithMetadataResult<
+			T | string | ArrayBuffer | ReadableStream,
+			Metadata
+		>
+	> {
 		const value = await this.get<T>(key, typeOrOptions);
 		return {
 			value: value as T | string | null,
 			metadata: null,
-			cacheStatus: null
+			cacheStatus: null,
 		};
 	}
 }
@@ -86,7 +155,7 @@ function env(overrides: Partial<Env> = {}): Env {
 		LINK_SHORTENER_API_KEY: "test-secret",
 		DISCORD_PUBLIC_KEY: "0".repeat(64),
 		ASSETS: {
-			fetch: async () => new Response("Not found", { status: 404 })
+			fetch: async () => new Response("Not found", { status: 404 }),
 		} as Fetcher,
 		SITE_NAME: "AITSYS Go",
 		BRAND_LOGO_URL: "/logo.png",
@@ -96,7 +165,7 @@ function env(overrides: Partial<Env> = {}): Env {
 		PRIVACY_EMAIL: "privacy@aitsys.dev",
 		DISCORD_APPLICATION_ID: "",
 		DISCORD_ADMIN_USER_ID: "",
-		...overrides
+		...overrides,
 	};
 }
 
@@ -104,35 +173,67 @@ function authed(init: RequestInit = {}): RequestInit {
 	return {
 		...init,
 		headers: {
-			"Authorization": "Bearer test-secret",
+			Authorization: "Bearer test-secret",
 			"Content-Type": "application/json",
-			...init.headers
-		}
+			...init.headers,
+		},
 	};
 }
 
-async function create(envValue: Env, payload: Record<string, unknown>): Promise<Response> {
-	return app.fetch(new Request("https://go.aitsys.dev/api/v1/links", authed({
-		method: "POST",
-		body: JSON.stringify(payload)
-	})), envValue);
+async function create(
+	envValue: Env,
+	payload: Record<string, unknown>,
+): Promise<Response> {
+	return app.fetch(
+		new Request(
+			"https://go.aitsys.dev/api/v1/links",
+			authed({
+				method: "POST",
+				body: JSON.stringify(payload),
+			}),
+		),
+		envValue,
+	);
 }
 
 function hex(bytes: ArrayBuffer): string {
-	return Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
+	return Array.from(new Uint8Array(bytes), (byte) =>
+		byte.toString(16).padStart(2, "0"),
+	).join("");
 }
 
-async function discordRequest(body: Record<string, unknown>, privateKey: CryptoKey, url = "https://go.aitsys.dev/discord/interactions"): Promise<Request> {
+async function discordRequest(
+	body: Record<string, unknown>,
+	privateKey: CryptoKey,
+	url = "https://go.aitsys.dev/discord/interactions",
+): Promise<Request> {
 	const timestamp = `${Math.floor(Date.now() / 1000)}`;
 	const json = JSON.stringify(body);
 	const data = new TextEncoder().encode(timestamp + json);
-	const signature = await crypto.subtle.sign({ name: "Ed25519" }, privateKey, data);
-	return new Request(url, { method: "POST", headers: { "Content-Type": "application/json", "X-Signature-Ed25519": hex(signature), "X-Signature-Timestamp": timestamp }, body: json });
+	const signature = await crypto.subtle.sign(
+		{ name: "Ed25519" },
+		privateKey,
+		data,
+	);
+	return new Request(url, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"X-Signature-Ed25519": hex(signature),
+			"X-Signature-Timestamp": timestamp,
+		},
+		body: json,
+	});
 }
 
 describe("link shortener", () => {
 	beforeEach(() => {
-		vi.stubGlobal("fetch", vi.fn(async () => new Response(`<!doctype html>
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(
+				async () =>
+					new Response(
+						`<!doctype html>
 			<html>
 				<head>
 					<meta property="og:title" content="Target Embed Title">
@@ -140,9 +241,13 @@ describe("link shortener", () => {
 					<meta property="og:image" content="/preview.png">
 					<meta property="og:site_name" content="Target Site">
 				</head>
-			</html>`, {
-			headers: { "Content-Type": "text/html; charset=utf-8" }
-		})));
+			</html>`,
+						{
+							headers: { "Content-Type": "text/html; charset=utf-8" },
+						},
+					),
+			),
+		);
 	});
 
 	afterEach(() => {
@@ -155,9 +260,9 @@ describe("link shortener", () => {
 			slug: "pycord",
 			destinationUrl: "https://pycord.dev",
 			creator: "Lulalaby",
-			title: "Pycord"
+			title: "Pycord",
 		});
-		const body = await response.json() as { result: LinkRecord };
+		const body = (await response.json()) as { result: LinkRecord };
 
 		expect(response.status).toBe(201);
 		expect(body.result.slug).toBe("pycord");
@@ -170,9 +275,9 @@ describe("link shortener", () => {
 		const envValue = env();
 		const response = await create(envValue, {
 			destinationUrl: "https://aitsys.dev",
-			creator: "Lulalaby"
+			creator: "Lulalaby",
 		});
-		const body = await response.json() as { result: LinkRecord };
+		const body = (await response.json()) as { result: LinkRecord };
 
 		expect(response.status).toBe(201);
 		expect(body.result.slug).toMatch(/^[A-Za-z0-9]{8}$/);
@@ -180,13 +285,19 @@ describe("link shortener", () => {
 
 	test("rejects missing and bad auth", async () => {
 		const envValue = env();
-		const missing = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", {
-			method: "POST"
-		}), envValue);
-		const bad = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", {
-			method: "POST",
-			headers: { Authorization: "Bearer wrong" }
-		}), envValue);
+		const missing = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links", {
+				method: "POST",
+			}),
+			envValue,
+		);
+		const bad = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links", {
+				method: "POST",
+				headers: { Authorization: "Bearer wrong" },
+			}),
+			envValue,
+		);
 
 		expect(missing.status).toBe(401);
 		expect(bad.status).toBe(401);
@@ -197,22 +308,22 @@ describe("link shortener", () => {
 		const invalidUrl = await create(envValue, {
 			slug: "bad-url",
 			destinationUrl: "http://example.com",
-			creator: "Lulalaby"
+			creator: "Lulalaby",
 		});
 		const first = await create(envValue, {
 			slug: "dupe",
 			destinationUrl: "https://example.com",
-			creator: "Lulalaby"
+			creator: "Lulalaby",
 		});
 		const duplicate = await create(envValue, {
 			slug: "dupe",
 			destinationUrl: "https://example.org",
-			creator: "Lulalaby"
+			creator: "Lulalaby",
 		});
 		const reserved = await create(envValue, {
 			slug: "api",
 			destinationUrl: "https://example.com",
-			creator: "Lulalaby"
+			creator: "Lulalaby",
 		});
 
 		expect(invalidUrl.status).toBe(400);
@@ -226,11 +337,14 @@ describe("link shortener", () => {
 		await create(envValue, {
 			slug: "readme",
 			destinationUrl: "https://aitsys.dev",
-			creator: "Lulalaby"
+			creator: "Lulalaby",
 		});
 
-		const response = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links/readme", authed()), envValue);
-		const body = await response.json() as { result: LinkRecord };
+		const response = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links/readme", authed()),
+			envValue,
+		);
+		const body = (await response.json()) as { result: LinkRecord };
 
 		expect(response.status).toBe(200);
 		expect(body.result.destinationUrl).toBe("https://aitsys.dev");
@@ -241,23 +355,39 @@ describe("link shortener", () => {
 		await create(envValue, {
 			slug: "hello",
 			destinationUrl: "https://aitsys.dev",
-			creator: "Lulalaby"
+			creator: "Lulalaby",
 		});
 
-		const splashResponse = await app.fetch(new Request("https://go.aitsys.dev/hello"), envValue);
+		const splashResponse = await app.fetch(
+			new Request("https://go.aitsys.dev/hello"),
+			envValue,
+		);
 		const splashHtml = await splashResponse.text();
 
-		const disableResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links/hello/disable", authed({
-			method: "POST",
-			body: JSON.stringify({ reason: "No longer needed" })
-		})), envValue);
-		const disabledResponse = await app.fetch(new Request("https://go.aitsys.dev/hello"), envValue);
+		const disableResponse = await app.fetch(
+			new Request(
+				"https://go.aitsys.dev/api/v1/links/hello/disable",
+				authed({
+					method: "POST",
+					body: JSON.stringify({ reason: "No longer needed" }),
+				}),
+			),
+			envValue,
+		);
+		const disabledResponse = await app.fetch(
+			new Request("https://go.aitsys.dev/hello"),
+			envValue,
+		);
 		const disabledHtml = await disabledResponse.text();
 
 		expect(splashResponse.status).toBe(200);
 		expect(splashHtml).toContain("Continue to destination");
-		expect(splashHtml).toContain('<meta property="og:title" content="Target Embed Title">');
-		expect(splashHtml).toContain('<meta property="og:image" content="https://aitsys.dev/preview.png">');
+		expect(splashHtml).toContain(
+			'<meta property="og:title" content="Target Embed Title">',
+		);
+		expect(splashHtml).toContain(
+			'<meta property="og:image" content="https://aitsys.dev/preview.png">',
+		);
 		expect(disableResponse.status).toBe(200);
 		expect(disabledResponse.status).toBe(410);
 		expect(disabledHtml).not.toContain("Continue to destination");
@@ -268,23 +398,34 @@ describe("link shortener", () => {
 		await create(envValue, {
 			slug: "refresh-me",
 			destinationUrl: "https://aitsys.dev",
-			creator: "Lulalaby"
+			creator: "Lulalaby",
 		});
 
-		vi.mocked(fetch).mockResolvedValueOnce(new Response(`<!doctype html>
+		vi.mocked(fetch).mockResolvedValueOnce(
+			new Response(
+				`<!doctype html>
 			<html>
 				<head>
 					<meta property="og:title" content="Refreshed Title">
 					<meta name="description" content="Refreshed description.">
 				</head>
-			</html>`, {
-			headers: { "Content-Type": "text/html; charset=utf-8" }
-		}));
+			</html>`,
+				{
+					headers: { "Content-Type": "text/html; charset=utf-8" },
+				},
+			),
+		);
 
-		const response = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links/refresh-me/refresh-metadata", authed({
-			method: "POST"
-		})), envValue);
-		const body = await response.json() as { result: LinkRecord };
+		const response = await app.fetch(
+			new Request(
+				"https://go.aitsys.dev/api/v1/links/refresh-me/refresh-metadata",
+				authed({
+					method: "POST",
+				}),
+			),
+			envValue,
+		);
+		const body = (await response.json()) as { result: LinkRecord };
 
 		expect(response.status).toBe(200);
 		expect(body.result.embedTitle).toBe("Refreshed Title");
@@ -297,21 +438,30 @@ describe("link shortener", () => {
 			slug: "secret",
 			destinationUrl: "https://aitsys.dev",
 			creator: "Lulalaby",
-			password: "meow"
+			password: "meow",
 		});
 
-		const promptResponse = await app.fetch(new Request("https://go.aitsys.dev/secret"), envValue);
+		const promptResponse = await app.fetch(
+			new Request("https://go.aitsys.dev/secret"),
+			envValue,
+		);
 		const promptHtml = await promptResponse.text();
-		const badResponse = await app.fetch(new Request("https://go.aitsys.dev/secret", {
-			method: "POST",
-			headers: { "Content-Type": "application/x-www-form-urlencoded" },
-			body: "password=wrong"
-		}), envValue);
-		const goodResponse = await app.fetch(new Request("https://go.aitsys.dev/secret", {
-			method: "POST",
-			headers: { "Content-Type": "application/x-www-form-urlencoded" },
-			body: "password=meow"
-		}), envValue);
+		const badResponse = await app.fetch(
+			new Request("https://go.aitsys.dev/secret", {
+				method: "POST",
+				headers: { "Content-Type": "application/x-www-form-urlencoded" },
+				body: "password=wrong",
+			}),
+			envValue,
+		);
+		const goodResponse = await app.fetch(
+			new Request("https://go.aitsys.dev/secret", {
+				method: "POST",
+				headers: { "Content-Type": "application/x-www-form-urlencoded" },
+				body: "password=meow",
+			}),
+			envValue,
+		);
 		const goodHtml = await goodResponse.text();
 
 		expect(promptResponse.status).toBe(200);
@@ -328,10 +478,13 @@ describe("link shortener", () => {
 			slug: "old",
 			destinationUrl: "https://aitsys.dev",
 			creator: "Lulalaby",
-			expiresAt: "2020-01-01T00:00:00.000Z"
+			expiresAt: "2020-01-01T00:00:00.000Z",
 		});
 
-		const response = await app.fetch(new Request("https://go.aitsys.dev/old"), envValue);
+		const response = await app.fetch(
+			new Request("https://go.aitsys.dev/old"),
+			envValue,
+		);
 		const html = await response.text();
 
 		expect(response.status).toBe(410);
@@ -345,30 +498,45 @@ describe("link shortener", () => {
 			slug: "quiet",
 			destinationUrl: "https://aitsys.dev",
 			creator: "Lulalaby",
-			suppressSocialPreview: true
+			suppressSocialPreview: true,
 		});
 
-		const quietResponse = await app.fetch(new Request("https://go.aitsys.dev/quiet"), envValue);
+		const quietResponse = await app.fetch(
+			new Request("https://go.aitsys.dev/quiet"),
+			envValue,
+		);
 		const quietHtml = await quietResponse.text();
-		const homeResponse = await app.fetch(new Request("https://go.aitsys.dev/"), envValue);
+		const homeResponse = await app.fetch(
+			new Request("https://go.aitsys.dev/"),
+			envValue,
+		);
 		const homeHtml = await homeResponse.text();
 
 		expect(quietHtml).not.toContain('property="og:title"');
 		expect(quietHtml).not.toContain('name="twitter:card"');
-		expect(homeHtml).toContain('<meta property="og:title" content="Private link shortener">');
-		expect(homeHtml).toContain('<meta property="og:image" content="https://go.aitsys.dev/logo.png">');
+		expect(homeHtml).toContain(
+			'<meta property="og:title" content="Private link shortener">',
+		);
+		expect(homeHtml).toContain(
+			'<meta property="og:image" content="https://go.aitsys.dev/logo.png">',
+		);
 		expect(homeHtml).toContain('<link rel="icon" href="/favicon.png">');
 	});
 
 	test("serves the privacy policy with its configured contact at its reserved public route", async () => {
-		const response = await app.fetch(new Request("https://go.aitsys.dev/privacy"), env({ PRIVACY_EMAIL: "privacy@cats.example" }));
+		const response = await app.fetch(
+			new Request("https://go.aitsys.dev/privacy"),
+			env({ PRIVACY_EMAIL: "privacy@cats.example" }),
+		);
 		const html = await response.text();
 
 		expect(response.status).toBe(200);
 		expect(html).toContain("Privacy");
 		expect(html).toContain('href="mailto:privacy@cats.example"');
 		expect(html).toContain("privacy@cats.example");
-		expect(html).toContain("does not use advertising, analytics, click tracking, cookies, or telemetry");
+		expect(html).toContain(
+			"does not use advertising, analytics, click tracking, cookies, or telemetry",
+		);
 		expect(html).toContain("Cloudflare Workers");
 		expect(html).toContain("Cloudflare KV");
 		expect(html).toContain("may be publicly visible");
@@ -386,17 +554,30 @@ describe("link shortener", () => {
 			SITE_NAME: "Cats & Code",
 			BRAND_LOGO_URL: "/custom/logo.svg?light=1&wide=1",
 			BRAND_LOGO_ALT: 'Cats "R" Us & friends',
-			FAVICON_URL: "/custom/favicon.svg?pink=1&small=1"
+			FAVICON_URL: "/custom/favicon.svg?pink=1&small=1",
 		});
 
-		const response = await app.fetch(new Request("https://short.example/"), envValue);
+		const response = await app.fetch(
+			new Request("https://short.example/"),
+			envValue,
+		);
 		const html = await response.text();
 
-		expect(html).toContain("<title>Private link shortener · Cats &amp; Code</title>");
-		expect(html).toContain('<img class="brand-logo" src="/custom/logo.svg?light=1&amp;wide=1" alt="Cats &quot;R&quot; Us &amp; friends">');
-		expect(html).toContain('<link rel="icon" href="/custom/favicon.svg?pink=1&amp;small=1">');
-		expect(html).toContain('<meta property="og:image" content="https://short.example/custom/logo.svg?light=1&amp;wide=1">');
-		expect(html).toContain('<meta property="og:site_name" content="Cats &amp; Code">');
+		expect(html).toContain(
+			"<title>Private link shortener · Cats &amp; Code</title>",
+		);
+		expect(html).toContain(
+			'<img class="brand-logo" src="/custom/logo.svg?light=1&amp;wide=1" alt="Cats &quot;R&quot; Us &amp; friends">',
+		);
+		expect(html).toContain(
+			'<link rel="icon" href="/custom/favicon.svg?pink=1&amp;small=1">',
+		);
+		expect(html).toContain(
+			'<meta property="og:image" content="https://short.example/custom/logo.svg?light=1&amp;wide=1">',
+		);
+		expect(html).toContain(
+			'<meta property="og:site_name" content="Cats &amp; Code">',
+		);
 	});
 
 	test("exposes public absolute branding metadata without API authentication", async () => {
@@ -406,11 +587,21 @@ describe("link shortener", () => {
 			BRAND_LOGO_ALT: "A custom cat logo",
 			FAVICON_URL: "https://assets.example/favicon.svg",
 			BRAND_COLOR: "#aabbcc",
-			PRIVACY_EMAIL: "privacy@cats.example"
+			PRIVACY_EMAIL: "privacy@cats.example",
 		});
 
-		const response = await app.fetch(new Request("https://short.example/api/v1/metadata"), envValue);
-		const body = await response.json() as { success: boolean; result: { apiVersion: number; branding: Record<string, string>; build: Record<string, string> } };
+		const response = await app.fetch(
+			new Request("https://short.example/api/v1/metadata"),
+			envValue,
+		);
+		const body = (await response.json()) as {
+			success: boolean;
+			result: {
+				apiVersion: number;
+				branding: Record<string, string>;
+				build: Record<string, string>;
+			};
+		};
 
 		expect(response.status).toBe(200);
 		expect(body).toEqual({
@@ -423,20 +614,27 @@ describe("link shortener", () => {
 					brandLogoAlt: "A custom cat logo",
 					faviconUrl: "https://assets.example/favicon.svg",
 					brandColor: "#aabbcc",
-					privacyEmail: "privacy@cats.example"
+					privacyEmail: "privacy@cats.example",
 				},
 				build: {
 					version: "development",
 					sha: "local",
-					repository: "https://github.com/Aiko-IT-Systems/cloudflare-link-shortener"
-				}
-			}
+					repository:
+						"https://github.com/Aiko-IT-Systems/cloudflare-link-shortener",
+				},
+			},
 		});
 	});
 
 	test("exposes an unauthenticated connection test", async () => {
-		const response = await app.fetch(new Request("https://short.example/api/v1/connection-test"), env({ SITE_NAME: "Test Go" }));
-		const body = await response.json() as { success: boolean; result: { status: string; apiVersion: number; } };
+		const response = await app.fetch(
+			new Request("https://short.example/api/v1/connection-test"),
+			env({ SITE_NAME: "Test Go" }),
+		);
+		const body = (await response.json()) as {
+			success: boolean;
+			result: { status: string; apiVersion: number };
+		};
 
 		expect(response.status).toBe(200);
 		expect(body.success).toBe(true);
@@ -446,18 +644,47 @@ describe("link shortener", () => {
 
 	test("issues revocable account tokens and isolates owned links", async () => {
 		const envValue = env();
-		const admin = authed({ method: "POST", body: JSON.stringify({ id: "friend", creatorName: "Friendly Cat" }) });
-		const accountResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts", admin), envValue);
+		const admin = authed({
+			method: "POST",
+			body: JSON.stringify({ id: "friend", creatorName: "Friendly Cat" }),
+		});
+		const accountResponse = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/accounts", admin),
+			envValue,
+		);
 		expect(accountResponse.status).toBe(201);
-		const accountList = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts", authed()), envValue);
-		expect((await accountList.json() as { result: { items: Array<{ id: string }> } }).result.items.map((account) => account.id)).toEqual(["friend"]);
+		const accountList = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/accounts", authed()),
+			envValue,
+		);
+		expect(
+			(
+				(await accountList.json()) as {
+					result: { items: Array<{ id: string }> };
+				}
+			).result.items.map((account) => account.id),
+		).toEqual(["friend"]);
 
-		const tokenResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts/friend/tokens", authed({ method: "POST", body: JSON.stringify({ label: "Firefox" }) })), envValue);
-		const issued = await tokenResponse.json() as { result: { token: string; tokenId: string } };
+		const tokenResponse = await app.fetch(
+			new Request(
+				"https://go.aitsys.dev/api/v1/accounts/friend/tokens",
+				authed({ method: "POST", body: JSON.stringify({ label: "Firefox" }) }),
+			),
+			envValue,
+		);
+		const issued = (await tokenResponse.json()) as {
+			result: { token: string; tokenId: string };
+		};
 		expect(issued.result.token).toMatch(/^aig_/);
 
-		const userHeaders = { Authorization: `Bearer ${issued.result.token}`, "Content-Type": "application/json" };
-		const meResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/me", { headers: userHeaders }), envValue);
+		const userHeaders = {
+			Authorization: `Bearer ${issued.result.token}`,
+			"Content-Type": "application/json",
+		};
+		const meResponse = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/me", { headers: userHeaders }),
+			envValue,
+		);
 		expect(meResponse.status).toBe(200);
 		expect(await meResponse.json()).toEqual({
 			success: true,
@@ -465,128 +692,433 @@ describe("link shortener", () => {
 				id: "friend",
 				creatorName: "Friendly Cat",
 				createdAt: expect.any(String),
-				discordUserId: null
-			}
+				discordUserId: null,
+			},
 		});
-		const ownResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", { method: "POST", headers: userHeaders, body: JSON.stringify({ destinationUrl: "https://example.com", creator: "Pretend Admin", slug: "friend-link" }) }), envValue);
-		const own = await ownResponse.json() as { result: LinkRecord };
+		const ownResponse = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links", {
+				method: "POST",
+				headers: userHeaders,
+				body: JSON.stringify({
+					destinationUrl: "https://example.com",
+					creator: "Pretend Admin",
+					slug: "friend-link",
+				}),
+			}),
+			envValue,
+		);
+		const own = (await ownResponse.json()) as { result: LinkRecord };
 		expect(ownResponse.status).toBe(201);
 		expect(own.result.creator).toBe("Friendly Cat");
 		expect(own.result.owner).toEqual({ kind: "account", id: "friend" });
 
-		await create(envValue, { destinationUrl: "https://aitsys.dev", creator: "Lulalaby", slug: "admin-link" });
-		const hidden = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links/admin-link", { headers: userHeaders }), envValue);
+		await create(envValue, {
+			destinationUrl: "https://aitsys.dev",
+			creator: "Lulalaby",
+			slug: "admin-link",
+		});
+		const hidden = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links/admin-link", {
+				headers: userHeaders,
+			}),
+			envValue,
+		);
 		expect(hidden.status).toBe(404);
 
-		const listed = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", { headers: userHeaders }), envValue);
-		const page = await listed.json() as { result: { items: LinkRecord[] } };
+		const listed = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links", {
+				headers: userHeaders,
+			}),
+			envValue,
+		);
+		const page = (await listed.json()) as { result: { items: LinkRecord[] } };
 		expect(page.result.items.map((link) => link.slug)).toEqual(["friend-link"]);
 
-		const update = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links/friend-link", { method: "PATCH", headers: userHeaders, body: JSON.stringify({ title: "Edited" }) }), envValue);
+		const update = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links/friend-link", {
+				method: "PATCH",
+				headers: userHeaders,
+				body: JSON.stringify({ title: "Edited" }),
+			}),
+			envValue,
+		);
 		expect(update.status).toBe(200);
 
-		const revoke = await app.fetch(new Request(`https://go.aitsys.dev/api/v1/tokens/${issued.result.tokenId}/revoke`, authed({ method: "POST" })), envValue);
+		const revoke = await app.fetch(
+			new Request(
+				`https://go.aitsys.dev/api/v1/tokens/${issued.result.tokenId}/revoke`,
+				authed({ method: "POST" }),
+			),
+			envValue,
+		);
 		expect(revoke.status).toBe(200);
-		const revoked = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", { headers: userHeaders }), envValue);
+		const revoked = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links", {
+				headers: userHeaders,
+			}),
+			envValue,
+		);
 		expect(revoked.status).toBe(401);
 
-		const secondTokenResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts/friend/tokens", authed({ method: "POST", body: JSON.stringify({ label: "Chrome" }) })), envValue);
-		const secondIssued = await secondTokenResponse.json() as { result: { token: string } };
-		const removal = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts/friend", authed({ method: "DELETE" })), envValue);
-		const removed = await removal.json() as { result: { revokedTokenCount: number } };
+		const secondTokenResponse = await app.fetch(
+			new Request(
+				"https://go.aitsys.dev/api/v1/accounts/friend/tokens",
+				authed({ method: "POST", body: JSON.stringify({ label: "Chrome" }) }),
+			),
+			envValue,
+		);
+		const secondIssued = (await secondTokenResponse.json()) as {
+			result: { token: string };
+		};
+		const removal = await app.fetch(
+			new Request(
+				"https://go.aitsys.dev/api/v1/accounts/friend",
+				authed({ method: "DELETE" }),
+			),
+			envValue,
+		);
+		const removed = (await removal.json()) as {
+			result: { revokedTokenCount: number };
+		};
 		expect(removal.status).toBe(200);
 		expect(removed.result.revokedTokenCount).toBe(1);
-		const removedToken = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", { headers: { Authorization: `Bearer ${secondIssued.result.token}` } }), envValue);
+		const removedToken = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links", {
+				headers: { Authorization: `Bearer ${secondIssued.result.token}` },
+			}),
+			envValue,
+		);
 		expect(removedToken.status).toBe(401);
-		const emptyAccountList = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts", authed()), envValue);
-		expect((await emptyAccountList.json() as { result: { items: unknown[] } }).result.items).toEqual([]);
+		const emptyAccountList = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/accounts", authed()),
+			envValue,
+		);
+		expect(
+			((await emptyAccountList.json()) as { result: { items: unknown[] } })
+				.result.items,
+		).toEqual([]);
 	});
 
 	test("lists all links and sanitized token records for administrators", async () => {
 		const envValue = env();
-		await create(envValue, { destinationUrl: "https://one.example", creator: "Admin Cat", slug: "one" });
-		await create(envValue, { destinationUrl: "https://two.example", creator: "Admin Cat", slug: "two" });
-		await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts", authed({
-			method: "POST",
-			body: JSON.stringify({ id: "shell-cat", creatorName: "Shell Cat" })
-		})), envValue);
-		const firstTokenResponse = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts/shell-cat/tokens", authed({
-			method: "POST",
-			body: JSON.stringify({ label: "Laptop" })
-		})), envValue);
-		const firstToken = await firstTokenResponse.json() as { result: { token: string } };
-		await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts/shell-cat/tokens", authed({
-			method: "POST",
-			body: JSON.stringify({ label: "Desktop" })
-		})), envValue);
+		await create(envValue, {
+			destinationUrl: "https://one.example",
+			creator: "Admin Cat",
+			slug: "one",
+		});
+		await create(envValue, {
+			destinationUrl: "https://two.example",
+			creator: "Admin Cat",
+			slug: "two",
+		});
+		await app.fetch(
+			new Request(
+				"https://go.aitsys.dev/api/v1/accounts",
+				authed({
+					method: "POST",
+					body: JSON.stringify({ id: "shell-cat", creatorName: "Shell Cat" }),
+				}),
+			),
+			envValue,
+		);
+		const firstTokenResponse = await app.fetch(
+			new Request(
+				"https://go.aitsys.dev/api/v1/accounts/shell-cat/tokens",
+				authed({
+					method: "POST",
+					body: JSON.stringify({ label: "Laptop" }),
+				}),
+			),
+			envValue,
+		);
+		const firstToken = (await firstTokenResponse.json()) as {
+			result: { token: string };
+		};
+		await app.fetch(
+			new Request(
+				"https://go.aitsys.dev/api/v1/accounts/shell-cat/tokens",
+				authed({
+					method: "POST",
+					body: JSON.stringify({ label: "Desktop" }),
+				}),
+			),
+			envValue,
+		);
 
-		const firstLinkPage = await app.fetch(new Request("https://go.aitsys.dev/api/v1/admin/links?limit=1", authed()), envValue);
-		const firstLinks = await firstLinkPage.json() as { result: { items: LinkRecord[]; cursor: string } };
+		const firstLinkPage = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/admin/links?limit=1", authed()),
+			envValue,
+		);
+		const firstLinks = (await firstLinkPage.json()) as {
+			result: { items: LinkRecord[]; cursor: string };
+		};
 		expect(firstLinks.result.items).toHaveLength(1);
 		expect(firstLinks.result.cursor).toBeTruthy();
-		const secondLinkPage = await app.fetch(new Request(`https://go.aitsys.dev/api/v1/admin/links?limit=1&cursor=${encodeURIComponent(firstLinks.result.cursor)}`, authed()), envValue);
-		expect((await secondLinkPage.json() as { result: { items: LinkRecord[] } }).result.items).toHaveLength(1);
+		const secondLinkPage = await app.fetch(
+			new Request(
+				`https://go.aitsys.dev/api/v1/admin/links?limit=1&cursor=${encodeURIComponent(firstLinks.result.cursor)}`,
+				authed(),
+			),
+			envValue,
+		);
+		expect(
+			((await secondLinkPage.json()) as { result: { items: LinkRecord[] } })
+				.result.items,
+		).toHaveLength(1);
 
-		const tokenList = await app.fetch(new Request("https://go.aitsys.dev/api/v1/tokens?limit=100", authed()), envValue);
-		const tokens = await tokenList.json() as { result: { items: Array<Record<string, unknown>> } };
+		const tokenList = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/tokens?limit=100", authed()),
+			envValue,
+		);
+		const tokens = (await tokenList.json()) as {
+			result: { items: Array<Record<string, unknown>> };
+		};
 		expect(tokens.result.items).toHaveLength(2);
-		expect(tokens.result.items.map((token) => token.label).sort()).toEqual(["Desktop", "Laptop"]);
-		expect(tokens.result.items.every((token) => !("digest" in token) && !("token" in token))).toBe(true);
+		expect(tokens.result.items.map((token) => token.label).sort()).toEqual([
+			"Desktop",
+			"Laptop",
+		]);
+		expect(
+			tokens.result.items.every(
+				(token) => !("digest" in token) && !("token" in token),
+			),
+		).toBe(true);
 
 		const userHeaders = { Authorization: `Bearer ${firstToken.result.token}` };
-		expect((await app.fetch(new Request("https://go.aitsys.dev/api/v1/admin/links", { headers: userHeaders }), envValue)).status).toBe(403);
-		expect((await app.fetch(new Request("https://go.aitsys.dev/api/v1/tokens", { headers: userHeaders }), envValue)).status).toBe(403);
+		expect(
+			(
+				await app.fetch(
+					new Request("https://go.aitsys.dev/api/v1/admin/links", {
+						headers: userHeaders,
+					}),
+					envValue,
+				)
+			).status,
+		).toBe(403);
+		expect(
+			(
+				await app.fetch(
+					new Request("https://go.aitsys.dev/api/v1/tokens", {
+						headers: userHeaders,
+					}),
+					envValue,
+				)
+			).status,
+		).toBe(403);
 	});
 
 	test("verifies Discord interactions and queues multiple message links", async () => {
-		const keys = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+		const keys = await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
+			"sign",
+			"verify",
+		]);
 		const publicKey = hex(await crypto.subtle.exportKey("raw", keys.publicKey));
-		const envValue = env({ DISCORD_APPLICATION_ID: "discord-app", DISCORD_PUBLIC_KEY: publicKey });
+		const envValue = env({
+			DISCORD_APPLICATION_ID: "discord-app",
+			DISCORD_PUBLIC_KEY: publicKey,
+		});
 		const user = { id: "234567890123456789", username: "DiscordCat" };
 		const discordUrl = "https://custom-short.example/discord/interactions";
-		const invalid = await app.fetch(new Request("https://go.aitsys.dev/discord/interactions", { method: "POST", body: "{}" }), envValue);
+		const invalid = await app.fetch(
+			new Request("https://go.aitsys.dev/discord/interactions", {
+				method: "POST",
+				body: "{}",
+			}),
+			envValue,
+		);
 		expect(invalid.status).toBe(401);
-		const unlinked = await app.fetch(await discordRequest({ type: 2, application_id: "discord-app", user, data: { name: "manage" } }, keys.privateKey, discordUrl), envValue);
-		expect(JSON.stringify(await unlinked.json())).toContain("not linked to an active shortener account");
-		const account = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts", authed({ method: "POST", body: JSON.stringify({ id: "discord-cat", creatorName: "Discord Cat", discordUserId: user.id }) })), envValue);
+		const unlinked = await app.fetch(
+			await discordRequest(
+				{
+					type: 2,
+					application_id: "discord-app",
+					user,
+					data: { name: "manage" },
+				},
+				keys.privateKey,
+				discordUrl,
+			),
+			envValue,
+		);
+		expect(JSON.stringify(await unlinked.json())).toContain(
+			"not linked to an active shortener account",
+		);
+		const account = await app.fetch(
+			new Request(
+				"https://go.aitsys.dev/api/v1/accounts",
+				authed({
+					method: "POST",
+					body: JSON.stringify({
+						id: "discord-cat",
+						creatorName: "Discord Cat",
+						discordUserId: user.id,
+					}),
+				}),
+			),
+			envValue,
+		);
 		expect(account.status).toBe(201);
 
 		const messageCommand = {
 			type: 2,
 			application_id: "discord-app",
 			user,
-			data: { name: "Shorten link", target_id: "message", resolved: { messages: { message: { content: "https://first.example and https://second.example" } } } }
+			data: {
+				name: "Shorten link",
+				target_id: "message",
+				resolved: {
+					messages: {
+						message: {
+							content: "https://first.example and https://second.example",
+						},
+					},
+				},
+			},
 		};
-		const start = await app.fetch(await discordRequest(messageCommand, keys.privateKey, discordUrl), envValue);
-		const modal = await start.json() as { type: number; data: { custom_id: string } };
+		const start = await app.fetch(
+			await discordRequest(messageCommand, keys.privateKey, discordUrl),
+			envValue,
+		);
+		const modal = (await start.json()) as {
+			type: number;
+			data: { custom_id: string };
+		};
 		expect(modal.type).toBe(9);
 
-		const submitted = await app.fetch(await discordRequest({ type: 5, application_id: "discord-app", user, data: { custom_id: modal.data.custom_id, components: [{ type: 18, component: { custom_id: "slug", value: "first" } }] } }, keys.privateKey, discordUrl), envValue);
-		const next = await submitted.json() as { type: number; data: { components: Array<{ components?: Array<{ content?: string }> }> } };
+		const submitted = await app.fetch(
+			await discordRequest(
+				{
+					type: 5,
+					application_id: "discord-app",
+					user,
+					data: {
+						custom_id: modal.data.custom_id,
+						components: [
+							{ type: 18, component: { custom_id: "slug", value: "first" } },
+						],
+					},
+				},
+				keys.privateKey,
+				discordUrl,
+			),
+			envValue,
+		);
+		const next = (await submitted.json()) as {
+			type: number;
+			data: { components: Array<{ components?: Array<{ content?: string }> }> };
+		};
 		expect(next.type).toBe(4);
 		expect(JSON.stringify(next.data.components)).toContain("Fill next URL");
-		expect(JSON.stringify(next.data.components)).toContain("https://custom-short.example/first");
+		expect(JSON.stringify(next.data.components)).toContain(
+			"https://custom-short.example/first",
+		);
 	});
 
 	test("bootstraps one administrator profile and migrates every link", async () => {
-		const keys = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+		const keys = await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
+			"sign",
+			"verify",
+		]);
 		const publicKey = hex(await crypto.subtle.exportKey("raw", keys.publicKey));
 		const user = { id: "123456789012345678", username: "Admin Cat" };
-		const envValue = env({ DISCORD_APPLICATION_ID: "discord-app", DISCORD_ADMIN_USER_ID: user.id, DISCORD_PUBLIC_KEY: publicKey });
-		await create(envValue, { destinationUrl: "https://example.com", creator: "Legacy Cat", slug: "legacy-link" });
-		await createStoredLink(envValue, { slug: "legacy-discord-admin", destinationUrl: "https://example.org", creator: "Old Admin Cat", owner: { kind: "discord", id: user.id } });
-		await create(envValue, { destinationUrl: "https://example.net", creator: "Legacy Cat", slug: "legacy-link-two" });
-		await create(envValue, { destinationUrl: "https://example.edu", creator: "Legacy Cat", slug: "legacy-link-three" });
-		await create(envValue, { destinationUrl: "https://example.dev", creator: "Legacy Cat", slug: "legacy-link-four" });
-		await createStoredLink(envValue, { slug: "disabled-link", destinationUrl: "https://disabled.example", creator: "Legacy Cat", disabledAt: "2026-08-25T00:00:00.000Z" });
-		const begin = await app.fetch(await discordRequest({ type: 2, application_id: "discord-app", user, data: { name: "manage" } }, keys.privateKey), envValue);
-		const setup = await begin.json() as { type: number; data: { custom_id: string } };
+		const envValue = env({
+			DISCORD_APPLICATION_ID: "discord-app",
+			DISCORD_ADMIN_USER_ID: user.id,
+			DISCORD_PUBLIC_KEY: publicKey,
+		});
+		await create(envValue, {
+			destinationUrl: "https://example.com",
+			creator: "Legacy Cat",
+			slug: "legacy-link",
+		});
+		await createStoredLink(envValue, {
+			slug: "legacy-discord-admin",
+			destinationUrl: "https://example.org",
+			creator: "Old Admin Cat",
+			owner: { kind: "discord", id: user.id },
+		});
+		await create(envValue, {
+			destinationUrl: "https://example.net",
+			creator: "Legacy Cat",
+			slug: "legacy-link-two",
+		});
+		await create(envValue, {
+			destinationUrl: "https://example.edu",
+			creator: "Legacy Cat",
+			slug: "legacy-link-three",
+		});
+		await create(envValue, {
+			destinationUrl: "https://example.dev",
+			creator: "Legacy Cat",
+			slug: "legacy-link-four",
+		});
+		await createStoredLink(envValue, {
+			slug: "disabled-link",
+			destinationUrl: "https://disabled.example",
+			creator: "Legacy Cat",
+			disabledAt: "2026-08-25T00:00:00.000Z",
+		});
+		const begin = await app.fetch(
+			await discordRequest(
+				{
+					type: 2,
+					application_id: "discord-app",
+					user,
+					data: { name: "manage" },
+				},
+				keys.privateKey,
+			),
+			envValue,
+		);
+		const setup = (await begin.json()) as {
+			type: number;
+			data: { custom_id: string };
+		};
 		expect(setup.type).toBe(9);
 		expect(setup.data.custom_id).toBe("short:admin-setup");
-		const complete = await app.fetch(await discordRequest({ type: 5, application_id: "discord-app", user, data: { custom_id: setup.data.custom_id, components: [{ type: 18, component: { custom_id: "creatorName", value: "Gremlin Lala" } }] } }, keys.privateKey), envValue);
-		expect(JSON.stringify(await complete.json())).toContain("Administrator profile");
-		const manage = await app.fetch(await discordRequest({ type: 2, application_id: "discord-app", user, data: { name: "manage" } }, keys.privateKey), envValue);
-		const body = await manage.json() as { data: { components: Array<{ type: number; components: Array<{ type: number }> }> } };
+		const complete = await app.fetch(
+			await discordRequest(
+				{
+					type: 5,
+					application_id: "discord-app",
+					user,
+					data: {
+						custom_id: setup.data.custom_id,
+						components: [
+							{
+								type: 18,
+								component: { custom_id: "creatorName", value: "Gremlin Lala" },
+							},
+						],
+					},
+				},
+				keys.privateKey,
+			),
+			envValue,
+		);
+		expect(JSON.stringify(await complete.json())).toContain(
+			"Administrator profile",
+		);
+		const manage = await app.fetch(
+			await discordRequest(
+				{
+					type: 2,
+					application_id: "discord-app",
+					user,
+					data: { name: "manage" },
+				},
+				keys.privateKey,
+			),
+			envValue,
+		);
+		const body = (await manage.json()) as {
+			data: {
+				components: Array<{
+					type: number;
+					components: Array<{ type: number }>;
+				}>;
+			};
+		};
 		expect(JSON.stringify(body)).toContain("All links (admin)");
 		expect(JSON.stringify(body)).toContain("legacy-link");
 		expect(JSON.stringify(body)).toContain("https://go.aitsys.dev/legacy-link");
@@ -594,23 +1126,82 @@ describe("link shortener", () => {
 		expect(JSON.stringify(body)).toContain('"style":5');
 		expect(JSON.stringify(body)).not.toContain("disabled-link");
 		expect(body.data.components).toHaveLength(4);
-		expect(body.data.components.every((component) => component.type === 17 && component.components.every((child) => child.type !== 17))).toBe(true);
-		const owned = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", authed()), envValue);
-		expect((await owned.json() as { result: { items: LinkRecord[] } }).result.items.map((link) => link.slug).sort()).toEqual(["disabled-link", "legacy-discord-admin", "legacy-link", "legacy-link-four", "legacy-link-three", "legacy-link-two"]);
-		const removeProfile = await app.fetch(new Request(`https://go.aitsys.dev/api/v1/accounts/admin-${user.id}`, authed({ method: "DELETE" })), envValue);
+		expect(
+			body.data.components.every(
+				(component) =>
+					component.type === 17 &&
+					component.components.every((child) => child.type !== 17),
+			),
+		).toBe(true);
+		const owned = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links", authed()),
+			envValue,
+		);
+		expect(
+			((await owned.json()) as { result: { items: LinkRecord[] } }).result.items
+				.map((link) => link.slug)
+				.sort(),
+		).toEqual([
+			"disabled-link",
+			"legacy-discord-admin",
+			"legacy-link",
+			"legacy-link-four",
+			"legacy-link-three",
+			"legacy-link-two",
+		]);
+		const removeProfile = await app.fetch(
+			new Request(
+				`https://go.aitsys.dev/api/v1/accounts/admin-${user.id}`,
+				authed({ method: "DELETE" }),
+			),
+			envValue,
+		);
 		expect(removeProfile.status).toBe(409);
 	});
 
 	test("migrates legacy Discord links into a newly linked account", async () => {
 		const envValue = env();
 		const discordUserId = "345678901234567890";
-		await createStoredLink(envValue, { slug: "legacy-discord", destinationUrl: "https://example.com", creator: "Discord Cat", owner: { kind: "discord", id: discordUserId } });
-		const account = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts", authed({ method: "POST", body: JSON.stringify({ id: "discord-owner", creatorName: "Discord Cat", discordUserId }) })), envValue);
+		await createStoredLink(envValue, {
+			slug: "legacy-discord",
+			destinationUrl: "https://example.com",
+			creator: "Discord Cat",
+			owner: { kind: "discord", id: discordUserId },
+		});
+		const account = await app.fetch(
+			new Request(
+				"https://go.aitsys.dev/api/v1/accounts",
+				authed({
+					method: "POST",
+					body: JSON.stringify({
+						id: "discord-owner",
+						creatorName: "Discord Cat",
+						discordUserId,
+					}),
+				}),
+			),
+			envValue,
+		);
 		expect(account.status).toBe(201);
-		const token = await app.fetch(new Request("https://go.aitsys.dev/api/v1/accounts/discord-owner/tokens", authed({ method: "POST", body: JSON.stringify({ label: "Shell" }) })), envValue);
-		const issued = await token.json() as { result: { token: string } };
-		const links = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links", { headers: { Authorization: `Bearer ${issued.result.token}` } }), envValue);
-		expect((await links.json() as { result: { items: LinkRecord[] } }).result.items.map((link) => link.slug)).toEqual(["legacy-discord"]);
+		const token = await app.fetch(
+			new Request(
+				"https://go.aitsys.dev/api/v1/accounts/discord-owner/tokens",
+				authed({ method: "POST", body: JSON.stringify({ label: "Shell" }) }),
+			),
+			envValue,
+		);
+		const issued = (await token.json()) as { result: { token: string } };
+		const links = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links", {
+				headers: { Authorization: `Bearer ${issued.result.token}` },
+			}),
+			envValue,
+		);
+		expect(
+			(
+				(await links.json()) as { result: { items: LinkRecord[] } }
+			).result.items.map((link) => link.slug),
+		).toEqual(["legacy-discord"]);
 	});
 
 	test("returns legacy timestamps as canonical UTC Z values without rewriting them on read", async () => {
@@ -621,22 +1212,40 @@ describe("link shortener", () => {
 			creator: "Legacy Cat",
 			createdAt: "2026-08-26T20:10:00+02:00",
 			expiresAt: "2027-01-31T12:00:00+01:00",
-			metadataFetchedAt: "2026-08-26T20:15:00+02:00"
+			metadataFetchedAt: "2026-08-26T20:15:00+02:00",
 		};
 		await envValue.LINKS.put("link:legacy-time", JSON.stringify(legacy));
 
-		const read = await app.fetch(new Request("https://go.aitsys.dev/api/v1/admin/links", authed()), envValue);
-		const returned = (await read.json() as { result: { items: LinkRecord[] } }).result.items[0]!;
+		const read = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/admin/links", authed()),
+			envValue,
+		);
+		const returned = (
+			(await read.json()) as { result: { items: LinkRecord[] } }
+		).result.items[0]!;
 		expect(returned.createdAt).toBe("2026-08-26T18:10:00.000Z");
 		expect(returned.expiresAt).toBe("2027-01-31T11:00:00.000Z");
 		expect(returned.metadataFetchedAt).toBe("2026-08-26T18:15:00.000Z");
-		expect(await envValue.LINKS.get("link:legacy-time")).toBe(JSON.stringify(legacy));
-		const patched = await app.fetch(new Request("https://go.aitsys.dev/api/v1/links/legacy-time", authed({
-			method: "PATCH",
-			body: JSON.stringify({ expiresAt: "2027-02-01T12:00:00+01:00" })
-		})), envValue);
-		expect((await patched.json() as { result: LinkRecord }).result.expiresAt).toBe("2027-02-01T11:00:00.000Z");
-		const afterUpdate = await envValue.LINKS.get<LinkRecord>("link:legacy-time", "json");
+		expect(await envValue.LINKS.get("link:legacy-time")).toBe(
+			JSON.stringify(legacy),
+		);
+		const patched = await app.fetch(
+			new Request(
+				"https://go.aitsys.dev/api/v1/links/legacy-time",
+				authed({
+					method: "PATCH",
+					body: JSON.stringify({ expiresAt: "2027-02-01T12:00:00+01:00" }),
+				}),
+			),
+			envValue,
+		);
+		expect(
+			((await patched.json()) as { result: LinkRecord }).result.expiresAt,
+		).toBe("2027-02-01T11:00:00.000Z");
+		const afterUpdate = await envValue.LINKS.get<LinkRecord>(
+			"link:legacy-time",
+			"json",
+		);
 		expect(afterUpdate?.createdAt).toBe(legacy.createdAt);
 		expect(afterUpdate?.expiresAt).toBe("2027-02-01T11:00:00.000Z");
 
@@ -644,10 +1253,15 @@ describe("link shortener", () => {
 			destinationUrl: "https://example.com/new-time",
 			creator: "New Cat",
 			slug: "new-time",
-			expiresAt: "2027-01-31T12:00:00+01:00"
+			expiresAt: "2027-01-31T12:00:00+01:00",
 		});
-		expect((await created.json() as { result: LinkRecord }).result.expiresAt).toBe("2027-01-31T11:00:00.000Z");
-		const stored = await envValue.LINKS.get<LinkRecord>("link:new-time", "json");
+		expect(
+			((await created.json()) as { result: LinkRecord }).result.expiresAt,
+		).toBe("2027-01-31T11:00:00.000Z");
+		const stored = await envValue.LINKS.get<LinkRecord>(
+			"link:new-time",
+			"json",
+		);
 		expect(stored?.expiresAt).toBe("2027-01-31T11:00:00.000Z");
 	});
 });
