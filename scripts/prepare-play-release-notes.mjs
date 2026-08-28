@@ -12,7 +12,6 @@ function usage() {
 
 Options:
   --operator-notes <text>       Extra operator-written notes
-  --operator-notes-file <file> Repository-relative Markdown notes file
   --locale <locale>             Play locale (default: en-US)
   --limit <number>              Maximum note characters (default: 500)
   --compose-only                Write only the custom GitHub release body
@@ -41,7 +40,6 @@ function parseArgs(argv) {
 		else if (key === "input") args.input = value;
 		else if (key === "output") args.output = value;
 		else if (key === "operator_notes") args.operatorNotes = value;
-		else if (key === "operator_notes_file") args.operatorNotesFile = value;
 		else throw new Error(`Unknown argument: ${argument}`);
 	}
 	if (!args.output) throw new Error("--output is required.");
@@ -52,22 +50,6 @@ function parseArgs(argv) {
 			"--locale must contain only letters, numbers, and hyphens.",
 		);
 	return args;
-}
-
-function assertSafeRepositoryPath(file, root = process.cwd()) {
-	if (!file || file.includes("\0") || path.isAbsolute(file))
-		throw new Error("Notes file must be a relative repository path.");
-	const normalized = path.normalize(file);
-	if (normalized === ".." || normalized.startsWith(`..${path.sep}`))
-		throw new Error("Notes file must stay inside the repository.");
-	const resolvedRoot = path.resolve(root);
-	const resolved = path.resolve(resolvedRoot, normalized);
-	if (
-		resolved !== resolvedRoot &&
-		!resolved.startsWith(`${resolvedRoot}${path.sep}`)
-	)
-		throw new Error("Notes file must stay inside the repository.");
-	return resolved;
 }
 
 function rejectBinary(text, source) {
@@ -82,28 +64,10 @@ function rejectBinary(text, source) {
 	}
 }
 
-async function readNotesFile(file, root = process.cwd()) {
-	const resolved = assertSafeRepositoryPath(file, root);
-	const text = await fs.readFile(resolved, "utf8");
-	rejectBinary(text, file);
-	return text;
-}
-
-export async function composeOperatorNotes({
-	text = "",
-	file,
-	root = process.cwd(),
-} = {}) {
-	const parts = [];
-	if (text.trim()) {
-		rejectBinary(text, "operator notes");
-		parts.push(text.trim());
-	}
-	if (file) {
-		const fileText = (await readNotesFile(file, root)).trim();
-		if (fileText) parts.push(fileText);
-	}
-	return parts.join("\n\n");
+export function composeOperatorNotes({ text = "" } = {}) {
+	if (!text.trim()) return "";
+	rejectBinary(text, "operator notes");
+	return text.trim();
 }
 
 function stripMarkdownLine(line) {
@@ -189,10 +153,7 @@ export function normalizePlayNotes(
 
 async function main() {
 	const args = parseArgs(process.argv.slice(2));
-	const operatorNotes = await composeOperatorNotes({
-		text: args.operatorNotes,
-		file: args.operatorNotesFile,
-	});
+	const operatorNotes = composeOperatorNotes({ text: args.operatorNotes });
 	if (args.composeOnly) {
 		await fs.mkdir(path.dirname(path.resolve(args.output)), {
 			recursive: true,

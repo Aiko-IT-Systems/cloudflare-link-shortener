@@ -23,10 +23,6 @@ on:
         description: Optional human-written release-note intro (prepended to generated notes)
         required: false
         type: string
-      release_notes_file:
-        description: Optional repository-relative Markdown file with release-note text
-        required: false
-        type: string
 
 permissions:
   contents: write
@@ -270,11 +266,9 @@ jobs:
         id: release-notes
         env:
           RELEASE_NOTES: ${{ inputs.release_notes }}
-          RELEASE_NOTES_FILE: ${{ inputs.release_notes_file }}
         run: |
           args=(--compose-only --output release-assets/custom-release-body.md)
           if [ -n "$RELEASE_NOTES" ]; then args+=(--operator-notes "$RELEASE_NOTES"); fi
-          if [ -n "$RELEASE_NOTES_FILE" ]; then args+=(--operator-notes-file "$RELEASE_NOTES_FILE"); fi
           node scripts/prepare-play-release-notes.mjs "${args[@]}"
           if [ -s release-assets/custom-release-body.md ]; then
             echo "body_path=release-assets/custom-release-body.md" >> "$GITHUB_OUTPUT"

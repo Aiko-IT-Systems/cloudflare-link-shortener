@@ -13,10 +13,6 @@ on:
         description: Optional release-note intro/addendum for a manual store submission
         required: false
         type: string
-      release_notes_file:
-        description: Optional repository-relative Markdown release-note file for a manual submission
-        required: false
-        type: string
       publish-chrome:
         description: Publish to Chrome Web Store
         required: false
@@ -121,7 +117,6 @@ jobs:
       - name: Add release notes to whats-new directory for Google Play submission
         env:
           RELEASE_NOTES: ${{ inputs.release_notes }}
-          RELEASE_NOTES_FILE: ${{ inputs.release_notes_file }}
         run: |
           mkdir -p release-assets/whats-new
           args=(
@@ -129,7 +124,6 @@ jobs:
             --output release-assets/whats-new/whatsnew-en-US
           )
           if [ -n "$RELEASE_NOTES" ]; then args+=(--operator-notes "$RELEASE_NOTES"); fi
-          if [ -n "$RELEASE_NOTES_FILE" ]; then args+=(--operator-notes-file "$RELEASE_NOTES_FILE"); fi
           node scripts/prepare-play-release-notes.mjs "${args[@]}"
           note_characters="$(node -e "const fs=require('fs'); const text=fs.readFileSync('release-assets/whats-new/whatsnew-en-US','utf8'); console.log(Array.from(text.split('\\n').slice(1,-1).join('\\n')).length)")"
           echo "- ✅ Generated Play release notes (${note_characters} characters)" >> "$GITHUB_STEP_SUMMARY"

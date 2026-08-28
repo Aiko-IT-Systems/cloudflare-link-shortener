@@ -56,21 +56,9 @@ describe("Play release-note normalizer", () => {
 		expect(result).toBe("<en-US>\n• Public fix\n</en-US>");
 	});
 
-	it("combines text and a safe repository-relative notes file", async () => {
-		const result = await composeOperatorNotes({
-			text: "Manual context",
-			file: "package.json",
-			root: process.cwd(),
-		});
-		expect(result.startsWith("Manual context\n\n{")).toBe(true);
-	});
-
-	it("rejects traversal and absolute notes paths", async () => {
-		await expect(
-			composeOperatorNotes({ file: "../secrets.txt" }),
-		).rejects.toThrow(/repository/i);
-		await expect(
-			composeOperatorNotes({ file: "C:\\secrets.txt" }),
-		).rejects.toThrow(/relative/i);
+	it("trims operator-written notes", () => {
+		expect(composeOperatorNotes({ text: "  Manual context  " })).toBe(
+			"Manual context",
+		);
 	});
 });
