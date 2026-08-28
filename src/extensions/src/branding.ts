@@ -1,6 +1,6 @@
 import { Branding, defaultBranding } from "./api";
 
-export function applyBranding(branding: Branding, pageSuffix?: string): void {
+export function applyBranding(baseUrl: string, branding: Branding, pageSuffix?: string): void {
 	document.querySelectorAll<HTMLImageElement>("[data-brand-logo]").forEach((image) => {
 		image.src = branding.brandLogoUrl;
 		image.alt = branding.brandLogoAlt;
@@ -17,12 +17,12 @@ export function applyBranding(branding: Branding, pageSuffix?: string): void {
 	favicon.href = branding.faviconUrl;
 	const privacyContact = document.querySelector<HTMLElement>("#privacy-contact");
 	const privacyEmail = document.querySelector<HTMLAnchorElement>("#privacy-email");
-	if (privacyContact && privacyEmail) {
-		const email = branding.privacyEmail?.trim();
-		privacyContact.hidden = !email;
-		privacyEmail.textContent = email ?? "";
-		privacyEmail.href = email ? `mailto:${email}` : "";
+	const privacyLink = document.querySelector<HTMLAnchorElement>("#privacy-link");
+	if (privacyContact && privacyEmail && privacyLink) {
+		privacyEmail.textContent = branding.privacyEmail;
+		privacyEmail.href = `mailto:${branding.privacyEmail}`;
+		privacyLink.href = `${baseUrl}/privacy`;
 	}
 }
 
-export function applyDefaultBranding(pageSuffix?: string): void { applyBranding(defaultBranding, pageSuffix); }
+export function applyDefaultBranding(baseUrl: string, pageSuffix?: string): void { applyBranding(baseUrl, defaultBranding, pageSuffix); }

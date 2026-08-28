@@ -7,8 +7,8 @@ const apiBase = document.querySelector<HTMLInputElement>("#apiBase")!;
 const apiToken = document.querySelector<HTMLInputElement>("#apiToken")!;
 
 async function refreshBranding(baseUrl: string): Promise<void> {
-	try { applyBranding(await getBranding(baseUrl), "settings"); }
-	catch { applyDefaultBranding("settings"); }
+	try { applyBranding(baseUrl, await getBranding(baseUrl), "settings"); }
+	catch { applyDefaultBranding(baseUrl, "settings"); }
 }
 
 void getSettings().then((settings) => {

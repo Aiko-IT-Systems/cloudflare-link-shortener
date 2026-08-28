@@ -1,5 +1,6 @@
 declare const browser: any;
 declare const chrome: any;
+//@ts-ignore
 const extension = globalThis.browser ?? globalThis.chrome;
 
 export type Settings = { apiBase: string; apiToken: string };
@@ -9,7 +10,7 @@ export type Branding = {
 	brandLogoAlt: string;
 	faviconUrl: string;
 	brandColor: string;
-	privacyEmail?: string;
+	privacyEmail: string;
 };
 export const defaultSettings: Settings = { apiBase: "https://go.aitsys.dev", apiToken: "" };
 export const defaultBranding: Branding = {
@@ -17,7 +18,8 @@ export const defaultBranding: Branding = {
 	brandLogoUrl: "/icons/icon.svg",
 	brandLogoAlt: "AITSYS Go",
 	faviconUrl: "/icons/icon.svg",
-	brandColor: "#fc0fc0"
+	brandColor: "#fc0fc0",
+	privacyEmail: "privacy@aitsys.dev"
 };
 
 export async function getSettings(): Promise<Settings> {

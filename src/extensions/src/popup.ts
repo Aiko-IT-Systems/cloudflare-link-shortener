@@ -13,15 +13,15 @@ async function prefillActiveTab(): Promise<void> {
 
 void prefillActiveTab();
 void getSettings().then(async (settings) => {
-	try { applyBranding(await getBranding(settings.apiBase)); }
-	catch { applyDefaultBranding(); }
+	try { applyBranding(settings.apiBase, await getBranding(settings.apiBase)); }
+	catch { applyDefaultBranding(settings.apiBase); }
 });
 
 form.addEventListener("submit", async (event) => {
 	event.preventDefault();
 	status.textContent = "Creating…";
 	try {
-		const payload = Object.fromEntries(new FormData(form).entries());
+		const payload: Record<string, any> = Object.fromEntries(new FormData(form).entries());
 		for (const key of Object.keys(payload)) if (payload[key] === "") delete payload[key];
 		if (typeof payload.expiresAt === "string") payload.expiresAt = localDateTimeToUtcIso(payload.expiresAt);
 		payload.suppressSocialPreview = byId<HTMLInputElement>("suppressSocialPreview").checked;

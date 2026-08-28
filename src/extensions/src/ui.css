@@ -1,1 +1,174 @@
-:root { color-scheme: dark; font: 14px/1.45 Inter, ui-sans-serif, system-ui, sans-serif; color: #f8f4fb; background: #080510; --pink: #fc0fc0; --cyan: #45c8ff; --panel: #151021; --line: #4a365d; } * { box-sizing: border-box; } body { margin: 0; min-width: 355px; background: radial-gradient(circle at 100% 0, #361044, transparent 44%), #080510; } main { padding: 18px; } header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; } header img { width: 34px; height: 34px; } header strong { display: block; letter-spacing: .06em; } header i { color: var(--pink); font-style: normal; } header small, .hint { display: block; color: #b9adc6; } header a { margin-left: auto; color: #d9cce4; text-decoration: none; font-size: 18px; } form { display: grid; gap: 11px; } label { display: grid; gap: 5px; color: #ded3e9; font-size: 12px; } input, textarea { width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 9px; color: inherit; background: #0d0914; font: inherit; } textarea { min-height: 58px; resize: vertical; } input:focus, textarea:focus { outline: 2px solid color-mix(in srgb, var(--cyan) 65%, transparent); border-color: var(--cyan); } .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .check { display: flex; align-items: center; gap: 7px; } .check input { width: auto; } details { border: 1px solid var(--line); border-radius: 7px; padding: 8px; } summary { cursor: pointer; color: #d9cce4; } details[open] { display: grid; gap: 9px; } button { border: 0; border-radius: 7px; padding: 10px; background: linear-gradient(120deg, var(--pink), #b219d7); color: white; font-weight: 700; cursor: pointer; } button:hover { filter: brightness(1.12); } output { display: block; min-height: 1.4em; margin-top: 12px; color: #cfeeff; overflow-wrap: anywhere; } output a { color: var(--cyan); }.warning { color: #ffca89; }.options main { width: min(560px, 100%); margin: 6vh auto; }.privacy-contact { margin-top: 1.8rem; padding-top: 1rem; border-top: 1px solid var(--line); color: #b9adc6; font-size: .86rem; }.privacy-contact a { margin-left: 0; color: var(--cyan); font-size: inherit; }
+:root {
+    color-scheme: dark;
+    font: 14px/1.45 Inter, ui-sans-serif, system-ui, sans-serif;
+    color: #f8f4fb;
+    background: #080510;
+    --pink: #fc0fc0;
+    --cyan: #45c8ff;
+    --panel: #151021;
+    --line: #4a365d;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-width: 355px;
+    background: radial-gradient(circle at 100% 0, #361044, transparent 44%), #080510;
+}
+
+main {
+    padding: 18px;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+header img {
+    width: 34px;
+    height: 34px;
+}
+
+header strong {
+    display: block;
+    letter-spacing: .06em;
+}
+
+header i {
+    color: var(--pink);
+    font-style: normal;
+}
+
+header small,
+.hint {
+    display: block;
+    color: #b9adc6;
+}
+
+header a {
+    margin-left: auto;
+    color: #d9cce4;
+    text-decoration: none;
+    font-size: 18px;
+}
+
+form {
+    display: grid;
+    gap: 11px;
+}
+
+label {
+    display: grid;
+    gap: 5px;
+    color: #ded3e9;
+    font-size: 12px;
+}
+
+input,
+textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 9px;
+    color: inherit;
+    background: #0d0914;
+    font: inherit;
+}
+
+textarea {
+    min-height: 58px;
+    resize: vertical;
+}
+
+input:focus,
+textarea:focus {
+    outline: 2px solid color-mix(in srgb, var(--cyan) 65%, transparent);
+    border-color: var(--cyan);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.check {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.check input {
+    width: auto;
+}
+
+details {
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 8px;
+}
+
+summary {
+    cursor: pointer;
+    color: #d9cce4;
+}
+
+details[open] {
+    display: grid;
+    gap: 9px;
+}
+
+button {
+    border: 0;
+    border-radius: 7px;
+    padding: 10px;
+    background: linear-gradient(120deg, var(--pink), #b219d7);
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+button:hover {
+    filter: brightness(1.12);
+}
+
+output {
+    display: block;
+    min-height: 1.4em;
+    margin-top: 12px;
+    color: #cfeeff;
+    overflow-wrap: anywhere;
+}
+
+output a {
+    color: var(--cyan);
+}
+
+.warning {
+    color: #ffca89;
+}
+
+.options main {
+    width: min(560px, 100%);
+    margin: 6vh auto;
+}
+
+.privacy-contact {
+    margin-top: 1.8rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+    color: #b9adc6;
+    font-size: .86rem;
+}
+
+.privacy-contact a {
+    margin-left: 0;
+    color: var(--cyan);
+    font-size: inherit;
+}

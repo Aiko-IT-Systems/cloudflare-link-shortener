@@ -1,5 +1,52 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AITSYS Go settings</title><link rel="icon" href="/icons/icon.svg"><link rel="stylesheet" href="/src/ui.css"></head>
-<body class="options"><main><header><img data-brand-logo src="/icons/icon.svg" alt="AITSYS Go"><div><strong data-site-name>AITSYS Go</strong><small>Extension settings</small></div></header><form id="settings-form"><label>Shortener API base URL<input id="apiBase" type="url" required value="https://go.aitsys.dev"></label><p class="hint">The extension has access to all HTTPS sites so you can use any HTTPS shortener endpoint without an extra permission prompt.</p><label>Issued user token<input id="apiToken" type="password" required autocomplete="off" placeholder="aig_…"></label><p class="hint warning">Browser extension storage is not encrypted. Use a revocable issued token—never the master administrator token.</p><button type="submit">Save settings</button></form><output id="status" aria-live="polite"></output><footer id="privacy-contact" class="privacy-contact" hidden>Privacy questions? <a id="privacy-email"></a></footer></main><script type="module" src="/src/options.ts"></script></body>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>AITSYS Go settings</title>
+		<link rel="icon" href="/icons/icon.svg" />
+		<link rel="stylesheet" href="/src/ui.css" />
+	</head>
+	<body class="options">
+		<main>
+			<header>
+				<img data-brand-logo src="/icons/icon.svg" alt="AITSYS Go" />
+				<div>
+					<strong data-site-name>AITSYS Go</strong
+					><small>Extension settings</small>
+				</div>
+			</header>
+			<form id="settings-form">
+				<label
+					>Shortener API base URL<input
+						id="apiBase"
+						type="url"
+						required
+						value="https://go.aitsys.dev"
+				/></label>
+				<p class="hint">
+					The extension has access to all HTTPS sites so you can use any HTTPS
+					shortener endpoint without an extra permission prompt.
+				</p>
+				<label
+					>Issued user token<input
+						id="apiToken"
+						type="password"
+						required
+						autocomplete="off"
+						placeholder="aig_…"
+				/></label>
+				<p class="hint warning">
+					Browser extension storage is not encrypted. Use a revocable issued
+					token—never the master administrator token.
+				</p>
+				<button type="submit">Save settings</button>
+			</form>
+			<output id="status" aria-live="polite"></output>
+			<footer id="privacy-contact" class="privacy-contact" hidden>
+				Privacy questions? <a id="privacy-link"></a> or<a id="privacy-email"></a>
+			</footer>
+		</main>
+		<script type="module" src="/src/options.ts"></script>
+	</body>
 </html>
