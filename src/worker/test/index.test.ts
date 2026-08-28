@@ -727,6 +727,9 @@ describe("link shortener", () => {
 		expect(homeHtml).toContain(
 			'<meta property="og:image" content="https://go.aitsys.dev/logo.png">',
 		);
+		expect(homeHtml).toContain(
+			"Host your own: https://github.com/Aiko-IT-Systems/cloudflare-link-shortener",
+		);
 		expect(homeHtml).toContain('<link rel="icon" href="/favicon.png">');
 	});
 
@@ -765,7 +768,18 @@ describe("link shortener", () => {
 		expect(html).toContain("up to 15 minutes");
 		expect(html).toContain("Google Play");
 		expect(html).toContain("retains existing public links");
-		expect(html).not.toContain('property="og:title"');
+		expect(html).toContain(
+			'<meta property="og:title" content="Privacy policy">',
+		);
+		expect(html).toContain(
+			'<meta property="og:url" content="https://go.aitsys.dev/privacy">',
+		);
+		expect(html).toContain(
+			'<meta property="og:image" content="https://go.aitsys.dev/logo.png">',
+		);
+		expect(html).toContain(
+			"Self-host: https://github.com/Aiko-IT-Systems/cloudflare-link-shortener",
+		);
 	});
 
 	test("renders configured site branding and escapes its HTML attributes", async () => {

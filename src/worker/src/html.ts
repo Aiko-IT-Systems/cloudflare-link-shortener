@@ -387,7 +387,7 @@ export function homepage(config: SiteConfig, pageUrl: string): Response {
 	`,
 		200,
 		{
-			description: `Transparent ${config.siteName} short links with a privacy-first splash page.`,
+			description: `${config.siteName} is a privacy-first, self-hosted link shortener with transparent previews, browser extensions, an Android app, Discord integration, and CLI tools. Host your own: https://github.com/Aiko-IT-Systems/cloudflare-link-shortener`,
 			imageUrl: brandImageUrl,
 			pageUrl,
 			siteName: config.siteName,
@@ -395,7 +395,8 @@ export function homepage(config: SiteConfig, pageUrl: string): Response {
 	);
 }
 
-export function privacyPolicy(config: SiteConfig): Response {
+export function privacyPolicy(config: SiteConfig, pageUrl: string): Response {
+	const brandImageUrl = new URL(config.brandLogoUrl, pageUrl).href;
 	return page(
 		config,
 		"Privacy policy",
@@ -428,8 +429,10 @@ export function privacyPolicy(config: SiteConfig): Response {
 	`,
 		200,
 		{
-			description: `${config.siteName} privacy policy. No advertising, analytics, click tracking, cookies, or telemetry.`,
-			suppressSocialPreview: true,
+			description: `${config.siteName} privacy policy: links, account tokens, Discord interactions, browser extensions, Android storage, and Cloudflare hosting — with no advertising, analytics, click tracking, cookies, or telemetry. Self-host: https://github.com/Aiko-IT-Systems/cloudflare-link-shortener`,
+			imageUrl: brandImageUrl,
+			pageUrl,
+			siteName: config.siteName,
 		},
 	);
 }
