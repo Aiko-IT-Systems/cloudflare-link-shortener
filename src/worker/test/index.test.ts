@@ -205,7 +205,7 @@ function hex(bytes: ArrayBuffer): string {
 async function discordRequest(
 	body: Record<string, unknown>,
 	privateKey: CryptoKey,
-	url = "https://go.aitsys.dev/discord/interactions",
+	url = "https://go.aitsys.dev/api/v1/discord/interactions",
 ): Promise<Request> {
 	const timestamp = `${Math.floor(Date.now() / 1000)}`;
 	const json = JSON.stringify(body);
@@ -902,9 +902,9 @@ describe("link shortener", () => {
 			DISCORD_PUBLIC_KEY: publicKey,
 		});
 		const user = { id: "234567890123456789", username: "DiscordCat" };
-		const discordUrl = "https://custom-short.example/discord/interactions";
+		const discordUrl = "https://custom-short.example/api/v1/discord/interactions";
 		const invalid = await app.fetch(
-			new Request("https://go.aitsys.dev/discord/interactions", {
+			new Request("https://go.aitsys.dev/api/v1/discord/interactions", {
 				method: "POST",
 				body: "{}",
 			}),

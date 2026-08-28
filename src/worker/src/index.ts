@@ -105,7 +105,7 @@ function publicAccount(account: {
 app.get("/", (c) => homepage(getSiteConfig(c.env), c.req.url));
 app.get("/privacy", (c) => privacyPolicy(getSiteConfig(c.env)));
 app.get("/robots.txt", () => robots());
-app.post("/discord/interactions", (c) =>
+app.post("/api/v1/discord/interactions", (c) =>
 	handleDiscordInteraction(c.req.raw, c.env, new URL(c.req.url).origin),
 );
 app.get("/api/v1/metadata", (c) =>

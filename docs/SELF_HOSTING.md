@@ -174,7 +174,7 @@ from your fork instead; see [BUILDING.md](BUILDING.md).
 Only configure this after the Worker is live:
 
 1. Create your own Discord application and set its **Interactions Endpoint
-   URL** to `https://go.example.com/discord/interactions`.
+   URL** to `https://go.example.com/api/v1/discord/interactions`.
 2. Set its public key as the encrypted Worker secret `DISCORD_PUBLIC_KEY`.
 3. Set `DISCORD_APPLICATION_ID` and, if wanted, `DISCORD_ADMIN_USER_ID` in
    the Production dashboard variables, then deploy again.

@@ -699,6 +699,6 @@ redirecting.
 routes rather than JSON management endpoints. `POST /:slug` accepts the HTML
 password form for password-protected links.
 
-`POST /discord/interactions` is reserved for Discord. Discord signs the raw
+`POST /api/v1/discord/interactions` is reserved for Discord. Discord signs the raw
 request with Ed25519, so it is not a general client endpoint. Configure and
 register it as described in [BUILDING.md](BUILDING.md).
