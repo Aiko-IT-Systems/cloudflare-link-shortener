@@ -40,7 +40,7 @@ class SettingsRepository(private val context: Context) {
             it[shareModeKey] = settings.shareMode.name
             it[appLockEnabledKey] = settings.appLockEnabled
         }
-        secureToken.set(token.trim())
+        secureToken.set(ApiClient.normalizeToken(token))
     }
 
     suspend fun saveBrandingJson(json: String) = context.dataStore.edit { it[brandingKey] = json }

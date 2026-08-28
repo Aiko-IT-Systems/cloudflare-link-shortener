@@ -165,9 +165,10 @@ class MainViewModel(
         token: String,
         shareMode: ShareMode,
     ) = runAction {
+        val normalizedToken = ApiClient.normalizeToken(token)
         val settings = AppSettings(ApiClient.normalizeOrigin(apiBase), shareMode, state.settings.appLockEnabled)
-        repository.save(settings, token)
-        state = state.copy(settings = settings, token = token.trim(), message = "Settings saved.")
+        repository.save(settings, normalizedToken)
+        state = state.copy(settings = settings, token = normalizedToken, message = "Settings saved.")
         refreshBranding(silent = false)
     }
 

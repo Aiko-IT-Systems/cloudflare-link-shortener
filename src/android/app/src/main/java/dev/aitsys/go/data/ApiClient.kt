@@ -152,9 +152,13 @@ class ApiClient(
         read: (JSONObject) -> T,
     ): T =
         withContext(Dispatchers.IO) {
-            if (authenticated && token.isNullOrBlank()) {
-                throw ApiException("Add an issued user token in Settings first.")
-            }
+            val authorizationToken =
+                if (authenticated) {
+                    normalizeToken(token.orEmpty()).takeIf(String::isNotBlank)
+                        ?: throw ApiException("Add an issued user token in Settings first.")
+                } else {
+                    null
+                }
 
             val connection = URL(origin + path).openConnection() as HttpURLConnection
 
@@ -164,10 +168,10 @@ class ApiClient(
                 connection.readTimeout = 20_000
                 connection.setRequestProperty("Accept", "application/json")
 
-                if (authenticated) {
+                if (authorizationToken != null) {
                     connection.setRequestProperty(
                         "Authorization",
-                        "Bearer ${token!!.trim()}",
+                        "Bearer $authorizationToken",
                     )
                 }
 
@@ -231,6 +235,13 @@ class ApiClient(
         root.optJSONObject("result") ?: throw ApiException("The shortener returned an incomplete response.")
 
     companion object {
+        fun normalizeToken(value: String): String =
+            value.trim().also { normalized ->
+                require(normalized.none(Char::isWhitespace)) {
+                    "The issued user token cannot contain spaces or line breaks."
+                }
+            }
+
         fun normalizeOrigin(value: String): String {
             val uri = runCatching { URI(value.trim()) }.getOrElse { throw IllegalArgumentException("Enter a valid HTTPS API base URL.") }
             require(uri.scheme.equals("https", true) && !uri.host.isNullOrBlank() && uri.userInfo == null) {
