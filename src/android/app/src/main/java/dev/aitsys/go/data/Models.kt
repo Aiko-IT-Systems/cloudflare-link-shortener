@@ -10,13 +10,64 @@ data class AppSettings(
     val appLockEnabled: Boolean = false,
 )
 
+data class UserInfo(
+    val id: String,
+    val creatorName: String,
+    val createdAt: String,
+    val discordUserId: String? = null,
+)
+
+data class ConnectionTest(
+    val status: String,
+    val apiVersion: Int,
+    val checks: ConnectionChecks,
+    val cloudflare: CloudflareConnection?,
+    val durationMs: Int,
+    val build: Build,
+)
+
+data class ConnectionChecks(
+    val configuration: ConfigurationCheck,
+    val kv: KvCheck,
+)
+
+data class ConfigurationCheck(
+    val ok: Boolean,
+)
+
+data class KvCheck(
+    val ok: Boolean,
+    val latencyMs: Int,
+)
+
+data class CloudflareConnection(
+    val colo: String?,
+    val country: String?,
+    val asn: Int?,
+    val asOrganization: String?,
+    val httpProtocol: String?,
+    val tlsVersion: String?,
+)
+
+data class Metadata(
+    val apiVersion: Int,
+    val branding: Branding,
+    val build: Build,
+)
+
+data class Build(
+    val version: String,
+    val sha: String,
+    val repository: String,
+)
+
 data class Branding(
     val siteName: String = "AITSYS Go",
     val brandLogoUrl: String = "/logo.png",
     val brandLogoAlt: String = "Aiko IT Systems",
     val faviconUrl: String = "/favicon.png",
     val brandColor: String = "#FC0FC0",
-    val privacyEmail: String? = null,
+    val privacyEmail: String = "privacy@aitsys.dev",
 )
 
 data class LinkRecord(
@@ -35,7 +86,10 @@ data class LinkRecord(
     val disabledAt: String? = null,
 )
 
-data class LinkPage(val items: List<LinkRecord>, val cursor: String?)
+data class LinkPage(
+    val items: List<LinkRecord>,
+    val cursor: String?,
+)
 
 data class LinkDraft(
     val destinationUrl: String = "",
@@ -49,21 +103,30 @@ data class LinkDraft(
     val embedImageUrl: String = "",
     val embedSiteName: String = "",
 ) {
-    fun toJson(forUpdate: Boolean = false): JSONObject = JSONObject().apply {
-        put("destinationUrl", destinationUrl.trim())
-        if (!forUpdate && slug.isNotBlank()) put("slug", slug.trim())
-        putOptional("title", title, forUpdate)
-        putOptional("password", password, forUpdate)
-        putOptional("expiresAt", expiresAt, forUpdate)
-        put("suppressSocialPreview", suppressSocialPreview)
-        putOptional("embedTitle", embedTitle, forUpdate)
-        putOptional("embedDescription", embedDescription, forUpdate)
-        putOptional("embedImageUrl", embedImageUrl, forUpdate)
-        putOptional("embedSiteName", embedSiteName, forUpdate)
-    }
+    fun toJson(forUpdate: Boolean = false): JSONObject =
+        JSONObject().apply {
+            put("destinationUrl", destinationUrl.trim())
+            if (!forUpdate && slug.isNotBlank()) put("slug", slug.trim())
+            putOptional("title", title, forUpdate)
+            putOptional("password", password, forUpdate)
+            putOptional("expiresAt", expiresAt, forUpdate)
+            put("suppressSocialPreview", suppressSocialPreview)
+            putOptional("embedTitle", embedTitle, forUpdate)
+            putOptional("embedDescription", embedDescription, forUpdate)
+            putOptional("embedImageUrl", embedImageUrl, forUpdate)
+            putOptional("embedSiteName", embedSiteName, forUpdate)
+        }
 
-    private fun JSONObject.putOptional(key: String, value: String, includeEmpty: Boolean) {
-        if (value.isNotBlank()) put(key, value.trim()) else if (includeEmpty) put(key, JSONObject.NULL)
+    private fun JSONObject.putOptional(
+        key: String,
+        value: String,
+        includeEmpty: Boolean,
+    ) {
+        if (value.isNotBlank()) {
+            put(key, value.trim())
+        } else if (includeEmpty) {
+            put(key, JSONObject.NULL)
+        }
     }
 }
 
@@ -82,21 +145,22 @@ object UrlExtractor {
     fun isHttpsUrl(value: String): Boolean = firstHttpsUrl(value.trim()) == value.trim()
 }
 
-internal fun JSONObject.linkRecord(): LinkRecord = LinkRecord(
-    slug = getString("slug"),
-    destinationUrl = getString("destinationUrl"),
-    creator = optString("creator"),
-    createdAt = optString("createdAt"),
-    title = nullableString("title"),
-    embedTitle = nullableString("embedTitle"),
-    embedDescription = nullableString("embedDescription"),
-    embedImageUrl = nullableString("embedImageUrl"),
-    embedSiteName = nullableString("embedSiteName"),
-    password = nullableString("password"),
-    expiresAt = nullableString("expiresAt"),
-    suppressSocialPreview = optBoolean("suppressSocialPreview"),
-    disabledAt = nullableString("disabledAt"),
-)
+internal fun JSONObject.linkRecord(): LinkRecord =
+    LinkRecord(
+        slug = getString("slug"),
+        destinationUrl = getString("destinationUrl"),
+        creator = optString("creator"),
+        createdAt = optString("createdAt"),
+        title = nullableString("title"),
+        embedTitle = nullableString("embedTitle"),
+        embedDescription = nullableString("embedDescription"),
+        embedImageUrl = nullableString("embedImageUrl"),
+        embedSiteName = nullableString("embedSiteName"),
+        password = nullableString("password"),
+        expiresAt = nullableString("expiresAt"),
+        suppressSocialPreview = optBoolean("suppressSocialPreview"),
+        disabledAt = nullableString("disabledAt"),
+    )
 
 internal fun JSONObject.nullableString(key: String): String? =
     if (has(key) && !isNull(key)) optString(key).takeIf(String::isNotBlank) else null
