@@ -47,10 +47,88 @@ app.get("/privacy", (c) => privacyPolicy(getSiteConfig(c.env)));
 app.get("/robots.txt", () => robots());
 app.post("/discord/interactions", (c) => handleDiscordInteraction(c.req.raw, c.env, new URL(c.req.url).origin));
 app.get("/api/v1/metadata", (c) => jsonSuccess({ apiVersion: 1, branding: getPublicSiteMetadata(c.env, c.req.url), build: buildInfo }));
-app.get("/api/v1/connection-test", (c) => jsonSuccess({
-	status: "ok",
-	apiVersion: 1
-}));
+app.get("/api/v1/connection-test", async (c) => {
+	const startedAt = performance.now();
+
+	const requiredVars = [
+		"SITE_NAME",
+		"BRAND_LOGO_URL",
+		"BRAND_LOGO_ALT",
+		"FAVICON_URL",
+		"BRAND_COLOR",
+		"PRIVACY_EMAIL",
+		"DISCORD_APPLICATION_ID",
+		"DISCORD_ADMIN_USER_ID"
+	] as const;
+
+	const requiredSecrets = [
+		"LINK_SHORTENER_API_KEY",
+		"DISCORD_PUBLIC_KEY"
+	] as const;
+
+	const varsOk = requiredVars.every((key) => {
+		const value = c.env[key];
+		return typeof value === "string" && value.trim().length > 0;
+	});
+
+	const secretsOk = requiredSecrets.every((key) => {
+		const value = c.env[key];
+		return typeof value === "string" && value.length > 0;
+	});
+
+	let kvOk = false;
+	let kvLatencyMs: number | null = null;
+
+	try {
+		const kvStartedAt = performance.now();
+
+		const adminAccount = await c.env.LINKS.get("admin-account");
+
+		kvLatencyMs = Number(
+			(performance.now() - kvStartedAt).toFixed(2)
+		);
+
+		kvOk = adminAccount !== null;
+	} catch {
+		kvOk = false;
+	}
+
+	const cf = c.req.raw.cf;
+
+	const configurationOk = varsOk && secretsOk;
+	const ok = configurationOk && kvOk;
+
+	return jsonSuccess({
+		status: ok ? "ok" : "degraded",
+		apiVersion: 1,
+
+		checks: {
+			configuration: {
+				ok: configurationOk
+			},
+
+			kv: {
+				ok: kvOk,
+				latencyMs: kvLatencyMs
+			}
+		},
+
+		cloudflare: cf
+			? {
+				colo: cf.colo ?? null,
+				country: cf.country ?? null,
+				asn: cf.asn ?? null,
+				asOrganization: cf.asOrganization ?? null,
+				httpProtocol: cf.httpProtocol ?? null,
+				tlsVersion: cf.tlsVersion ?? null
+			}
+			: null,
+
+		durationMs: Number(
+			(performance.now() - startedAt).toFixed(2)
+		)
+	});
+});
 
 app.use("/api/v1/*", requireApiKey);
 
