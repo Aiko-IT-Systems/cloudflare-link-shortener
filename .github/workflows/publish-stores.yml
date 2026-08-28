@@ -117,9 +117,17 @@ jobs:
       - name: Verify release asset attestations
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          for asset in release-assets/*; do
-            gh attestation verify "$asset" \
+          for asset in \
+            "aitsys-go-$TAG.apk" \
+            "aitsys-go-$TAG.aab" \
+            "aitsys-go-$TAG-chrome.zip" \
+            "aitsys-go-$TAG-edge.zip" \
+            "aitsys-go-$TAG-firefox.zip" \
+            "aitsys-go-$TAG-extension-source.zip" \
+            "aitsys-go-$TAG-cli.zip"; do
+            gh attestation verify "release-assets/$asset" \
               --repo "$GITHUB_REPOSITORY" \
               --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
               --deny-self-hosted-runners
