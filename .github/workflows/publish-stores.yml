@@ -57,9 +57,11 @@ jobs:
           addon-guid: ${{ vars.FIREFOX_ADDON_GUID }}
           xpi-path: release-assets/aitsys-go-${{ github.event.release.tag_name }}-firefox.zip
           source-file-path: release-assets/aitsys-go-${{ github.event.release.tag_name }}-extension-source.zip
-          self-hosted: true
+          self-hosted: false
           jwt-issuer: ${{ secrets.FIREFOX_JWT_ISSUER }}
           jwt-secret: ${{ secrets.FIREFOX_JWT_SECRET }}
+          license: "Apache-2.0"
+          compatibility: "firefox,android"
   # edge:
   #   name: Microsoft Edge Add-ons
   #   runs-on: ubuntu-latest
