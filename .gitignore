@@ -26,3 +26,5 @@ src/android/.idea/
 docs/internal/
 !.wrangler/deploy/config.json
 src/android/app/src/main/res/drawable/preview_embed_image.jpg
+loc.json
+loc.txt
