@@ -4,7 +4,7 @@
 
 # AITSYS Go
 
-![Hero](/branding/hero.png)
+![Hero](/media/web_home.png)
 
 AITSYS Go is a privacy-first, multi-user link shortener built on Cloudflare Workers. It shows people where a short link leads before redirecting them and does not collect click analytics, use cookies, or serve advertising.
 
@@ -17,6 +17,65 @@ It provides:
 - a private Discord user app; and
 - PowerShell and Bash tools for creating and administering links.
 
+## Apps & Extensions
+
+### Chrome, Firefox, and Edge Extensions
+
+You can quickly create short links from the browser with the Chrome, Firefox, and Edge extensions.
+
+<details>
+<summary>Screenshots</summary>
+
+![Extension](/media/extension_quickcreate.png)
+
+</details>
+
+### Android App
+
+The Android app is a share target and link management tool. It can be used to create short links from any app that supports sharing, and it can also be used to manage your links.
+
+<details>
+<summary>Screenshots</summary>
+
+![Android App Create](/media/android_create.png)
+![Android App Manage](/media/android_manage.png)
+![Android App Settings](/media/android_settings.png)
+
+</details>
+
+### CLI Tools
+
+The CLI tools are available for PowerShell and Bash. 
+
+The have the most functionality of any of the apps, including creating links, managing links, and managing users.
+
+### Discord User App
+
+The Discord user app is a bot that can be added to your account.
+
+It allows you to create links and manage links from Discord in servers & direct messages.
+
+The most important commands are:
+
+| Type                 | Command         | Description                        |
+|----------------------|-----------------|------------------------------------|
+| Slash Command        | `/shorten`      | Create a new short link            |
+| Slash Command        | `/manage`       | Manage your links                  |
+| Message Context Menu | `Shorten Links` | Create one or more new short links |
+
+<details>
+<summary>Screenshots</summary>
+
+![Discord User App Shorten](/media/discord_shorten_command.png)
+![Discord User App Manage](/media/discord_manage_command.png)
+![Discord User App Create From Message](/media/discord_message_command.png)
+
+</details>
+
+### API
+
+We provide a versioned REST API with account-scoped, revocable user tokens. The API is documented in [docs/API.md](docs/API.md).
+
 ## Releases
 
 Releases are built and published automatically from the `main` branch. 
@@ -26,11 +85,11 @@ Releases are built and published automatically from the `main` branch.
 
 The following extensions / apps are auto published:
 
-| Type     | Publish Delay                         | Public Release?                  |
-|----------|---------------------------------------|----------------------------------|
-| chrome   | Can take a few days (manual approval) | Yes                              |
-| firefox  | Can take a few days (manual approval) | Yes                              |
-| android  | Usually within an hour                | No (Google Group or App Sharing) |
+| Type    | Publish Delay                         | Public Release?                  |
+|---------|---------------------------------------|----------------------------------|
+| chrome  | Can take a few days (manual approval) | Yes                              |
+| firefox | Can take a few days (manual approval) | Yes                              |
+| android | Usually within an hour                | No (Google Group or App Sharing) |
 
 > [!NOTE]
 > We try to attach the signed extension package to the release when they become available.
