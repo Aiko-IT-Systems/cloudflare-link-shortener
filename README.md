@@ -81,7 +81,7 @@ We provide a versioned REST API with account-scoped, revocable user tokens. The 
 Releases are built and published automatically from the `main` branch. 
 
 > [!WARNING]
-> Due to limitations, the extensions in releases are not signed initially.
+> Due to limitations, the extensions in GitHub Releases are not signed.
 
 The following extensions / apps are auto published:
 
@@ -90,9 +90,6 @@ The following extensions / apps are auto published:
 | chrome  | Can take a few days (manual approval) | Yes                              |
 | firefox | Can take a few days (manual approval) | Yes                              |
 | android | Usually within an hour                | No (Google Group or App Sharing) |
-
-> [!NOTE]
-> We try to attach the signed extension package to the release when they become available.
 
 > [!NOTE]
 > See the `publish-stores.yml` [runs](https://github.com/Aiko-IT-Systems/cloudflare-link-shortener/actions/workflows/publish-stores.yml) to get access to the app sharing link if you don't have access to the Play Store version yet.
