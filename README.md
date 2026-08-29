@@ -87,9 +87,10 @@ The following extensions / apps are auto published:
 
 | Type    | Publish Delay                         | Public Release?                  |
 |---------|---------------------------------------|----------------------------------|
-| chrome  | Can take a few days (manual approval) | Yes                              |
+| chrome  | Usually within an hour                | Yes                              |
 | firefox | Can take a few days (manual approval) | Yes                              |
 | android | Usually within an hour                | No (Google Group or App Sharing) |
+| cli     | Instantly                             | Yes                              |
 
 > [!NOTE]
 > See the `publish-stores.yml` [runs](https://github.com/Aiko-IT-Systems/cloudflare-link-shortener/actions/workflows/publish-stores.yml) to get access to the app sharing link if you don't have access to the Play Store version yet.
