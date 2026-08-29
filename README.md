@@ -4,6 +4,8 @@
 
 # AITSYS Go
 
+![Hero](/branding/hero.png)
+
 AITSYS Go is a privacy-first, multi-user link shortener built on Cloudflare Workers. It shows people where a short link leads before redirecting them and does not collect click analytics, use cookies, or serve advertising.
 
 It provides:
