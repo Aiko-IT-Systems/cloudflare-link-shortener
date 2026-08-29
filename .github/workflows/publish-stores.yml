@@ -33,6 +33,11 @@ on:
         required: false
         default: false
         type: boolean
+      android-priority:
+        description: Google Play in-app update priority (1-5, 5=highest)
+        required: false
+        default: 3
+        type: number
 
 permissions:
   attestations: read
@@ -264,7 +269,7 @@ jobs:
           tracks: internal,alpha
           status: completed
           releaseName: ${{ needs.verify-release.outputs.tag }}
-          inAppUpdatePriority: 5
+          inAppUpdatePriority: ${{ inputs.android-priority }}
           whatsNewDirectory: release-assets/whats-new
       - name: Publish to Google Play Internal App Sharing
         id: publish-google-play-internal-sharing
