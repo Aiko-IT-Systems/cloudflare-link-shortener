@@ -27,13 +27,17 @@ function trimForMeta(
 }
 
 function decodeHtml(value: string): string {
-	return value
-		.replace(/&amp;/g, "&")
-		.replace(/&lt;/g, "<")
-		.replace(/&gt;/g, ">")
-		.replace(/&quot;/g, '"')
-		.replace(/&#39;/g, "'")
-		.replace(/&#x27;/g, "'");
+	const entities = new Map([
+		["&amp;", "&"],
+		["&lt;", "<"],
+		["&gt;", ">"],
+		["&quot;", '"'],
+		["&#39;", "'"],
+		["&#x27;", "'"],
+	]);
+	return value.replace(/&(?:amp|lt|gt|quot|#39|#x27);/gi, (entity) =>
+		entities.get(entity.toLowerCase()) ?? entity,
+	);
 }
 
 function attributesFor(tag: string): Map<string, string> {

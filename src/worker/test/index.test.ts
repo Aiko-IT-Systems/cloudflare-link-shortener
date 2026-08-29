@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import app from "../src";
+import { extractEmbedMetadata } from "../src/metadata";
 import { createLink as createStoredLink } from "../src/store";
 import { LinkRecord } from "../src/types";
 
@@ -441,6 +442,15 @@ describe("link shortener", () => {
 
 		expect(response.status).toBe(200);
 		expect(body.result.destinationUrl).toBe("https://aitsys.dev");
+	});
+
+	test("decodes HTML entities only once", () => {
+		const metadata = extractEmbedMetadata(
+			'<head><meta property="og:title" content="&amp;lt;script&amp;gt;"></head>',
+			"https://example.test/",
+		);
+
+		expect(metadata.embedTitle).toBe("&lt;script&gt;");
 	});
 
 	test("renders splash page and disables public access", async () => {

@@ -1,16 +1,5 @@
-import { readFile } from "node:fs/promises";
-
-const packageJson = JSON.parse(
-	await readFile(new URL("../package.json", import.meta.url), "utf8"),
-);
-
 const applicationId = process.env.DISCORD_APPLICATION_ID?.trim();
 const token = process.env.DISCORD_BOT_TOKEN?.trim();
-const version = packageJson.version;
-
-if (typeof version !== "string" || !version.trim()) {
-	throw new Error("Root package.json does not contain a valid version.");
-}
 
 if (!applicationId || !token) {
 	throw new Error(
@@ -77,7 +66,7 @@ const response = await fetch(
 		headers: {
 			Authorization: `Bot ${token}`,
 			"Content-Type": "application/json",
-			"User-Agent": `AITSYS-Go/${version} (+https://go.aitsys.dev/)`,
+			"User-Agent": "AITSYS-Go (+https://go.aitsys.dev/)",
 		},
 		body: JSON.stringify(commands),
 	},
