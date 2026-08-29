@@ -100,13 +100,29 @@ function stripMarkdownLine(line) {
 	return result;
 }
 
+function stripHtmlComments(markdown) {
+	let result = "";
+	let cursor = 0;
+	while (cursor < markdown.length) {
+		const start = markdown.indexOf("<!--", cursor);
+		if (start < 0) {
+			result += markdown.slice(cursor);
+			break;
+		}
+		result += markdown.slice(cursor, start);
+		const end = markdown.indexOf("-->", start + 4);
+		if (end < 0) break;
+		cursor = end + 3;
+	}
+	return result;
+}
+
 export function normalizePlayNotes(
 	markdown,
 	{ operatorNotes = "", limit = DEFAULT_LIMIT, locale = "en-US" } = {},
 ) {
 	rejectBinary(markdown, "release body");
-	const lines = markdown
-		.replace(/<!--[\s\S]*?-->/g, "")
+	const lines = stripHtmlComments(markdown)
 		.replaceAll("\r\n", "\n")
 		.split("\n");
 	const kept = [];

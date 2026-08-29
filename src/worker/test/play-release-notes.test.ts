@@ -28,6 +28,12 @@ describe("Play release-note normalizer", () => {
 		expect(result).toBe("before after script alert(1) /script");
 	});
 
+	it("removes malformed comment delimiters too", () => {
+		const result = normalizePlayNotes("safe <!-- unfinished content");
+		expect(result).toBe("safe");
+		expect(result).not.toContain("<!--");
+	});
+
 	it("puts custom notes before generated changes", () => {
 		const result = normalizePlayNotes("- Generated fix", {
 			operatorNotes: "- Important update",
