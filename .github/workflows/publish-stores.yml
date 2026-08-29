@@ -175,10 +175,10 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  chrome: # Only publish to Chrome Web Store if explicitly requested, we are blocked while a version is pending review (github.event_name == 'release' || )
+  chrome:
     name: Chrome Web Store
     needs: verify-release
-    if: inputs.publish-chrome
+    if: github.event_name == 'release' || inputs.publish-chrome
     runs-on: ubuntu-latest
     environment: chrome-web-store
     steps:
@@ -198,7 +198,7 @@ jobs:
   firefox:
     name: Firefox Add-ons
     needs: verify-release
-    if: inputs.publish-firefox
+    if: github.event_name == 'release' || inputs.publish-firefox
     runs-on: ubuntu-latest
     environment: firefox-amo
     steps:
