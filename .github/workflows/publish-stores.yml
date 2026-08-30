@@ -187,7 +187,7 @@ jobs:
         with:
           name: verified-release-assets-${{ needs.verify-release.outputs.tag }}
           path: release-assets
-      - uses: wdzeng/chrome-extension@ccb488e04fba014a4b574a533ccee8bc1b772f0a # v2.0.1 compiled action
+      - uses: wdzeng/chrome-extension@37f4f9cdc664959bafef36b1f4da03dec5141620 # v2.0.0 compiled action
         with:
           extension-id: ${{ vars.CHROME_EXTENSION_ID }}
           publisher-id: ${{ vars.CHROME_PUBLISHER_ID }}
