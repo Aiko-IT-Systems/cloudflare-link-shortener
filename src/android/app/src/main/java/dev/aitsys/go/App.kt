@@ -1146,7 +1146,8 @@ private fun EditDialog(
                     showSlug = false,
                     editingHasPassword = record.hasPassword,
                 )
-                if (record.hasPassword) {
+                // TODO: This vanished off-screen - @nadie any idea?
+                /*if (record.hasPassword) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
                             checked = draft.passwordUpdate == PasswordUpdate.CLEAR,
@@ -1168,7 +1169,7 @@ private fun EditDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                }
+                }*/
             }
         },
         confirmButton = { Button({ model.update(record, draft) }) { Text("Save") } },
