@@ -85,15 +85,15 @@ Releases are built and published automatically from the `main` branch.
 
 The following extensions / apps are auto published:
 
-| Type    | Publish Delay                         | Public Release?                  |
-|---------|---------------------------------------|----------------------------------|
-| chrome  | Usually within an hour                | Yes                              |
-| firefox | Can take a few days (manual approval) | Yes                              |
-| android | Usually within an hour                | No (Google Group or App Sharing) |
-| cli     | Instantly                             | Yes                              |
+| Type      | Publish Delay |
+|-----------|---------------|
+| chrome    | ~half hour    |
+| firefox   | ~half hour    |
+| android\* | ~half hour    |
+| cli       | Instantly     |
 
 > [!NOTE]
-> See the `publish-stores.yml` [runs](https://github.com/Aiko-IT-Systems/cloudflare-link-shortener/actions/workflows/publish-stores.yml) to get access to the app sharing link if you don't have access to the Play Store version yet.
+> \* See the `publish-stores.yml` [runs](https://github.com/Aiko-IT-Systems/cloudflare-link-shortener/actions/workflows/publish-stores.yml) to get access to the app sharing link if you don't have access to the Play Store version yet.
 
 > [!WARNING]
 > Edge is still pending initial review.
