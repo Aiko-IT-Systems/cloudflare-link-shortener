@@ -266,7 +266,7 @@ jobs:
           serviceAccountJson: release-assets/google-play-service-account.json
           packageName: ${{ vars.ANDROID_PACKAGE_NAME }}
           releaseFiles: release-assets/aitsys-go-${{ needs.verify-release.outputs.tag }}.aab
-          tracks: internal,alpha
+          tracks: internal,alpha,beta
           status: completed
           releaseName: ${{ needs.verify-release.outputs.tag }}
           inAppUpdatePriority: ${{ inputs.android-priority }}
