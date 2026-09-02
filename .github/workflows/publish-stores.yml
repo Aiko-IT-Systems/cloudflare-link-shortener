@@ -38,6 +38,11 @@ on:
         required: false
         default: 3
         type: number
+      android-tracks:
+        description: Google Play tracks to publish to (internal, alpha, beta, production; comma-separated)
+        required: false
+        type: string
+        default: "internal,alpha"
 
 permissions:
   attestations: read
@@ -259,6 +264,15 @@ jobs:
           fi
           printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64" | base64 --decode > release-assets/google-play-service-account.json
           chmod 600 release-assets/google-play-service-account.json
+      - name: Parse Tracks
+        id: parse-tracks
+        run: |
+          tracks="${{ inputs.android-tracks }}"
+          if [ -z "$tracks" ]; then
+            echo "tracks=internal,alpha" >> "$GITHUB_OUTPUT"
+          else
+            echo "tracks=$tracks" >> "$GITHUB_OUTPUT"
+          fi
       - name: Publish to Google Play testing tracks
         id: publish-google-play-testing
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
@@ -266,12 +280,13 @@ jobs:
           serviceAccountJson: release-assets/google-play-service-account.json
           packageName: ${{ vars.ANDROID_PACKAGE_NAME }}
           releaseFiles: release-assets/aitsys-go-${{ needs.verify-release.outputs.tag }}.aab
-          tracks: internal,alpha,beta
+          tracks: ${{ steps.parse-tracks.outputs.tracks }}
           status: completed
           releaseName: ${{ needs.verify-release.outputs.tag }}
           inAppUpdatePriority: ${{ inputs.android-priority }}
           whatsNewDirectory: release-assets/whats-new
       - name: Publish to Google Play Internal App Sharing
+        if: github.event_name == 'release'
         id: publish-google-play-internal-sharing
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
@@ -280,6 +295,7 @@ jobs:
           releaseFiles: release-assets/aitsys-go-${{ needs.verify-release.outputs.tag }}.aab
           tracks: internalsharing
       - name: Output internal testing url
+        if: github.event_name == 'release'
         run: |
           echo "Internal App Sharing URL: ${{ steps.publish-google-play-internal-sharing.outputs.internalSharingDownloadUrl }}" >> "$GITHUB_STEP_SUMMARY"
       - name: Remove decoded Google Play credential
