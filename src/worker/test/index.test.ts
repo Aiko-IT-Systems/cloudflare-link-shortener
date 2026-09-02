@@ -398,7 +398,7 @@ describe("link shortener", () => {
 		expect(bad.status).toBe(401);
 	});
 
-	test("generates an OpenAPI 3.1 document for every callable Worker endpoint", async () => {
+	test("generates an API Shield-compatible OpenAPI 3.0 document for every callable Worker endpoint", async () => {
 		const response = await app.fetch(
 			new Request("https://go.aitsys.dev/openapi.json"),
 			env(),
@@ -412,9 +412,24 @@ describe("link shortener", () => {
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get("Content-Type")).toContain("application/json");
-		expect(document.openapi).toBe("3.1.1");
+		expect(document.openapi).toBe("3.0.3");
 		expect(document.servers).toEqual([{ url: "https://go.aitsys.dev", description: "This deployed AITSYS Go instance" }]);
 		expect(document.components.securitySchemes).toHaveProperty("bearerAuth");
+
+		const arrayTypedSchemas: string[] = [];
+		const findArrayTypes = (value: unknown, path = "$"): void => {
+			if (Array.isArray(value)) {
+				value.forEach((item, index) => findArrayTypes(item, `${path}[${index}]`));
+				return;
+			}
+			if (value === null || typeof value !== "object") return;
+			for (const [key, child] of Object.entries(value)) {
+				if (key === "type" && Array.isArray(child)) arrayTypedSchemas.push(`${path}.type`);
+				findArrayTypes(child, `${path}.${key}`);
+			}
+		};
+		findArrayTypes(document);
+		expect(arrayTypedSchemas).toEqual([]);
 		for (const path of [
 			"/openapi.json",
 			"/",

@@ -171,7 +171,7 @@ export function registerOpenApiDocumentation(registry: OpenAPIRegistry): void {
 		description: "Master credential or issued `aig_…` account token. Never put credentials in URLs.",
 	});
 
-	registry.registerPath({ method: "get", path: "/openapi.json", tags: ["Public"], summary: "Get this generated OpenAPI 3.1 document", responses: { 200: { description: "OpenAPI JSON document.", content: { "application/json": { schema: z.object({ openapi: z.string(), info: z.object({ title: z.string(), version: z.string() }).passthrough(), paths: z.record(z.string(), z.unknown()) }).passthrough() } } } } });
+	registry.registerPath({ method: "get", path: "/openapi.json", tags: ["Public"], summary: "Get this generated OpenAPI 3.0 document", responses: { 200: { description: "OpenAPI JSON document.", content: { "application/json": { schema: z.object({ openapi: z.string(), info: z.object({ title: z.string(), version: z.string() }).passthrough(), paths: z.record(z.string(), z.unknown()) }).passthrough() } } } } });
 	registry.registerPath({ method: "get", path: "/", tags: ["Browser"], summary: "Render the instance home page", responses: { 200: htmlResponse } });
 	registry.registerPath({ method: "get", path: "/privacy", tags: ["Browser"], summary: "Render the privacy policy", responses: { 200: htmlResponse } });
 	registry.registerPath({ method: "get", path: "/robots.txt", tags: ["Browser"], summary: "Get crawler policy", responses: { 200: textResponse } });
@@ -203,7 +203,10 @@ export function registerOpenApiDocumentation(registry: OpenAPIRegistry): void {
 
 export function openApiDocument(origin: string) {
 	return {
-		openapi: "3.1.1" as const,
+		// API Shield's uploaded schemas support OAS 3.0.x, not OAS 3.1.
+		// In particular, this emits `nullable: true` rather than JSON Schema's
+		// 3.1-only `type: ["string", "null"]` representation.
+		openapi: "3.0.3" as const,
 		info: {
 			title: "AITSYS Go API",
 			version: buildInfo.version,

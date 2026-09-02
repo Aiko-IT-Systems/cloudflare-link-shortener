@@ -168,7 +168,9 @@ app.get("/privacy", (c) =>
 );
 app.get("/robots.txt", () => robots());
 registerOpenApiDocumentation(app.openAPIRegistry);
-app.doc31("/openapi.json", (c) => openApiDocument(new URL(c.req.url).origin));
+// Cloudflare API Shield currently accepts OAS 3.0.x schemas, rather than 3.1.
+// Keep this generated document upload-ready by using Hono's OAS 3.0 emitter.
+app.doc("/openapi.json", (c) => openApiDocument(new URL(c.req.url).origin));
 app.post("/api/v1/discord/interactions", (c) =>
 	handleDiscordInteraction(c.req.raw, c.env, new URL(c.req.url).origin),
 );
