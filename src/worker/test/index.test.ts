@@ -523,7 +523,8 @@ describe("link shortener", () => {
 	test("uses X's highest-bitrate public MP4 variant", () => {
 		const metadata = extractEmbedMetadata(
 			`<head><meta property="og:title" content="smol silly cat (@Catsillyness) on X"></head>
-			<script>video_info:{variants:[{bitrate:632000,content_type:"video/mp4",url:"https:\/\/video.twimg.com\/amplify_video\/1\/vid\/avc1\/480x480\/small.mp4?tag=29"},{bitrate:2176000,content_type:"video/mp4",url:"https:\/\/video.twimg.com\/amplify_video\/1\/vid\/avc1\/1276x1280\/best.mp4?tag=29"}]}</script>`,
+			<script>"client:VHdlZXQ6MjA5NDkwNjAwMjE2ODU5MDYyOA==:media_entities2:0:video_info:variants:0":$R[1]={bitrate:632000,content_type:"video/mp4",url:"https:\/\/video.twimg.com\/amplify_video\/1\/vid\/avc1\/480x480\/small.mp4?tag=29"}
+			"client:VHdlZXQ6MjA5NDkwNjAwMjE2ODU5MDYyOA==:media_entities2:0:video_info:variants:1":$R[2]={bitrate:2176000,content_type:"video/mp4",url:"https:\/\/video.twimg.com\/amplify_video\/1\/vid\/avc1\/1276x1280\/best.mp4?tag=29"}</script>`,
 			"https://x.com/Catsillyness/status/2094906002168590628",
 		);
 		expect(metadata.embedVideoUrl).toBe(
@@ -531,6 +532,16 @@ describe("link shortener", () => {
 		);
 		expect(metadata.embedVideoWidth).toBe(1276);
 		expect(metadata.embedVideoHeight).toBe(1280);
+	});
+
+	test("does not use a reply's video for an X image post", () => {
+		const metadata = extractEmbedMetadata(
+			`<head><meta property="og:title" content="Zenless Zone Zero on X"></head>
+			<script>"client:VHdlZXQ6MjA5NDYzNjM2NDgwNTMzMzIyMw==:media_entities2:0":$R[1]={type:"photo",video_info:null}
+			"client:VHdlZXQ6MjA5NDYzOTA0NzkwNTgwODQ4MA==:media_entities2:0:video_info:variants:0":$R[2]={bitrate:9999999,content_type:"video/mp4",url:"https:\/\/video.twimg.com\/tweet_video\/reply.mp4"}</script>`,
+			"https://x.com/ZZZ_EN/status/2094636364805333223",
+		);
+		expect(metadata.embedVideoUrl).toBeUndefined();
 	});
 
 	test("renders splash page and disables public access", async () => {

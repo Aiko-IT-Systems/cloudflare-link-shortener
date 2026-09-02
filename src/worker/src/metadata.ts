@@ -146,6 +146,10 @@ function positiveInteger(value: string | undefined): number | undefined {
 	return Number.isInteger(number) && number > 0 ? number : undefined;
 }
 
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function embeddedInstagramVideo(
 	html: string,
 	destinationUrl: string,
@@ -206,8 +210,23 @@ function embeddedXVideo(
 	html: string,
 	destinationUrl: string,
 ): { url: string; width?: number; height?: number } | undefined {
+	let statusId: string | undefined;
+	try {
+		statusId = /^\/[^/]+\/status\/(\d+)\/?$/.exec(new URL(destinationUrl).pathname)?.[1];
+	} catch {
+		return undefined;
+	}
+	if (!statusId) return undefined;
+
+	// X hydrates replies, quoted posts, and recommendations into the same page. The
+	// requested Tweet's media records are keyed by its base64 `Tweet:<status id>`.
+	const entityPrefix = `client:${btoa(`Tweet:${statusId}`)}:media_entities2:`;
+	const variantPattern = new RegExp(
+		`${escapeRegExp(entityPrefix)}\\d+:video_info:variants:\\d+"\\s*:\\$R\\[\\d+\\]\\s*=\\s*\\{[^{}]{0,600}?bitrate:(\\d+),content_type:"video\\/mp4",url:"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)"`,
+		"g",
+	);
 	const variants: Array<{ url: string; bitrate: number }> = [];
-	for (const match of html.matchAll(/bitrate:(\d+),content_type:"video\/mp4",url:"([^"\\]*(?:\\.[^"\\]*)*)"/g)) {
+	for (const match of html.matchAll(variantPattern)) {
 		try {
 			const url: unknown = JSON.parse(`"${match[2]}"`);
 			if (typeof url !== "string" || !isPublicSocialMp4(url, "x", destinationUrl)) continue;
