@@ -87,10 +87,10 @@ The following extensions / apps are auto published:
 
 | Type      | Publish Delay |
 |-----------|---------------|
-| chrome    | ~half hour    |
-| firefox   | ~half hour    |
-| edge      | ~half hour    |
-| android\* | ~half hour    |
+| chrome    | ~20 minutes   |
+| firefox   | ~5 minutes    |
+| edge      | ~up to 7 days |
+| android\* | ~25 minutes   |
 | cli       | Instantly     |
 
 > [!NOTE]
