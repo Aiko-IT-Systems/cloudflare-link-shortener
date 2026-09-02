@@ -11,6 +11,10 @@ Content-Type: application/json
 Never put credentials in URLs, source code, screenshots, or browser-extension
 packages.
 
+## Generated OpenAPI schema
+
+`GET /openapi.json` returns this instance's generated OpenAPI 3.1 document. It covers every callable HTTP endpoint, including browser pages, the password form, and Discord's signed interaction webhook. It intentionally documents schemas and behavior but never exposes credentials, private records, or implementation-only routes.
+
 ## Timestamp format
 
 Inputs accept valid ISO-8601 timestamps with an explicit UTC offset. Every

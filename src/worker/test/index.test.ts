@@ -398,6 +398,48 @@ describe("link shortener", () => {
 		expect(bad.status).toBe(401);
 	});
 
+	test("generates an OpenAPI 3.1 document for every callable Worker endpoint", async () => {
+		const response = await app.fetch(
+			new Request("https://go.aitsys.dev/openapi.json"),
+			env(),
+		);
+		const document = (await response.json()) as {
+			openapi: string;
+			servers: Array<{ url: string }>;
+			paths: Record<string, unknown>;
+			components: { securitySchemes: Record<string, unknown> };
+		};
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get("Content-Type")).toContain("application/json");
+		expect(document.openapi).toBe("3.1.1");
+		expect(document.servers).toEqual([{ url: "https://go.aitsys.dev", description: "This deployed AITSYS Go instance" }]);
+		expect(document.components.securitySchemes).toHaveProperty("bearerAuth");
+		for (const path of [
+			"/openapi.json",
+			"/",
+			"/privacy",
+			"/robots.txt",
+			"/api/v1/metadata",
+			"/api/v1/connection-test",
+			"/api/v1/me",
+			"/api/v1/accounts",
+			"/api/v1/accounts/{accountId}",
+			"/api/v1/accounts/{accountId}/discord-user",
+			"/api/v1/accounts/{accountId}/tokens",
+			"/api/v1/tokens",
+			"/api/v1/tokens/{tokenId}/revoke",
+			"/api/v1/admin/links",
+			"/api/v1/links",
+			"/api/v1/links/{slug}",
+			"/api/v1/links/{slug}/refresh-metadata",
+			"/api/v1/links/{slug}/disable",
+			"/api/v1/discord/interactions",
+			"/{slug}",
+		])
+			expect(document.paths).toHaveProperty(path);
+	});
+
 	test("rejects invalid URLs, duplicate slugs, and reserved slugs", async () => {
 		const envValue = env();
 		const invalidUrl = await create(envValue, {

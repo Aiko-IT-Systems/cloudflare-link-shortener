@@ -1,9 +1,10 @@
-import { Hono } from "hono";
+import { OpenAPIHono } from "@hono/zod-openapi";
 export { LinkCoordinator } from "./coordination";
 import { requireAdmin, requireApiKey } from "./auth";
 import { buildInfo } from "./build-info";
 import { runConnectionTest } from "./connection-test";
 import { getPublicSiteMetadata, getSiteConfig } from "./config";
+import { openApiDocument, registerOpenApiDocumentation } from "./openapi";
 import {
 	readLimitedFormValue,
 	readLimitedJson,
@@ -67,7 +68,7 @@ import {
 } from "./validation";
 
 type AppEnv = { Bindings: Env; Variables: { principal: AuthPrincipal } };
-const app = new Hono<AppEnv>();
+const app = new OpenAPIHono<AppEnv>();
 const API_BODY_LIMIT_BYTES = 32 * 1024;
 const PASSWORD_BODY_LIMIT_BYTES = 8 * 1024;
 
@@ -166,6 +167,8 @@ app.get("/privacy", (c) =>
 	privacyPolicy(getSiteConfig(c.env), c.req.url),
 );
 app.get("/robots.txt", () => robots());
+registerOpenApiDocumentation(app.openAPIRegistry);
+app.doc31("/openapi.json", (c) => openApiDocument(new URL(c.req.url).origin));
 app.post("/api/v1/discord/interactions", (c) =>
 	handleDiscordInteraction(c.req.raw, c.env, new URL(c.req.url).origin),
 );
