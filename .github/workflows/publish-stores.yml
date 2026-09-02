@@ -279,6 +279,39 @@ jobs:
         with:
           name: verified-release-assets-${{ needs.verify-release.outputs.tag }}
           path: release-assets
+      - name: Parse Tracks
+        id: parse-tracks
+        env:
+          ANDROID_TRACKS: ${{ inputs.android-tracks }}
+        run: |
+          tracks="$ANDROID_TRACKS"
+          if [ -z "$tracks" ]; then
+            tracks="internal,alpha"
+          fi
+          IFS=',' read -r -a selected <<< "$tracks"
+          normalized=()
+          for track in "${selected[@]}"; do
+            track="${track//[[:space:]]/}"
+            case "$track" in
+              internal|alpha|beta|production) ;;
+              *)
+                echo "::error::android-tracks may contain only internal, alpha, beta, or production."
+                exit 1
+                ;;
+            esac
+            for existing in "${normalized[@]}"; do
+              if [ "$existing" = "$track" ]; then
+                echo "::error::android-tracks must not contain duplicate tracks."
+                exit 1
+              fi
+            done
+            normalized+=("$track")
+          done
+          if [ "${#normalized[@]}" -eq 0 ]; then
+            echo "::error::android-tracks must select at least one track."
+            exit 1
+          fi
+          (IFS=,; echo "tracks=${normalized[*]}" >> "$GITHUB_OUTPUT")
       - name: Decode Google Play service account credential
         env:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}
@@ -289,15 +322,6 @@ jobs:
           fi
           printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64" | base64 --decode > release-assets/google-play-service-account.json
           chmod 600 release-assets/google-play-service-account.json
-      - name: Parse Tracks
-        id: parse-tracks
-        run: |
-          tracks="${{ inputs.android-tracks }}"
-          if [ -z "$tracks" ]; then
-            echo "tracks=internal,alpha" >> "$GITHUB_OUTPUT"
-          else
-            echo "tracks=$tracks" >> "$GITHUB_OUTPUT"
-          fi
       - name: Publish to Google Play testing tracks
         id: publish-google-play-testing
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5

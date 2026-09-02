@@ -3,6 +3,7 @@ import app from "../src";
 import { extractEmbedMetadata, fetchTargetMetadata } from "../src/metadata";
 import { createLink as createStoredLink } from "../src/store";
 import { LinkRecord } from "../src/types";
+import { createLinkSchema, isPublicHttpsUrl } from "../src/validation";
 
 class MemoryKV {
 	private readonly values = new Map<string, string>();
@@ -424,6 +425,64 @@ describe("link shortener", () => {
 		expect(first.status).toBe(201);
 		expect(duplicate.status).toBe(409);
 		expect(reserved.status).toBe(400);
+	});
+
+	test("rejects unsafe metadata-fetch URLs before creating a link", async () => {
+		for (const url of [
+			"https://user:password@example.com/private",
+			"https://localhost/private",
+			"https://127.0.0.1/private",
+			"https://[::1]/private",
+			"https://10.0.0.1/private",
+		]) {
+			expect(isPublicHttpsUrl(url)).toBe(false);
+			expect(createLinkSchema.safeParse({ destinationUrl: url }).success).toBe(
+				false,
+			);
+		}
+	});
+
+	test("rejects oversized API request bodies before JSON parsing", async () => {
+		const response = await app.fetch(
+			new Request("https://go.aitsys.dev/api/v1/links", {
+				method: "POST",
+				headers: authed().headers,
+				body: JSON.stringify({ destinationUrl: "https://example.com", title: "x".repeat(33_000) }),
+			}),
+			env(),
+		);
+		expect(response.status).toBe(413);
+	});
+
+	test("rejects oversized public password submissions before form parsing", async () => {
+		const envValue = env();
+		await create(envValue, {
+			slug: "bounded-password",
+			destinationUrl: "https://example.com",
+			creator: "Lulalaby",
+			password: "cat-safe-password",
+		});
+		const response = await app.fetch(
+			new Request("https://go.aitsys.dev/bounded-password", {
+				method: "POST",
+				headers: { "Content-Type": "application/x-www-form-urlencoded" },
+				body: `padding=${"x".repeat(9_000)}`,
+			}),
+			envValue,
+		);
+		expect(response.status).toBe(413);
+	});
+
+	test("does not follow metadata redirects to unsafe addresses", async () => {
+		const fetchMock = vi.fn(async () =>
+			new Response(null, {
+				status: 302,
+				headers: { Location: "https://127.0.0.1/private" },
+			}),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+		await expect(fetchTargetMetadata("https://example.com/redirect")).resolves.toEqual({});
+		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 
 	test("reads link metadata", async () => {

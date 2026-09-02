@@ -4,6 +4,11 @@ import { requireAdmin, requireApiKey } from "./auth";
 import { buildInfo } from "./build-info";
 import { runConnectionTest } from "./connection-test";
 import { getPublicSiteMetadata, getSiteConfig } from "./config";
+import {
+	readLimitedFormValue,
+	readLimitedJson,
+	RequestBodyTooLargeError,
+} from "./body";
 import { handleDiscordInteraction } from "./discord";
 import {
 	expired,
@@ -63,6 +68,8 @@ import {
 
 type AppEnv = { Bindings: Env; Variables: { principal: AuthPrincipal } };
 const app = new Hono<AppEnv>();
+const API_BODY_LIMIT_BYTES = 32 * 1024;
+const PASSWORD_BODY_LIMIT_BYTES = 8 * 1024;
 
 function isExpired(record: { expiresAt?: string }): boolean {
 	return record.expiresAt ? Date.parse(record.expiresAt) <= Date.now() : false;
@@ -96,6 +103,18 @@ function publicLink(record: LinkRecord) {
 
 function publicLinkPage(page: LinkPage) {
 	return { ...page, items: page.items.map(publicLink) };
+}
+
+async function jsonPayload(c: { req: { raw: Request } }): Promise<
+	unknown | Response
+> {
+	try {
+		return await readLimitedJson(c.req.raw, API_BODY_LIMIT_BYTES);
+	} catch (error) {
+		if (error instanceof RequestBodyTooLargeError)
+			return jsonError("Request body is too large.", "payload_too_large", 413);
+		return null;
+	}
 }
 
 async function passwordAttemptCoordinator(
@@ -181,9 +200,9 @@ app.get("/api/v1/me", async (c) => {
 app.post("/api/v1/accounts", async (c) => {
 	const denied = requireAdmin(c.get("principal"));
 	if (denied) return denied;
-	const parsed = createAccountSchema.safeParse(
-		await c.req.json().catch(() => null),
-	);
+	const payload = await jsonPayload(c);
+	if (payload instanceof Response) return payload;
+	const parsed = createAccountSchema.safeParse(payload);
 	if (!parsed.success)
 		return jsonError("Invalid account payload.", "invalid_payload", 400);
 	const result = await createAccount(
@@ -239,9 +258,9 @@ app.delete("/api/v1/accounts/:accountId", async (c) => {
 app.put("/api/v1/accounts/:accountId/discord-user", async (c) => {
 	const denied = requireAdmin(c.get("principal"));
 	if (denied) return denied;
-	const parsed = linkDiscordUserSchema.safeParse(
-		await c.req.json().catch(() => null),
-	);
+	const payload = await jsonPayload(c);
+	if (payload instanceof Response) return payload;
+	const parsed = linkDiscordUserSchema.safeParse(payload);
 	if (!parsed.success)
 		return jsonError("Invalid Discord user payload.", "invalid_payload", 400);
 	const result = await linkDiscordUser(
@@ -266,9 +285,9 @@ app.post("/api/v1/accounts/:accountId/tokens", async (c) => {
 	const account = await getAccount(c.env, c.req.param("accountId"));
 	if (!account || account.disabledAt || account.deletedAt)
 		return jsonError("Account not found.", "account_not_found", 404);
-	const parsed = issueTokenSchema.safeParse(
-		await c.req.json().catch(() => ({})),
-	);
+	const payload = await jsonPayload(c);
+	if (payload instanceof Response) return payload;
+	const parsed = issueTokenSchema.safeParse(payload ?? {});
 	if (!parsed.success)
 		return jsonError("Invalid token payload.", "invalid_payload", 400);
 	const issued = await issueToken(c.env, account.id, parsed.data.label);
@@ -354,9 +373,9 @@ app.get("/api/v1/links", async (c) => {
 
 app.post("/api/v1/links", async (c) => {
 	const principal = c.get("principal");
-	const parsed = createLinkSchema.safeParse(
-		await c.req.json().catch(() => null),
-	);
+	const payload = await jsonPayload(c);
+	if (payload instanceof Response) return payload;
+	const parsed = createLinkSchema.safeParse(payload);
 	if (!parsed.success)
 		return jsonError("Invalid link payload.", "invalid_payload", 400);
 	const adminAccount =
@@ -415,9 +434,9 @@ app.patch("/api/v1/links/:slug", async (c) => {
 		return jsonError("Invalid slug.", "invalid_slug", 400);
 	const existing = managedLink(c.get("principal"), await getLink(c.env, slug));
 	if (!existing) return jsonError("Link not found.", "not_found", 404);
-	const parsed = updateLinkSchema.safeParse(
-		await c.req.json().catch(() => null),
-	);
+	const payload = await jsonPayload(c);
+	if (payload instanceof Response) return payload;
+	const parsed = updateLinkSchema.safeParse(payload);
 	if (!parsed.success)
 		return jsonError("Invalid update payload.", "invalid_payload", 400);
 	const updates = cleanUpdates(parsed.data as Record<string, unknown>);
@@ -438,9 +457,9 @@ app.post("/api/v1/links/:slug/disable", async (c) => {
 		return jsonError("Invalid slug.", "invalid_slug", 400);
 	if (!managedLink(c.get("principal"), await getLink(c.env, slug)))
 		return jsonError("Link not found.", "not_found", 404);
-	const parsed = disableLinkSchema.safeParse(
-		await c.req.json().catch(() => ({})),
-	);
+	const payload = await jsonPayload(c);
+	if (payload instanceof Response) return payload;
+	const parsed = disableLinkSchema.safeParse(payload ?? {});
 	if (!parsed.success)
 		return jsonError("Invalid disable payload.", "invalid_payload", 400);
 	return jsonSuccess(
@@ -501,11 +520,18 @@ app.post("/:slug", async (c) => {
 			true,
 			allowed.retryAfterSeconds,
 		);
-	const body = (await c.req.parseBody().catch(() => ({}))) as Record<
-		string,
-		string | File
-	>;
-	const password = typeof body.password === "string" ? body.password : "";
+	let password = "";
+	try {
+		password =
+			(await readLimitedFormValue(
+				c.req.raw,
+				"password",
+				PASSWORD_BODY_LIMIT_BYTES,
+			)) ?? "";
+	} catch (error) {
+		if (error instanceof RequestBodyTooLargeError)
+			return new Response("Request body is too large.", { status: 413 });
+	}
 	const verification = await verifyLinkPassword(
 		record,
 		password,

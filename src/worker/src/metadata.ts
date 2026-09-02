@@ -1,4 +1,6 @@
+import { buildInfo } from "./build-info";
 import { LinkRecord } from "./types";
+import { isPublicHttpsUrl } from "./validation";
 
 type EmbedMetadata = Pick<
 	LinkRecord,
@@ -17,6 +19,7 @@ type EmbedMetadata = Pick<
 // unbounded upstream response.
 const MAX_HTML_BYTES = 1024 * 1024;
 const FETCH_TIMEOUT_MS = 2500;
+const MAX_REDIRECTS = 3;
 
 function trimForMeta(
 	value: string | undefined,
@@ -366,13 +369,24 @@ export async function fetchTargetMetadata(
 	const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
 	try {
-		const response = await fetch(destinationUrl, {
-			headers: {
-				Accept: "text/html,application/xhtml+xml",
-				"User-Agent": "AITSYS-Go/1.0 (+https://go.aitsys.dev/)",
-			},
-			signal: controller.signal,
-		});
+		let fetchUrl = destinationUrl;
+		let response: Response | undefined;
+		for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
+			if (!isPublicHttpsUrl(fetchUrl)) return {};
+			response = await fetch(fetchUrl, {
+				headers: {
+					Accept: "text/html,application/xhtml+xml",
+					"User-Agent": `AITSYS-Go/${buildInfo.version} (+${buildInfo.repository}; ${buildInfo.sha})`,
+				},
+				redirect: "manual",
+				signal: controller.signal,
+			});
+			if (response.status < 300 || response.status >= 400) break;
+			const location = response.headers.get("location");
+			if (!location || redirects === MAX_REDIRECTS) return {};
+			fetchUrl = new URL(location, fetchUrl).toString();
+		}
+		if (!response) return {};
 
 		const contentType = response.headers.get("Content-Type") ?? "";
 		if (!response.ok || !contentType.toLowerCase().includes("html")) {
@@ -380,7 +394,7 @@ export async function fetchTargetMetadata(
 		}
 
 		const html = await readPrefix(response.body, MAX_HTML_BYTES);
-		const metadata = extractEmbedMetadata(html, destinationUrl);
+		const metadata = extractEmbedMetadata(html, fetchUrl);
 
 		return Object.keys(metadata).length > 0
 			? { ...metadata, metadataFetchedAt: new Date().toISOString() }

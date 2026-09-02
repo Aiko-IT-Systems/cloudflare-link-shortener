@@ -151,6 +151,16 @@ cd src/android
 
 The debug APK is at `app/build/outputs/apk/debug/app-debug.apk`. Release builds need an upload key outside source control. Local signing uses ignored `signing.properties`; CI uses only these secret names: `ANDROID_UPLOAD_KEYSTORE_BASE64`, `ANDROID_UPLOAD_KEY_ALIAS`, `ANDROID_UPLOAD_KEYSTORE_PASSWORD`, and `ANDROID_UPLOAD_KEY_PASSWORD`. Android derives `versionName` from the root package version and computes `versionCode` as `major × 1,000,000 + minor × 1,000 + patch`; do not override either in Gradle. The release workflow builds and verifies an APK and AAB; it does not submit to Google Play. Play-distributed installs can offer flexible in-app updates (or an immediate flow for a Play release assigned high update priority); sideloaded and debug builds simply receive no available update from Play.
 
+`src/android/gradle/verification-metadata.xml` pins SHA-256 checksums for every external Gradle artifact and metadata file used by the build. Gradle automatically enables strict verification when that file exists. When deliberately changing Android, Kotlin, Gradle-plugin, or transitive dependencies, regenerate the candidate checksums from a trusted machine, review the resulting XML in the same pull request, and rerun the Android build:
+
+```powershell
+cd src/android
+./gradlew --no-daemon --write-verification-metadata sha256 test lint
+./gradlew --no-daemon test lint
+```
+
+Do not bypass verification with `--dependency-verification off` or commit a checksum update that you have not reviewed.
+
 ## Discord command registration
 
 The Worker verifies Discord signatures with `DISCORD_PUBLIC_KEY`. Register commands manually after configuring the production endpoint and public key in the Discord Developer Portal:

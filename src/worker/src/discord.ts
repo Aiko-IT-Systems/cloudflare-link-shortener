@@ -21,11 +21,13 @@ import { canonicalTimestamp } from "./timestamps";
 import { buildInfo } from "./build-info";
 import { runConnectionTest } from "./connection-test";
 import { getSiteConfig } from "./config";
+import { readLimitedBody, RequestBodyTooLargeError } from "./body";
 
 const EPHEMERAL = 1 << 6;
 const COMPONENTS_V2 = 1 << 15;
 const SESSION_TTL_SECONDS = 15 * 60;
 const MANAGE_PAGE_SIZE = 2;
+const DISCORD_BODY_LIMIT_BYTES = 64 * 1024;
 
 type DiscordUser = { id: string; username: string };
 type Interaction = {
@@ -349,7 +351,7 @@ async function verifyDiscordRequest(
 	if (!signature || !timestamp || !/^\d+$/.test(timestamp)) return undefined;
 	if (Math.abs(Date.now() - Number(timestamp) * 1000) > 5 * 60 * 1000)
 		return undefined;
-	const raw = new Uint8Array(await request.arrayBuffer());
+	const raw = await readLimitedBody(request, DISCORD_BODY_LIMIT_BYTES);
 	const keyHex = env.DISCORD_PUBLIC_KEY;
 	if (!/^[a-f\d]{64}$/i.test(keyHex) || !/^[a-f\d]{128}$/i.test(signature))
 		return undefined;
@@ -771,7 +773,9 @@ export async function handleDiscordInteraction(
 	let raw: Uint8Array | undefined;
 	try {
 		raw = await verifyDiscordRequest(request, env);
-	} catch {
+	} catch (error) {
+		if (error instanceof RequestBodyTooLargeError)
+			return new Response("Request body is too large.", { status: 413 });
 		return new Response("Invalid request signature.", { status: 401 });
 	}
 	if (!raw) return new Response("Invalid request signature.", { status: 401 });
