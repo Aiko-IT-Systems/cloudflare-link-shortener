@@ -123,13 +123,25 @@ function socialProvider(destinationUrl: string): SocialProvider | undefined {
 	return undefined;
 }
 
-function isPublicSocialMp4(
+function directHttpsMp4(
+	value: string | undefined,
+	destinationUrl: string,
+	contentType?: string,
+): string | undefined {
+	const resolved = resolveHttpsUrl(value, destinationUrl);
+	if (!resolved) return undefined;
+	const url = new URL(resolved);
+	const declaresMp4 = contentType?.split(";", 1)[0]?.trim().toLowerCase() === "video/mp4";
+	return url.pathname.toLowerCase().endsWith(".mp4") || declaresMp4 ? resolved : undefined;
+}
+
+function publicSocialMp4(
 	value: string | undefined,
 	provider: SocialProvider,
 	destinationUrl: string,
-): value is string {
-	const resolved = resolveHttpsUrl(value, destinationUrl);
-	if (!resolved) return false;
+): string | undefined {
+	const resolved = directHttpsMp4(value, destinationUrl);
+	if (!resolved) return undefined;
 	const url = new URL(resolved);
 	const host = url.hostname.toLowerCase();
 	const knownCdn =
@@ -138,7 +150,7 @@ function isPublicSocialMp4(
 			: provider === "facebook"
 				? host === "fbcdn.net" || host.endsWith(".fbcdn.net")
 				: host === "video.twimg.com";
-	return knownCdn && url.pathname.endsWith(".mp4");
+	return knownCdn ? resolved : undefined;
 }
 
 function positiveInteger(value: string | undefined): number | undefined {
@@ -161,7 +173,8 @@ function embeddedInstagramVideo(
 			const url = versions
 				.filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
 				.map((item) => (typeof item.url === "string" ? item.url : undefined))
-				.find((value) => isPublicSocialMp4(value, "instagram", destinationUrl));
+				.map((value) => publicSocialMp4(value, "instagram", destinationUrl))
+				.find((value): value is string => Boolean(value));
 			if (!url) continue;
 			const nearby = html.slice(Math.max(0, (match.index ?? 0) - 5_000), (match.index ?? 0) + 5_000);
 			return {
@@ -229,8 +242,9 @@ function embeddedXVideo(
 	for (const match of html.matchAll(variantPattern)) {
 		try {
 			const url: unknown = JSON.parse(`"${match[2]}"`);
-			if (typeof url !== "string" || !isPublicSocialMp4(url, "x", destinationUrl)) continue;
-			variants.push({ url, bitrate: Number(match[1]) });
+			const publicUrl = typeof url === "string" ? publicSocialMp4(url, "x", destinationUrl) : undefined;
+			if (!publicUrl) continue;
+			variants.push({ url: publicUrl, bitrate: Number(match[1]) });
 		} catch {
 			// X's hydrated state is an implementation detail and may change shape.
 		}
@@ -245,24 +259,22 @@ function embeddedXVideo(
 	};
 }
 
-function extractSocialVideoMetadata(
+function extractVideoMetadata(
 	headHtml: string,
 	fullHtml: string,
 	destinationUrl: string,
 ): Pick<EmbedMetadata, "embedVideoUrl" | "embedVideoWidth" | "embedVideoHeight"> {
 	const provider = socialProvider(destinationUrl);
-	if (!provider) return {};
 	if (provider === "instagram" && primaryInstagramCarouselIsImage(fullHtml)) return {};
 	const ogVideo = metaContent(headHtml, ["og:video:secure_url", "og:video"]);
+	const ogVideoType = metaContent(headHtml, ["og:video:type"]);
 	const embedded =
 		provider === "instagram"
 			? embeddedInstagramVideo(fullHtml, destinationUrl)
 			: provider === "x"
 				? embeddedXVideo(fullHtml, destinationUrl)
 				: undefined;
-	const directVideo = isPublicSocialMp4(ogVideo, provider, destinationUrl)
-		? ogVideo
-		: embedded?.url;
+	const directVideo = directHttpsMp4(ogVideo, destinationUrl, ogVideoType) ?? embedded?.url;
 	if (!directVideo) return {};
 	const width = positiveInteger(metaContent(headHtml, ["og:video:width"])) ?? embedded?.width;
 	const height = positiveInteger(metaContent(headHtml, ["og:video:height"])) ?? embedded?.height;
@@ -342,7 +354,7 @@ export function extractEmbedMetadata(
 		...(embedTitle ? { embedTitle } : {}),
 		...(embedDescription ? { embedDescription } : {}),
 		...(embedImageUrl ? { embedImageUrl } : {}),
-		...extractSocialVideoMetadata(headHtml, html, destinationUrl),
+		...extractVideoMetadata(headHtml, html, destinationUrl),
 		...(embedSiteName ? { embedSiteName } : {}),
 	};
 }

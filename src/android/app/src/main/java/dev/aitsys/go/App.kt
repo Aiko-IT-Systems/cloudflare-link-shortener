@@ -97,6 +97,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
+import androidx.core.text.HtmlCompat
 import coil3.compose.AsyncImage
 import dev.aitsys.go.data.Branding
 import dev.aitsys.go.data.LinkDraft
@@ -121,6 +122,9 @@ import kotlin.time.Duration.Companion.milliseconds
 
 private val DarkBackground = Color(0xFF12051A)
 private val DarkSurface = Color(0xFF21102B)
+
+internal fun decodeHtmlEntities(value: String): String =
+    HtmlCompat.fromHtml(value, HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -730,7 +734,7 @@ private fun LinkCardContent(
                         } else {
                             record.embedImageUrl
                         },
-                    contentDescription = record.embedTitle ?: "Link preview image",
+                    contentDescription = record.embedTitle?.let(::decodeHtmlEntities) ?: "Link preview image",
                     contentScale = ContentScale.Crop,
                     placeholder = fallbackPainter,
                     error = fallbackPainter,
@@ -744,14 +748,14 @@ private fun LinkCardContent(
                 )
             }
             Text(
-                record.title ?: record.embedTitle ?: record.destinationUrl,
+                (record.title ?: record.embedTitle ?: record.destinationUrl).let(::decodeHtmlEntities),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 color = Color.White,
             )
             if (!record.embedDescription.isNullOrEmpty()) {
                 Text(
-                    record.embedDescription,
+                    decodeHtmlEntities(record.embedDescription),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White,
                 )

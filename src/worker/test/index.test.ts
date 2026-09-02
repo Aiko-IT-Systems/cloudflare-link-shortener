@@ -453,6 +453,22 @@ describe("link shortener", () => {
 		expect(metadata.embedTitle).toBe("&lt;script&gt;");
 	});
 
+	test("uses an ordinary site's declared HTTPS MP4 Open Graph video", () => {
+		const metadata = extractEmbedMetadata(
+			`<head>
+				<meta property="og:video:secure_url" content="https://media.example.test/watch/123">
+				<meta property="og:video:type" content="video/mp4; codecs=avc1">
+				<meta property="og:video:width" content="1920">
+				<meta property="og:video:height" content="1080">
+			</head>`,
+			"https://example.test/watch/123",
+		);
+
+		expect(metadata.embedVideoUrl).toBe("https://media.example.test/watch/123");
+		expect(metadata.embedVideoWidth).toBe(1920);
+		expect(metadata.embedVideoHeight).toBe(1080);
+	});
+
 	test("extracts a public Instagram MP4 and renders it only through the short-link page", async () => {
 		vi.stubGlobal(
 			"fetch",
