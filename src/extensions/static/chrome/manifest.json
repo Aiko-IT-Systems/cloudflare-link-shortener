@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AITSYS Go",
   "description": "Create transparent AITSYS Go short links from the current page.",
-  "version": "2.1.4",
+  "version": "2.1.5",
   "action": {
     "default_title": "AITSYS Go",
     "default_popup": "index.html",
