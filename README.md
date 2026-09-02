@@ -78,10 +78,7 @@ We provide a versioned REST API with account-scoped, revocable user tokens. The 
 
 ## Releases
 
-Releases are built and published automatically from the `main` branch. 
-
-> [!WARNING]
-> Due to limitations, the extensions in GitHub Releases are not signed.
+Releases are built and manually published from the `main` branch.
 
 The following extensions / apps are auto published:
 
