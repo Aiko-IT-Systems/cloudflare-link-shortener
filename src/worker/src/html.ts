@@ -4,6 +4,9 @@ import { SiteConfig } from "./config";
 type PageMeta = {
 	description?: string;
 	imageUrl?: string;
+	videoUrl?: string;
+	videoWidth?: number;
+	videoHeight?: number;
 	pageUrl?: string;
 	siteName?: string;
 	suppressSocialPreview?: boolean;
@@ -12,6 +15,17 @@ type PageMeta = {
 function escapeHtml(value: string): string {
 	return value
 		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#39;");
+}
+
+// Social CDN signatures include every query separator. These values are accepted
+// only by the social-media metadata extractor, so keep `&` literal for crawlers
+// that do not decode HTML entities before requesting the MP4.
+function escapeMediaUrl(value: string): string {
+	return value
 		.replace(/</g, "&lt;")
 		.replace(/>/g, "&gt;")
 		.replace(/"/g, "&quot;")
@@ -32,7 +46,7 @@ function metaTags(
 		`Transparent ${config.siteName} short link preview. No click analytics, cookies, or tracking pixels.`;
 	const siteName = meta.siteName ?? config.siteName;
 	const tags = [
-		["property", "og:type", "website"],
+		["property", "og:type", meta.videoUrl ? "video.other" : "website"],
 		["property", "og:title", title],
 		["property", "og:description", description],
 		["property", "og:site_name", siteName],
@@ -50,10 +64,20 @@ function metaTags(
 		tags.push(["name", "twitter:image", meta.imageUrl]);
 	}
 
+	if (meta.videoUrl) {
+		tags.push(["property", "og:video", meta.videoUrl]);
+		tags.push(["property", "og:video:secure_url", meta.videoUrl]);
+		tags.push(["property", "og:video:type", "video/mp4"]);
+		if (meta.videoWidth)
+			tags.push(["property", "og:video:width", `${meta.videoWidth}`]);
+		if (meta.videoHeight)
+			tags.push(["property", "og:video:height", `${meta.videoHeight}`]);
+	}
+
 	return tags
 		.map(
 			([attribute, name, content]) =>
-				`<meta ${attribute}="${escapeHtml(name)}" content="${escapeHtml(content)}">`,
+				`<meta ${attribute}="${escapeHtml(name)}" content="${name.startsWith("og:video") ? escapeMediaUrl(content) : escapeHtml(content)}">`,
 		)
 		.join("\n\t\t");
 }
@@ -472,6 +496,9 @@ export function splash(
 		{
 			description,
 			imageUrl: record.embedImageUrl,
+			videoUrl: record.embedVideoUrl,
+			videoWidth: record.embedVideoWidth,
+			videoHeight: record.embedVideoHeight,
 			pageUrl,
 			siteName: record.embedSiteName,
 			suppressSocialPreview: record.suppressSocialPreview,

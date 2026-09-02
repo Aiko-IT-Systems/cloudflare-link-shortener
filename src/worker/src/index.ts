@@ -386,6 +386,9 @@ app.post("/api/v1/links", async (c) => {
 		embedDescription:
 			parsed.data.embedDescription ?? fetchedMetadata.embedDescription,
 		embedImageUrl: parsed.data.embedImageUrl ?? fetchedMetadata.embedImageUrl,
+		embedVideoUrl: fetchedMetadata.embedVideoUrl,
+		embedVideoWidth: fetchedMetadata.embedVideoWidth,
+		embedVideoHeight: fetchedMetadata.embedVideoHeight,
 		embedSiteName: parsed.data.embedSiteName ?? fetchedMetadata.embedSiteName,
 		metadataFetchedAt: fetchedMetadata.metadataFetchedAt,
 	});

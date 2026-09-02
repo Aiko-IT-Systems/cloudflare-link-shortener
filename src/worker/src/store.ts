@@ -198,6 +198,9 @@ export async function refreshLinkMetadata(
 			| "embedTitle"
 			| "embedDescription"
 			| "embedImageUrl"
+			| "embedVideoUrl"
+			| "embedVideoWidth"
+			| "embedVideoHeight"
 			| "embedSiteName"
 			| "metadataFetchedAt"
 		>
@@ -207,6 +210,9 @@ export async function refreshLinkMetadata(
 		embedTitle: metadata.embedTitle,
 		embedDescription: metadata.embedDescription,
 		embedImageUrl: metadata.embedImageUrl,
+		embedVideoUrl: metadata.embedVideoUrl,
+		embedVideoWidth: metadata.embedVideoWidth,
+		embedVideoHeight: metadata.embedVideoHeight,
 		embedSiteName: metadata.embedSiteName,
 		metadataFetchedAt: metadata.metadataFetchedAt ?? new Date().toISOString(),
 	});
@@ -645,6 +651,9 @@ async function toRecord(
 			? { embedDescription: input.embedDescription }
 			: {}),
 		...(input.embedImageUrl ? { embedImageUrl: input.embedImageUrl } : {}),
+		...(input.embedVideoUrl ? { embedVideoUrl: input.embedVideoUrl } : {}),
+		...(input.embedVideoWidth ? { embedVideoWidth: input.embedVideoWidth } : {}),
+		...(input.embedVideoHeight ? { embedVideoHeight: input.embedVideoHeight } : {}),
 		...(input.embedSiteName ? { embedSiteName: input.embedSiteName } : {}),
 		...(input.metadataFetchedAt
 			? { metadataFetchedAt: input.metadataFetchedAt }

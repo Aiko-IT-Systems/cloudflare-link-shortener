@@ -5,6 +5,9 @@ type EmbedMetadata = Pick<
 	| "embedTitle"
 	| "embedDescription"
 	| "embedImageUrl"
+	| "embedVideoUrl"
+	| "embedVideoWidth"
+	| "embedVideoHeight"
 	| "embedSiteName"
 	| "metadataFetchedAt"
 >;
@@ -91,6 +94,130 @@ function resolveHttpsUrl(
 	}
 }
 
+type SocialProvider = "facebook" | "instagram";
+
+function socialProvider(destinationUrl: string): SocialProvider | undefined {
+	try {
+		const url = new URL(destinationUrl);
+		const host = url.hostname.toLowerCase();
+		if (
+			(host === "instagram.com" || host === "www.instagram.com") &&
+			/^\/(?:reel|reels|p|tv)\/[A-Za-z0-9_-]+\/?$/.test(url.pathname)
+		)
+			return "instagram";
+		if (host !== "facebook.com" && host !== "www.facebook.com") return undefined;
+		if (/^\/reel\/\d+\/?$/.test(url.pathname)) return "facebook";
+		if (url.pathname === "/watch" && /^\d+$/.test(url.searchParams.get("v") ?? "")) return "facebook";
+		if (url.pathname === "/permalink.php" && url.searchParams.has("story_fbid") && url.searchParams.has("id")) return "facebook";
+	} catch {
+		// Destination validation happens before metadata fetching. Treat malformed values as non-social here.
+	}
+	return undefined;
+}
+
+function isPublicSocialMp4(
+	value: string | undefined,
+	provider: SocialProvider,
+	destinationUrl: string,
+): value is string {
+	const resolved = resolveHttpsUrl(value, destinationUrl);
+	if (!resolved) return false;
+	const url = new URL(resolved);
+	const host = url.hostname.toLowerCase();
+	const knownCdn =
+		provider === "instagram"
+			? host === "cdninstagram.com" || host.endsWith(".cdninstagram.com")
+			: host === "fbcdn.net" || host.endsWith(".fbcdn.net");
+	return knownCdn && url.pathname.endsWith(".mp4");
+}
+
+function positiveInteger(value: string | undefined): number | undefined {
+	const number = Number(value);
+	return Number.isInteger(number) && number > 0 ? number : undefined;
+}
+
+function embeddedInstagramVideo(
+	html: string,
+	destinationUrl: string,
+): { url: string; width?: number; height?: number } | undefined {
+	for (const match of html.matchAll(/"video_versions"\s*:\s*(\[[\s\S]*?\])/g)) {
+		try {
+			const versions: unknown = JSON.parse(match[1]);
+			if (!Array.isArray(versions)) continue;
+			const url = versions
+				.filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+				.map((item) => (typeof item.url === "string" ? item.url : undefined))
+				.find((value) => isPublicSocialMp4(value, "instagram", destinationUrl));
+			if (!url) continue;
+			const nearby = html.slice(Math.max(0, (match.index ?? 0) - 5_000), (match.index ?? 0) + 5_000);
+			return {
+				url,
+				width: positiveInteger(/"original_width"\s*:\s*(\d+)/.exec(nearby)?.[1]),
+				height: positiveInteger(/"original_height"\s*:\s*(\d+)/.exec(nearby)?.[1]),
+			};
+		} catch {
+			// Embedded state is an implementation detail and may not form standalone JSON.
+		}
+	}
+	return undefined;
+}
+
+function primaryInstagramCarouselIsImage(html: string): boolean {
+	const marker = /"carousel_media"\s*:\s*\[/.exec(html);
+	if (!marker || marker.index === undefined) return false;
+	const start = marker.index + marker[0].lastIndexOf("[");
+	let depth = 0;
+	let quoted = false;
+	let escaped = false;
+	for (let index = start; index < html.length; index += 1) {
+		const character = html[index];
+		if (quoted) {
+			if (escaped) escaped = false;
+			else if (character === "\\") escaped = true;
+			else if (character === '"') quoted = false;
+			continue;
+		}
+		if (character === '"') quoted = true;
+		else if (character === "[") depth += 1;
+		else if (character === "]" && --depth === 0) {
+			try {
+				const carousel: unknown = JSON.parse(html.slice(start, index + 1));
+				const first = Array.isArray(carousel) ? carousel[0] : undefined;
+				return typeof first === "object" && first !== null && (first as Record<string, unknown>).media_type === 1;
+			} catch {
+				return false;
+			}
+		}
+	}
+	return false;
+}
+
+function extractSocialVideoMetadata(
+	headHtml: string,
+	fullHtml: string,
+	destinationUrl: string,
+): Pick<EmbedMetadata, "embedVideoUrl" | "embedVideoWidth" | "embedVideoHeight"> {
+	const provider = socialProvider(destinationUrl);
+	if (!provider) return {};
+	if (provider === "instagram" && primaryInstagramCarouselIsImage(fullHtml)) return {};
+	const ogVideo = metaContent(headHtml, ["og:video:secure_url", "og:video"]);
+	const embedded =
+		provider === "instagram"
+			? embeddedInstagramVideo(fullHtml, destinationUrl)
+			: undefined;
+	const directVideo = isPublicSocialMp4(ogVideo, provider, destinationUrl)
+		? ogVideo
+		: embedded?.url;
+	if (!directVideo) return {};
+	const width = positiveInteger(metaContent(headHtml, ["og:video:width"])) ?? embedded?.width;
+	const height = positiveInteger(metaContent(headHtml, ["og:video:height"])) ?? embedded?.height;
+	return {
+		embedVideoUrl: directVideo,
+		...(width ? { embedVideoWidth: width } : {}),
+		...(height ? { embedVideoHeight: height } : {}),
+	};
+}
+
 async function readPrefix(
 	stream: ReadableStream<Uint8Array> | null,
 	maxBytes: number,
@@ -160,6 +287,7 @@ export function extractEmbedMetadata(
 		...(embedTitle ? { embedTitle } : {}),
 		...(embedDescription ? { embedDescription } : {}),
 		...(embedImageUrl ? { embedImageUrl } : {}),
+		...extractSocialVideoMetadata(headHtml, html, destinationUrl),
 		...(embedSiteName ? { embedSiteName } : {}),
 	};
 }

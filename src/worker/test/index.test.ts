@@ -453,6 +453,54 @@ describe("link shortener", () => {
 		expect(metadata.embedTitle).toBe("&lt;script&gt;");
 	});
 
+	test("extracts a public Instagram MP4 and renders it only through the short-link page", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(
+				async () =>
+					new Response(
+						`<head>
+							<meta property="og:title" content="Tiny reel">
+							<meta property="og:image" content="https://scontent.example.cdninstagram.com/poster.jpg">
+						</head>
+						<script type="application/json">{"original_width":720,"original_height":1280,"video_versions":[{"url":"https://scontent.example.cdninstagram.com/reel.mp4?one=1\\u0026two=2"}]}</script>`,
+						{ headers: { "Content-Type": "text/html" } },
+					),
+			),
+		);
+
+		const envValue = env();
+		const created = await create(envValue, {
+			slug: "tiny-reel",
+			destinationUrl: "https://www.instagram.com/reel/Cat_123-/",
+			creator: "Lulalaby",
+		});
+		const record = ((await created.json()) as { result: LinkRecord }).result;
+		expect(record.embedVideoUrl).toBe(
+			"https://scontent.example.cdninstagram.com/reel.mp4?one=1&two=2",
+		);
+		expect(record.embedVideoWidth).toBe(720);
+		expect(record.embedVideoHeight).toBe(1280);
+
+		const page = await app.fetch(
+			new Request("https://go.aitsys.dev/tiny-reel"),
+			envValue,
+		);
+		const html = await page.text();
+		expect(html).toContain('property="og:video:type" content="video/mp4"');
+		expect(html).toContain('property="og:video:width" content="720"');
+		expect(html).toContain('content="https://scontent.example.cdninstagram.com/reel.mp4?one=1&two=2"');
+	});
+
+	test("does not turn an image-first Instagram carousel into a video embed", () => {
+		const metadata = extractEmbedMetadata(
+			`<head><meta property="og:image" content="https://scontent.example.cdninstagram.com/first.jpg"></head>
+			<script type="application/json">{"carousel_media":[{"media_type":1},{"media_type":2,"video_versions":[{"url":"https://scontent.example.cdninstagram.com/later.mp4"}]}]}</script>`,
+			"https://www.instagram.com/p/Cat_123-/",
+		);
+		expect(metadata.embedVideoUrl).toBeUndefined();
+	});
+
 	test("renders splash page and disables public access", async () => {
 		const envValue = env();
 		await create(envValue, {

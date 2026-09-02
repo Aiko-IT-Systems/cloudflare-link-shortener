@@ -13,6 +13,9 @@ export type LinkRecord = {
 	embedTitle?: string;
 	embedDescription?: string;
 	embedImageUrl?: string;
+	embedVideoUrl?: string;
+	embedVideoWidth?: number;
+	embedVideoHeight?: number;
 	embedSiteName?: string;
 	metadataFetchedAt?: string;
 	/** @deprecated Legacy plaintext value; upgraded after a successful unlock. */
