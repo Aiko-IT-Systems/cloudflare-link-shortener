@@ -221,7 +221,7 @@ jobs:
   edge: # Only publish to Microsoft Edge Add-ons if explicitly requested, we are blocked while a version is pending review (github.event_name == 'release' || )
     name: Microsoft Edge Add-ons
     needs: verify-release
-    if: inputs.publish-edge
+    if: github.event_name == 'release' || inputs.publish-edge
     runs-on: ubuntu-latest
     environment: edge-addons
     steps:
