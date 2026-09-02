@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import app from "../src";
-import { extractEmbedMetadata } from "../src/metadata";
+import { extractEmbedMetadata, fetchTargetMetadata } from "../src/metadata";
 import { createLink as createStoredLink } from "../src/store";
 import { LinkRecord } from "../src/types";
 
@@ -499,6 +499,25 @@ describe("link shortener", () => {
 			"https://www.instagram.com/p/Cat_123-/",
 		);
 		expect(metadata.embedVideoUrl).toBeUndefined();
+	});
+
+	test("reads Instagram video state that appears after the ordinary metadata head", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(
+				async () =>
+					new Response(
+						`<head><meta property="og:title" content="Late reel"></head>${" ".repeat(540_000)}<script type="application/json">{"video_versions":[{"url":"https://scontent.example.cdninstagram.com/late.mp4"}]}</script>`,
+						{ headers: { "Content-Type": "text/html" } },
+					),
+			),
+		);
+		const metadata = await fetchTargetMetadata(
+			"https://www.instagram.com/reel/Cat_123-/",
+		);
+		expect(metadata.embedVideoUrl).toBe(
+			"https://scontent.example.cdninstagram.com/late.mp4",
+		);
 	});
 
 	test("renders splash page and disables public access", async () => {

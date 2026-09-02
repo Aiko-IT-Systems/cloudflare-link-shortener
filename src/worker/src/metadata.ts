@@ -12,7 +12,10 @@ type EmbedMetadata = Pick<
 	| "metadataFetchedAt"
 >;
 
-const MAX_HTML_BYTES = 64 * 1024;
+// Instagram's public embedded video state can arrive hundreds of KiB after the
+// document head. Keep this bounded and streamed rather than buffering an
+// unbounded upstream response.
+const MAX_HTML_BYTES = 1024 * 1024;
 const FETCH_TIMEOUT_MS = 2500;
 
 function trimForMeta(
