@@ -97,7 +97,7 @@ function resolveHttpsUrl(
 	}
 }
 
-type SocialProvider = "facebook" | "instagram";
+type SocialProvider = "facebook" | "instagram" | "x";
 
 function socialProvider(destinationUrl: string): SocialProvider | undefined {
 	try {
@@ -108,6 +108,11 @@ function socialProvider(destinationUrl: string): SocialProvider | undefined {
 			/^\/(?:reel|reels|p|tv)\/[A-Za-z0-9_-]+\/?$/.test(url.pathname)
 		)
 			return "instagram";
+		if (
+			(host === "x.com" || host === "www.x.com" || host === "twitter.com" || host === "www.twitter.com") &&
+			/^\/[^/]+\/status\/\d+\/?$/.test(url.pathname)
+		)
+			return "x";
 		if (host !== "facebook.com" && host !== "www.facebook.com") return undefined;
 		if (/^\/reel\/\d+\/?$/.test(url.pathname)) return "facebook";
 		if (url.pathname === "/watch" && /^\d+$/.test(url.searchParams.get("v") ?? "")) return "facebook";
@@ -130,7 +135,9 @@ function isPublicSocialMp4(
 	const knownCdn =
 		provider === "instagram"
 			? host === "cdninstagram.com" || host.endsWith(".cdninstagram.com")
-			: host === "fbcdn.net" || host.endsWith(".fbcdn.net");
+			: provider === "facebook"
+				? host === "fbcdn.net" || host.endsWith(".fbcdn.net")
+				: host === "video.twimg.com";
 	return knownCdn && url.pathname.endsWith(".mp4");
 }
 
@@ -195,6 +202,30 @@ function primaryInstagramCarouselIsImage(html: string): boolean {
 	return false;
 }
 
+function embeddedXVideo(
+	html: string,
+	destinationUrl: string,
+): { url: string; width?: number; height?: number } | undefined {
+	const variants: Array<{ url: string; bitrate: number }> = [];
+	for (const match of html.matchAll(/bitrate:(\d+),content_type:"video\/mp4",url:"([^"\\]*(?:\\.[^"\\]*)*)"/g)) {
+		try {
+			const url: unknown = JSON.parse(`"${match[2]}"`);
+			if (typeof url !== "string" || !isPublicSocialMp4(url, "x", destinationUrl)) continue;
+			variants.push({ url, bitrate: Number(match[1]) });
+		} catch {
+			// X's hydrated state is an implementation detail and may change shape.
+		}
+	}
+	const best = variants.sort((left, right) => right.bitrate - left.bitrate)[0];
+	if (!best) return undefined;
+	const dimensions = /\/vid\/[^/]+\/(\d+)x(\d+)\//.exec(new URL(best.url).pathname);
+	return {
+		url: best.url,
+		width: positiveInteger(dimensions?.[1]),
+		height: positiveInteger(dimensions?.[2]),
+	};
+}
+
 function extractSocialVideoMetadata(
 	headHtml: string,
 	fullHtml: string,
@@ -207,7 +238,9 @@ function extractSocialVideoMetadata(
 	const embedded =
 		provider === "instagram"
 			? embeddedInstagramVideo(fullHtml, destinationUrl)
-			: undefined;
+			: provider === "x"
+				? embeddedXVideo(fullHtml, destinationUrl)
+				: undefined;
 	const directVideo = isPublicSocialMp4(ogVideo, provider, destinationUrl)
 		? ogVideo
 		: embedded?.url;

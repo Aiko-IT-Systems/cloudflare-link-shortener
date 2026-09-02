@@ -520,6 +520,19 @@ describe("link shortener", () => {
 		);
 	});
 
+	test("uses X's highest-bitrate public MP4 variant", () => {
+		const metadata = extractEmbedMetadata(
+			`<head><meta property="og:title" content="smol silly cat (@Catsillyness) on X"></head>
+			<script>video_info:{variants:[{bitrate:632000,content_type:"video/mp4",url:"https:\/\/video.twimg.com\/amplify_video\/1\/vid\/avc1\/480x480\/small.mp4?tag=29"},{bitrate:2176000,content_type:"video/mp4",url:"https:\/\/video.twimg.com\/amplify_video\/1\/vid\/avc1\/1276x1280\/best.mp4?tag=29"}]}</script>`,
+			"https://x.com/Catsillyness/status/2094906002168590628",
+		);
+		expect(metadata.embedVideoUrl).toBe(
+			"https://video.twimg.com/amplify_video/1/vid/avc1/1276x1280/best.mp4?tag=29",
+		);
+		expect(metadata.embedVideoWidth).toBe(1276);
+		expect(metadata.embedVideoHeight).toBe(1280);
+	});
+
 	test("renders splash page and disables public access", async () => {
 		const envValue = env();
 		await create(envValue, {
