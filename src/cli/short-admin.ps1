@@ -135,15 +135,56 @@ function Disable-ShortLink {
 	}
 }
 
+function Format-RefreshText {
+	param(
+		[AllowNull()]
+		[string] $Value,
+		[int] $MaximumLength = 160
+	)
+
+	if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
+	$decoded = $Value
+	for ($pass = 0; $pass -lt 3; $pass++) {
+		$next = [System.Net.WebUtility]::HtmlDecode($decoded)
+		if ($next -eq $decoded) { break }
+		$decoded = $next
+	}
+	$singleLine = ($decoded -replace "\s+", " ").Trim()
+	if ($singleLine.Length -le $MaximumLength) { return $singleLine }
+	return $singleLine.Substring(0, $MaximumLength - 3).TrimEnd() + "..."
+}
+
+function Get-MetadataHost {
+	param([AllowNull()][string] $Url)
+	if ([string]::IsNullOrWhiteSpace($Url)) { return $null }
+	try { return ([uri] $Url).Host } catch { return "available" }
+}
+
+function Show-RefreshSummary {
+	param([Parameter(Mandatory = $true)] $Link)
+
+	if ($Link.metadataFetchedAt) { Write-Host "Metadata fetched: $($Link.metadataFetchedAt)" -ForegroundColor DarkGray }
+	$title = Format-RefreshText $Link.embedTitle 120
+	$description = Format-RefreshText $Link.embedDescription 200
+	if ($title) { Write-Host "Title: $title" }
+	if ($description) { Write-Host "Description: $description" }
+	$imageHost = Get-MetadataHost $Link.embedImageUrl
+	if ($imageHost) { Write-Host "Poster: available ($imageHost)" -ForegroundColor Cyan } else { Write-Host "Poster: none" -ForegroundColor DarkYellow }
+	if ($Link.embedVideoUrl) {
+		$dimensions = if ($Link.embedVideoWidth -and $Link.embedVideoHeight) { " ($($Link.embedVideoWidth) x $($Link.embedVideoHeight))" } else { "" }
+		Write-Host "Video: MP4 detected$dimensions" -ForegroundColor Green
+	} else {
+		Write-Host "Video: none (image preview only)" -ForegroundColor DarkYellow
+	}
+}
+
 function Refresh-ShortLinkMetadata {
 	$slug = Read-Required "Slug to refresh"
 	$result = Invoke-LinkApi -Method POST -Path "/api/v1/links/$slug/refresh-metadata" -Body @{}
 	if ($result -and $result.success) {
 		Write-Host ""
 		Write-Host "Refreshed: $ApiBase/$slug" -ForegroundColor Green
-		if ($result.result.embedTitle) { Write-Host "Embed title: $($result.result.embedTitle)" }
-		if ($result.result.embedDescription) { Write-Host "Embed description: $($result.result.embedDescription)" }
-		if ($result.result.embedImageUrl) { Write-Host "Embed image: $($result.result.embedImageUrl)" }
+		Show-RefreshSummary $result.result
 	}
 }
 

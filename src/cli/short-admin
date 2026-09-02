@@ -40,6 +40,23 @@ list_pages() {
   done
 }
 
+refresh_summary() {
+  jq -r '
+    def decode_html:
+      gsub("&amp;"; "&") | gsub("&quot;"; "\"") | gsub("&#39;"; "\u0027") | gsub("&#x27;"; "\u0027");
+    def compact($limit):
+      (decode_html | gsub("\\s+"; " ") | .[0:$limit]) as $value |
+      if ($value | length) == $limit then $value + "..." else $value end;
+    .result as $link |
+    "Refreshed: '"$api_base"'/\($link.slug)",
+    (if $link.metadataFetchedAt then "Metadata fetched: \($link.metadataFetchedAt)" else empty end),
+    (if $link.embedTitle then "Title: \($link.embedTitle | compact(120))" else empty end),
+    (if $link.embedDescription then "Description: \($link.embedDescription | compact(200))" else empty end),
+    (if $link.embedImageUrl then "Poster: available (\($link.embedImageUrl | capture("^https?://(?<host>[^/?#]+)").host // "available"))" else "Poster: none" end),
+    (if $link.embedVideoUrl then "Video: MP4 detected" + (if $link.embedVideoWidth and $link.embedVideoHeight then " (\($link.embedVideoWidth) x \($link.embedVideoHeight))" else "" end) else "Video: none (image preview only)" end)
+  '
+}
+
 command="${1:-help}"; shift || true
 if [[ "$command" == help || "$command" == -h || "$command" == --help ]]; then usage; exit 0; fi
 
@@ -80,6 +97,6 @@ case "$command" in
     api POST "/api/v1/links/$(encode "$1")/disable" "$(jq -n --arg reason "${2-}" 'if $reason != "" then {reason:$reason} else {} end')" | jq . ;;
   refresh)
     [[ $# -eq 1 ]] || { usage >&2; exit 2; }
-    api POST "/api/v1/links/$(encode "$1")/refresh-metadata" '{}' | jq . ;;
+    api POST "/api/v1/links/$(encode "$1")/refresh-metadata" '{}' | refresh_summary ;;
   *) echo "Unknown command: $command" >&2; usage >&2; exit 2 ;;
 esac
