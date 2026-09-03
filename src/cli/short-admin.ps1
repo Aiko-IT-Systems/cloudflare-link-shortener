@@ -293,7 +293,9 @@ function Get-ShortLinks {
 	$items = @()
 	$cursor = $null
 	do {
-		$path = "/api/v1/admin/links?limit=100"
+		# The Worker and its API Shield schema cap link pages at 25 records.
+		# Keep this aligned so a protected production zone does not block the request.
+		$path = "/api/v1/admin/links?limit=25"
 		if ($cursor) { $path += "&cursor=$([uri]::EscapeDataString($cursor))" }
 		$result = Invoke-LinkApi -Method GET -Path $path
 		if (-not $result -or -not $result.success) { return }
