@@ -150,7 +150,25 @@ After deployment, visit your `/privacy` page and `/api/v1/metadata` endpoint.
 Create one harmless test link, verify the destination preview and redirect,
 then delete or disable it.
 
-## 7. Bootstrap accounts and clients
+## 8. Enabling API validation with Cloudflare
+
+Cloudflare offers a free **API Shield** feature that can validate and block invalid requests to the AITSYS Go API.
+
+### Steps to enable it
+
+1. Visit `/openapi.json` on your deployed Worker to get the OpenAPI specification and download it.
+2. Go to https://dash.cloudflare.com/?to=/:account/:zone/security/settings?search=schema and enable **Schema Validation**.
+3. Go to https://dash.cloudflare.com/?to=/:account/:zone/security/settings/api-abuse/uploaded-schemas and upload the OpenAPI specification you downloaded.
+4. Choose **Block** as default action for invalid requests. This will ensure that any request that does not conform to the OpenAPI specification will be blocked.
+5. Click **Add schema and endpoints** to save the configuration.
+6. Go to https://dash.cloudflare.com/:account/:zone/security/security-rules/custom-rules
+7. Either create a new rule or edit an existing one (which is set to **Block**) to include the following expression:
+```text
+http.host eq "go.example.com" and (cf.schema_validation.uploaded.violated)
+```
+8. Save the rule and deploy it.
+
+## 9. Bootstrap accounts and clients
 
 Use the master credential only from an administrator shell or the `short-admin`
 tool to create an account and issue an account token. The full request and
@@ -170,7 +188,7 @@ The extension and Android app fetch `/api/v1/metadata` from that origin, so
 their displayed name, logo, colour, favicon/icon shortcut data, and privacy
 contact follow your Worker branding.
 
-## 8. Use existing releases instead of building apps
+## 10. Use existing releases instead of building apps
 
 Open this project's [GitHub Releases](https://github.com/Aiko-IT-Systems/cloudflare-link-shortener/releases) and download the assets
 that match the version you want to test:
@@ -191,7 +209,7 @@ The prebuilt clients are compatible with any correctly configured Worker using
 this API. If you change client code or need a custom package identity, build
 from your fork instead; see [BUILDING.md](BUILDING.md).
 
-## 9. Optional Discord app and command publishing
+## 11. Optional Discord app and command publishing
 
 Configure Discord only after the Worker is live at your final HTTPS origin. This
 project uses Discord's **User Install** context and exposes commands only in
@@ -252,7 +270,7 @@ DM before inviting other users. The Discord bot/registration token must never
 be stored in Cloudflare bindings, GitHub secrets for the Worker, source control,
 or screenshots.
 
-## Ongoing safety checklist
+## 12. Ongoing safety checklist
 
 - Keep GitHub Actions disabled unless you deliberately configure the release
   process and its signing secrets for your fork.
