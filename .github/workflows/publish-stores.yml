@@ -1,8 +1,6 @@
 name: Publish Stores
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       tag:
@@ -49,13 +47,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: stores-${{ github.event.release.tag_name || inputs.tag }}
+  group: stores-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
   verify-release:
     name: Verify release provenance and version
-    if: github.event_name == 'release' || github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.version.outputs.tag }}
@@ -69,7 +67,7 @@ jobs:
       - name: Validate release tag and derive version
         id: version
         env:
-          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          TAG: ${{ inputs.tag }}
         run: |
           if [[ ! "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
             echo "::error::Release tag must be exactly vMAJOR.MINOR.PATCH; received '$TAG'."
@@ -188,7 +186,7 @@ jobs:
   chrome:
     name: Chrome Web Store
     needs: verify-release
-    if: github.event_name == 'release' || inputs.publish-chrome
+    if: inputs.publish-chrome
     runs-on: ubuntu-latest
     environment: chrome-web-store
     steps:
@@ -213,7 +211,7 @@ jobs:
   firefox:
     name: Firefox Add-ons
     needs: verify-release
-    if: github.event_name == 'release' || inputs.publish-firefox
+    if: inputs.publish-firefox
     runs-on: ubuntu-latest
     environment: firefox-amo
     steps:
@@ -238,10 +236,10 @@ jobs:
           license: "Apache-2.0"
           compatibility: "firefox,android"
           approval-notes: ${{ secrets.APPROVAL_NOTES_INTERNAL }}
-  edge: # Only publish to Microsoft Edge Add-ons if explicitly requested, we are blocked while a version is pending review (github.event_name == 'release' || )
+  edge:
     name: Microsoft Edge Add-ons
     needs: verify-release
-    if: github.event_name == 'release' || inputs.publish-edge
+    if: inputs.publish-edge
     runs-on: ubuntu-latest
     environment: edge-addons
     steps:
@@ -265,7 +263,7 @@ jobs:
   android:
     name: Google Play Store
     needs: verify-release
-    if: github.event_name == 'release' || inputs.publish-android
+    if: inputs.publish-android
     runs-on: ubuntu-latest
     environment: google-play-store
     steps:
@@ -335,7 +333,6 @@ jobs:
           inAppUpdatePriority: ${{ inputs.android-priority }}
           whatsNewDirectory: release-assets/whats-new
       - name: Publish to Google Play Internal App Sharing
-        if: github.event_name == 'release'
         id: publish-google-play-internal-sharing
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
@@ -344,7 +341,6 @@ jobs:
           releaseFiles: release-assets/aitsys-go-${{ needs.verify-release.outputs.tag }}.aab
           tracks: internalsharing
       - name: Output internal testing url
-        if: github.event_name == 'release'
         run: |
           echo "Internal App Sharing URL: ${{ steps.publish-google-play-internal-sharing.outputs.internalSharingDownloadUrl }}" >> "$GITHUB_STEP_SUMMARY"
       - name: Remove decoded Google Play credential
