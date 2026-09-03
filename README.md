@@ -17,6 +17,9 @@ It provides:
 - a private Discord user app; and
 - PowerShell and Bash tools for creating and administering links.
 
+We do not offer a public AITSYS Go instance. If you want to use AITSYS Go, you can self-host it with your own branding. 
+See [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) for more information.
+
 ## Apps & Extensions
 
 ### Chrome, Firefox, and Edge Extensions
