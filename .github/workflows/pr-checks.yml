@@ -3,9 +3,6 @@ name: Pull request checks
 on:
   pull_request:
   workflow_dispatch:
-  push:
-    branches-ignore:
-      - main
 
 permissions:
   contents: read
