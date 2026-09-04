@@ -431,21 +431,21 @@ describe("link shortener", () => {
 		findArrayTypes(document);
 		expect(arrayTypedSchemas).toEqual([]);
 		for (const path of [
-			"/api/v1/metadata",
-			"/api/v1/connection-test",
-			"/api/v1/me",
-			"/api/v1/accounts",
-			"/api/v1/accounts/{accountId}",
-			"/api/v1/accounts/{accountId}/discord-user",
-			"/api/v1/accounts/{accountId}/tokens",
-			"/api/v1/tokens",
-			"/api/v1/tokens/{tokenId}/revoke",
-			"/api/v1/admin/links",
-			"/api/v1/links",
-			"/api/v1/links/{slug}",
-			"/api/v1/links/{slug}/refresh-metadata",
-			"/api/v1/links/{slug}/disable",
-			"/api/v1/discord/interactions",
+			"/metadata",
+			"/connection-test",
+			"/me",
+			"/accounts",
+			"/accounts/{accountId}",
+			"/accounts/{accountId}/discord-user",
+			"/accounts/{accountId}/tokens",
+			"/tokens",
+			"/tokens/{tokenId}/revoke",
+			"/admin/links",
+			"/links",
+			"/links/{slug}",
+			"/links/{slug}/refresh-metadata",
+			"/links/{slug}/disable",
+			"/discord/interactions",
 		])
 			expect(document.paths).toHaveProperty(path);
 	});
