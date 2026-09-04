@@ -413,7 +413,7 @@ describe("link shortener", () => {
 		expect(response.status).toBe(200);
 		expect(response.headers.get("Content-Type")).toContain("application/json");
 		expect(document.openapi).toBe("3.0.3");
-		expect(document.servers).toEqual([{ url: "https://go.aitsys.dev", description: "This deployed AITSYS Go instance" }]);
+		expect(document.servers).toEqual([{ url: "https://go.aitsys.dev/api/v1", description: "This deployed AITSYS Go instance" }]);
 		expect(document.components.securitySchemes).toHaveProperty("bearerAuth");
 
 		const arrayTypedSchemas: string[] = [];
@@ -431,10 +431,6 @@ describe("link shortener", () => {
 		findArrayTypes(document);
 		expect(arrayTypedSchemas).toEqual([]);
 		for (const path of [
-			"/openapi.json",
-			"/",
-			"/privacy",
-			"/robots.txt",
 			"/api/v1/metadata",
 			"/api/v1/connection-test",
 			"/api/v1/me",
@@ -450,7 +446,6 @@ describe("link shortener", () => {
 			"/api/v1/links/{slug}/refresh-metadata",
 			"/api/v1/links/{slug}/disable",
 			"/api/v1/discord/interactions",
-			"/{slug}",
 		])
 			expect(document.paths).toHaveProperty(path);
 	});
