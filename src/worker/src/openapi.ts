@@ -620,53 +620,6 @@ export function registerOpenApiDocumentation(registry: OpenAPIRegistry): void {
 			...errorResponses,
 		},
 	});
-	registry.registerPath({
-		method: "post",
-		path: "/discord/interactions",
-		tags: ["Discord"],
-		summary: "Handle a Discord interaction",
-		description:
-			"Discord-only webhook. Raw requests require current Ed25519 signature headers. Supports Pings, application and message commands, component interactions, and modal submissions.",
-		request: {
-			headers: z.object({
-				"x-signature-ed25519": z.string().regex(/^[a-f\d]{128}$/i),
-				"x-signature-timestamp": z.string().regex(/^\d+$/),
-			}),
-			body: {
-				required: true,
-				content: {
-					"application/json": {
-						schema: z
-							.object({
-								type: z.number().int(),
-								application_id: z.string().optional(),
-								data: z.record(z.string(), z.unknown()).optional(),
-							})
-							.passthrough(),
-					},
-				},
-			},
-		},
-		responses: {
-			200: {
-				description: "Discord interaction callback.",
-				content: {
-					"application/json": {
-						schema: z
-							.object({
-								type: z.number().int(),
-								data: z.record(z.string(), z.unknown()).optional(),
-							})
-							.passthrough(),
-					},
-				},
-			},
-			400: textResponse,
-			401: textResponse,
-			405: textResponse,
-			413: textResponse,
-		},
-	});
 }
 
 export function openApiDocument(origin: string) {

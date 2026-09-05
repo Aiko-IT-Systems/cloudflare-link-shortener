@@ -13,7 +13,7 @@ packages.
 
 ## Generated OpenAPI schema
 
-`GET /openapi.json` returns this instance's generated OpenAPI 3.0.3 document. It covers every callable HTTP endpoint, including browser pages, the password form, and Discord's signed interaction webhook. The 3.0.3 format is deliberately compatible with Cloudflare API Shield schema uploads. It intentionally documents schemas and behavior but never exposes credentials, private records, or implementation-only routes.
+`GET /openapi.json` returns this instance's generated OpenAPI 3.0.3 document for the management API and browser routes. The 3.0.3 format is deliberately compatible with Cloudflare API Shield schema uploads. It deliberately excludes Discord's signed interaction webhook: Discord's payload evolves independently, and the Worker verifies every raw interaction with Discord's Ed25519 signature instead. The document never exposes credentials, private records, or implementation-only routes.
 
 ## Timestamp format
 

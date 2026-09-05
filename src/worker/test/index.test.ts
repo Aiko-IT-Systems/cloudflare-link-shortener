@@ -398,7 +398,7 @@ describe("link shortener", () => {
 		expect(bad.status).toBe(401);
 	});
 
-	test("generates an API Shield-compatible OpenAPI 3.0 document for every callable Worker endpoint", async () => {
+	test("generates an API Shield-compatible OpenAPI 3.0 document for protected API routes", async () => {
 		const response = await app.fetch(
 			new Request("https://go.aitsys.dev/openapi.json"),
 			env(),
@@ -445,9 +445,9 @@ describe("link shortener", () => {
 			"/links/{slug}",
 			"/links/{slug}/refresh-metadata",
 			"/links/{slug}/disable",
-			"/discord/interactions",
 		])
 			expect(document.paths).toHaveProperty(path);
+		expect(document.paths).not.toHaveProperty("/discord/interactions");
 	});
 
 	test("rejects invalid URLs, duplicate slugs, and reserved slugs", async () => {

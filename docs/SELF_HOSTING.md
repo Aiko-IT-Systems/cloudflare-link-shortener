@@ -156,7 +156,7 @@ Cloudflare offers a free **API Shield** feature that can validate and block inva
 
 ### Steps to enable it
 
-1. Visit `/openapi.json` on your deployed Worker to get the OpenAPI specification and download it.
+1. Visit `/openapi.json` on your deployed Worker to get the API Shield-compatible OpenAPI specification and download it. It deliberately excludes Discord's interaction webhook.
 2. Go to https://dash.cloudflare.com/?to=/:account/:zone/security/settings?search=schema and enable **Schema Validation**.
 3. Go to https://dash.cloudflare.com/?to=/:account/:zone/security/settings/api-abuse/uploaded-schemas and upload the OpenAPI specification you downloaded.
 4. Choose **Block** as default action for invalid requests. This will ensure that any request that does not conform to the OpenAPI specification will be blocked.
@@ -164,9 +164,9 @@ Cloudflare offers a free **API Shield** feature that can validate and block inva
 6. Go to https://dash.cloudflare.com/:account/:zone/security/security-rules/custom-rules
 7. Either create a new rule or edit an existing one (which is set to **Block**) to include the following expression:
 ```text
-http.host eq "go.example.com" and (cf.schema_validation.uploaded.violated)
+http.host eq "go.example.com" and http.request.uri.path ne "/api/v1/discord/interactions" and (cf.schema_validation.uploaded.violated)
 ```
-8. Save the rule and deploy it.
+8. Save the rule and deploy it. This keeps schema validation on the documented API routes while leaving Discord's signed webhook to the Worker's Ed25519 verification. Do not add the Discord webhook to an API Shield schema-validation blocking rule.
 
 ## 9. Bootstrap accounts and clients
 
