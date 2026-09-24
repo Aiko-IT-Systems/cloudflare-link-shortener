@@ -36,17 +36,17 @@
 	},
 	"dependencies": {
 		"@hono/zod-openapi": "1.6.3",
-		"hono": "4.13.8",
+		"hono": "4.13.9",
 		"nanoid": "6.0.1",
 		"zod": "4.6.5"
 	},
 	"devDependencies": {
-		"@cloudflare/vitest-plugin": "1.2.3",
+		"@cloudflare/vitest-plugin": "1.2.4",
 		"@types/node": "24.13.6",
 		"typescript": "7.0.2",
 		"vite": "8.3.0",
 		"vitest": "4.1.11",
-		"wrangler": "4.136.3"
+		"wrangler": "4.137.0"
 	},
 	"allowScripts": {
 		"esbuild": true,
