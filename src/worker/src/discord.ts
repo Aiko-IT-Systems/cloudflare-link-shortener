@@ -728,7 +728,9 @@ async function handleComponent(
 	if (action === "refresh") {
 		const metadata = await fetchTargetMetadata(record.destinationUrl);
 		if (!metadata.metadataFetchedAt)
-			return ephemeral("Could not fetch fresh metadata; the existing preview was kept.");
+			return ephemeral(
+				"Could not fetch fresh metadata; the existing preview was kept.",
+			);
 		await refreshLinkMetadata(env, record.slug, metadata);
 		return ephemeral(
 			`Metadata refreshed for ${shortUrl(origin, record.slug)}.`,

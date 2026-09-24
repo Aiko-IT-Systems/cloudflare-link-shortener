@@ -467,7 +467,12 @@ export async function createAccount(
 	} finally {
 		if (!(await getAccount(env, id)))
 			await release(env, accountName, accountStorageKey);
-		if (discordReserved && discordName && discordStorageKey && !(await env.LINKS.get(discordStorageKey)))
+		if (
+			discordReserved &&
+			discordName &&
+			discordStorageKey &&
+			!(await env.LINKS.get(discordStorageKey))
+		)
 			await release(env, discordName, discordStorageKey);
 	}
 }
@@ -659,21 +664,27 @@ async function toRecord(
 			: {}),
 		...(input.embedImageUrl ? { embedImageUrl: input.embedImageUrl } : {}),
 		...(input.embedVideoUrl ? { embedVideoUrl: input.embedVideoUrl } : {}),
-		...(input.embedVideoWidth ? { embedVideoWidth: input.embedVideoWidth } : {}),
-		...(input.embedVideoHeight ? { embedVideoHeight: input.embedVideoHeight } : {}),
+		...(input.embedVideoWidth
+			? { embedVideoWidth: input.embedVideoWidth }
+			: {}),
+		...(input.embedVideoHeight
+			? { embedVideoHeight: input.embedVideoHeight }
+			: {}),
 		...(input.embedMedia?.length ? { embedMedia: input.embedMedia } : {}),
 		...(input.embedSiteName ? { embedSiteName: input.embedSiteName } : {}),
 		...(input.metadataFetchedAt
 			? { metadataFetchedAt: input.metadataFetchedAt }
 			: {}),
-		...(input.metadataVersion ? { metadataVersion: input.metadataVersion } : {}),
+		...(input.metadataVersion
+			? { metadataVersion: input.metadataVersion }
+			: {}),
 		...(password
 			? {
 					passwordVerifier: await hashLinkPassword(
 						password,
 						env.LINK_PASSWORD_PEPPER,
 					),
-			  }
+				}
 			: {}),
 		...(input.expiresAt ? { expiresAt: input.expiresAt } : {}),
 		...(input.suppressSocialPreview ? { suppressSocialPreview: true } : {}),

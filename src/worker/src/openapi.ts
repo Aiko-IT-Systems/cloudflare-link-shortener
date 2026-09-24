@@ -131,14 +131,9 @@ const publicHttpsUrl = z
 const linkCreate = z
 	.object({
 		destinationUrl: publicHttpsUrl,
-		creator: z
-			.string()
-			.min(1)
-			.max(80)
-			.optional()
-			.openapi({
-				description: "Master tokens only; ignored for issued tokens.",
-			}),
+		creator: z.string().min(1).max(80).optional().openapi({
+			description: "Master tokens only; ignored for issued tokens.",
+		}),
 		slug: z
 			.string()
 			.regex(/^[A-Za-z0-9][A-Za-z0-9_-]{1,63}$/)
@@ -646,14 +641,19 @@ export function openApiDocument(origin: string) {
 				"Generated from the Worker route annotations. JSON success responses use `{ success: true, result }`; errors use `{ success: false, errors }`. Returned timestamps use canonical UTC ISO-8601 with milliseconds and a trailing Z.",
 			license: { name: "Apache-2.0" },
 		},
-		servers: [{ url: origin + "/api/v1", description: "This deployed AITSYS Go instance" }],
+		servers: [
+			{
+				url: origin + "/api/v1",
+				description: "This deployed AITSYS Go instance",
+			},
+		],
 		tags: [
 			{ name: "Public" },
 			{ name: "Identity" },
 			{ name: "Accounts" },
 			{ name: "Tokens" },
 			{ name: "Links" },
-			{ name: "Discord" }
+			{ name: "Discord" },
 		],
 	};
 }

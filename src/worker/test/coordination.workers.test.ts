@@ -16,10 +16,7 @@ describe("LinkCoordinator in the Workers runtime", () => {
 		const coordinator = env.LINK_COORDINATOR.getByName("slug:coordinated");
 		expect(
 			(
-				await Promise.all([
-					coordinator.reserve(key),
-					coordinator.reserve(key),
-				])
+				await Promise.all([coordinator.reserve(key), coordinator.reserve(key)])
 			).sort(),
 		).toEqual([false, true]);
 		await coordinator.commit(key);
@@ -65,7 +62,9 @@ describe("LinkCoordinator in the Workers runtime", () => {
 		});
 		expect((await coordinator.allowPasswordAttempt(now)).allowed).toBe(false);
 		expect(await runDurableObjectAlarm(coordinator)).toBe(true);
-		expect(await coordinator.allowPasswordAttempt(now)).toEqual({ allowed: true });
+		expect(await coordinator.allowPasswordAttempt(now)).toEqual({
+			allowed: true,
+		});
 	});
 });
 
@@ -86,9 +85,9 @@ describe("password verifier in the Workers runtime", () => {
 		expect((await verifyLinkPassword(record, "wrong", pepper)).valid).toBe(
 			false,
 		);
-		expect(
-			await passwordThrottleIdentifier("192.0.2.1", pepper),
-		).not.toBe(await passwordThrottleIdentifier("192.0.2.2", pepper));
+		expect(await passwordThrottleIdentifier("192.0.2.1", pepper)).not.toBe(
+			await passwordThrottleIdentifier("192.0.2.2", pepper),
+		);
 	});
 
 	test("keeps verifier creation below the Workers Free CPU budget", async () => {

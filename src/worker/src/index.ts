@@ -116,9 +116,9 @@ function publicLinkPage(page: LinkPage) {
 	return { ...page, items: page.items.map(publicLink) };
 }
 
-async function jsonPayload(c: { req: { raw: Request } }): Promise<
-	unknown | Response
-> {
+async function jsonPayload(c: {
+	req: { raw: Request };
+}): Promise<unknown | Response> {
 	try {
 		return await readLimitedJson(c.req.raw, API_BODY_LIMIT_BYTES);
 	} catch (error) {
@@ -140,16 +140,22 @@ async function passwordAttemptCoordinator(
 		clientAddress,
 		env.LINK_PASSWORD_PEPPER,
 	);
-	return env.LINK_COORDINATOR.getByName(
-		`password:${slug}:${clientHash}`,
-	);
+	return env.LINK_COORDINATOR.getByName(`password:${slug}:${clientHash}`);
 }
 
-function hasStaleInstagramMetadata(record: LinkRecord, now = Date.now()): boolean {
-	if (record.suppressSocialPreview || !isInstagramUrl(record.destinationUrl)) return false;
+function hasStaleInstagramMetadata(
+	record: LinkRecord,
+	now = Date.now(),
+): boolean {
+	if (record.suppressSocialPreview || !isInstagramUrl(record.destinationUrl))
+		return false;
 	if (record.metadataVersion !== METADATA_EXTRACTOR_VERSION) return true;
-	const fetchedAt = record.metadataFetchedAt ? Date.parse(record.metadataFetchedAt) : Number.NaN;
-	return Number.isNaN(fetchedAt) || now - fetchedAt >= INSTAGRAM_METADATA_TTL_MS;
+	const fetchedAt = record.metadataFetchedAt
+		? Date.parse(record.metadataFetchedAt)
+		: Number.NaN;
+	return (
+		Number.isNaN(fetchedAt) || now - fetchedAt >= INSTAGRAM_METADATA_TTL_MS
+	);
 }
 
 async function refreshPublicInstagramMetadata(
@@ -202,9 +208,7 @@ function publicAccount(account: {
 }
 
 app.get("/", (c) => homepage(getSiteConfig(c.env), c.req.url));
-app.get("/privacy", (c) =>
-	privacyPolicy(getSiteConfig(c.env), c.req.url),
-);
+app.get("/privacy", (c) => privacyPolicy(getSiteConfig(c.env), c.req.url));
 app.get("/robots.txt", () => robots());
 registerOpenApiDocumentation(app.openAPIRegistry);
 app.doc("/openapi.json", (c) => openApiDocument(new URL(c.req.url).origin));
@@ -519,8 +523,14 @@ app.post("/api/v1/links/:slug/refresh-metadata", async (c) => {
 	if (!record) return jsonError("Link not found.", "not_found", 404);
 	const metadata = await fetchTargetMetadata(record.destinationUrl);
 	if (!metadata.metadataFetchedAt)
-		return jsonError("Could not fetch destination metadata.", "metadata_fetch_failed", 502);
-	return jsonSuccess(publicLink((await refreshLinkMetadata(c.env, slug, metadata))!));
+		return jsonError(
+			"Could not fetch destination metadata.",
+			"metadata_fetch_failed",
+			502,
+		);
+	return jsonSuccess(
+		publicLink((await refreshLinkMetadata(c.env, slug, metadata))!),
+	);
 });
 
 app.get("/:slug", async (c) => {
@@ -533,7 +543,11 @@ app.get("/:slug", async (c) => {
 	if (record.disabledAt) return unavailable(siteConfig, record);
 	if (isExpired(record)) return expired(siteConfig, record);
 	if (hasLinkPassword(record)) return passwordPrompt(siteConfig, record);
-	return splash(siteConfig, await refreshPublicInstagramMetadata(c.env, record), c.req.url);
+	return splash(
+		siteConfig,
+		await refreshPublicInstagramMetadata(c.env, record),
+		c.req.url,
+	);
 });
 
 app.post("/:slug", async (c) => {
@@ -546,20 +560,15 @@ app.post("/:slug", async (c) => {
 	if (record.disabledAt) return unavailable(siteConfig, record);
 	if (isExpired(record)) return expired(siteConfig, record);
 	if (!hasLinkPassword(record))
-		return splash(siteConfig, await refreshPublicInstagramMetadata(c.env, record), c.req.url);
-	const coordinator = await passwordAttemptCoordinator(
-		c.env,
-		c.req.raw,
-		slug,
-	);
+		return splash(
+			siteConfig,
+			await refreshPublicInstagramMetadata(c.env, record),
+			c.req.url,
+		);
+	const coordinator = await passwordAttemptCoordinator(c.env, c.req.raw, slug);
 	const allowed = await coordinator.allowPasswordAttempt(Date.now());
 	if (!allowed.allowed)
-		return passwordPrompt(
-			siteConfig,
-			record,
-			true,
-			allowed.retryAfterSeconds,
-		);
+		return passwordPrompt(siteConfig, record, true, allowed.retryAfterSeconds);
 	let password = "";
 	try {
 		password =
@@ -587,7 +596,11 @@ app.post("/:slug", async (c) => {
 			};
 			await putLink(c.env, upgraded);
 		}
-		return splash(siteConfig, await refreshPublicInstagramMetadata(c.env, record), c.req.url);
+		return splash(
+			siteConfig,
+			await refreshPublicInstagramMetadata(c.env, record),
+			c.req.url,
+		);
 	}
 	const failure = await coordinator.recordPasswordFailure(Date.now());
 	return passwordPrompt(siteConfig, record, true, failure.retryAfterSeconds);

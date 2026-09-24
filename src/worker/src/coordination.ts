@@ -103,14 +103,21 @@ export class LinkCoordinator extends DurableObject<Env> {
 		if (retryAt && retryAt > now) return false;
 		const leaseUntil = await this.ctx.storage.get<number>("metadataLeaseUntil");
 		if (leaseUntil && leaseUntil > now) return false;
-		await this.ctx.storage.put("metadataLeaseUntil", now + METADATA_REFRESH_LEASE_MS);
+		await this.ctx.storage.put(
+			"metadataLeaseUntil",
+			now + METADATA_REFRESH_LEASE_MS,
+		);
 		return true;
 	}
 
 	async finishMetadataRefresh(now: number, succeeded: boolean): Promise<void> {
 		await this.ctx.storage.delete("metadataLeaseUntil");
 		if (succeeded) await this.ctx.storage.delete("metadataRetryAt");
-		else await this.ctx.storage.put("metadataRetryAt", now + METADATA_REFRESH_RETRY_MS);
+		else
+			await this.ctx.storage.put(
+				"metadataRetryAt",
+				now + METADATA_REFRESH_RETRY_MS,
+			);
 	}
 
 	async alarm(): Promise<void> {

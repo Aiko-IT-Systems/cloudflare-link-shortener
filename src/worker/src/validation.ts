@@ -37,7 +37,9 @@ export function isPublicHttpsUrl(value: string): boolean {
 				host === "::1" ||
 				/^f[cd][0-9a-f:]*$/i.test(host) ||
 				/^fe[89ab][0-9a-f:]*$/i.test(host) ||
-				/^::ffff:(?:127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2})$/i.test(host)
+				/^::ffff:(?:127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2})$/i.test(
+					host,
+				)
 			);
 		return true;
 	} catch {

@@ -186,7 +186,7 @@ class MemoryCoordinator {
 			? {
 					allowed: false,
 					retryAfterSeconds: Math.ceil((this.lockedUntil - now) / 1000),
-			  }
+				}
 			: { allowed: true };
 	}
 
@@ -197,10 +197,7 @@ class MemoryCoordinator {
 		}
 		this.failures += 1;
 		if (this.failures < 5) return {};
-		const retryAfterSeconds = Math.min(
-			60 * 2 ** (this.failures - 5),
-			60 * 60,
-		);
+		const retryAfterSeconds = Math.min(60 * 2 ** (this.failures - 5), 60 * 60);
 		this.lockedUntil = now + retryAfterSeconds * 1000;
 		return { retryAfterSeconds };
 	}
@@ -212,7 +209,10 @@ class MemoryCoordinator {
 	}
 
 	async beginMetadataRefresh(now: number): Promise<boolean> {
-		if ((this.metadataLeaseUntil && this.metadataLeaseUntil > now) || (this.metadataRetryAt && this.metadataRetryAt > now))
+		if (
+			(this.metadataLeaseUntil && this.metadataLeaseUntil > now) ||
+			(this.metadataRetryAt && this.metadataRetryAt > now)
+		)
 			return false;
 		this.metadataLeaseUntil = now + 30_000;
 		return true;
@@ -427,18 +427,26 @@ describe("link shortener", () => {
 		expect(response.status).toBe(200);
 		expect(response.headers.get("Content-Type")).toContain("application/json");
 		expect(document.openapi).toBe("3.0.3");
-		expect(document.servers).toEqual([{ url: "https://go.aitsys.dev/api/v1", description: "This deployed AITSYS Go instance" }]);
+		expect(document.servers).toEqual([
+			{
+				url: "https://go.aitsys.dev/api/v1",
+				description: "This deployed AITSYS Go instance",
+			},
+		]);
 		expect(document.components.securitySchemes).toHaveProperty("bearerAuth");
 
 		const arrayTypedSchemas: string[] = [];
 		const findArrayTypes = (value: unknown, path = "$"): void => {
 			if (Array.isArray(value)) {
-				value.forEach((item, index) => findArrayTypes(item, `${path}[${index}]`));
+				value.forEach((item, index) =>
+					findArrayTypes(item, `${path}[${index}]`),
+				);
 				return;
 			}
 			if (value === null || typeof value !== "object") return;
 			for (const [key, child] of Object.entries(value)) {
-				if (key === "type" && Array.isArray(child)) arrayTypedSchemas.push(`${path}.type`);
+				if (key === "type" && Array.isArray(child))
+					arrayTypedSchemas.push(`${path}.type`);
 				findArrayTypes(child, `${path}.${key}`);
 			}
 		};
@@ -513,7 +521,10 @@ describe("link shortener", () => {
 			new Request("https://go.aitsys.dev/api/v1/links", {
 				method: "POST",
 				headers: authed().headers,
-				body: JSON.stringify({ destinationUrl: "https://example.com", title: "x".repeat(33_000) }),
+				body: JSON.stringify({
+					destinationUrl: "https://example.com",
+					title: "x".repeat(33_000),
+				}),
 			}),
 			env(),
 		);
@@ -540,14 +551,17 @@ describe("link shortener", () => {
 	});
 
 	test("does not follow metadata redirects to unsafe addresses", async () => {
-		const fetchMock = vi.fn(async () =>
-			new Response(null, {
-				status: 302,
-				headers: { Location: "https://127.0.0.1/private" },
-			}),
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(null, {
+					status: 302,
+					headers: { Location: "https://127.0.0.1/private" },
+				}),
 		);
 		vi.stubGlobal("fetch", fetchMock);
-		await expect(fetchTargetMetadata("https://example.com/redirect")).resolves.toEqual({});
+		await expect(
+			fetchTargetMetadata("https://example.com/redirect"),
+		).resolves.toEqual({});
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 
@@ -630,12 +644,29 @@ describe("link shortener", () => {
 		const html = await page.text();
 		expect(html).toContain('property="og:video:type" content="video/mp4"');
 		expect(html).toContain('property="og:video:width" content="720"');
-		expect(html).toContain('content="https://scontent.example.cdninstagram.com/reel.mp4?one=1&two=2"');
-		const componentJson = /<script id="discord:component-embed" type="application\/json">([\s\S]*?)<\/script>/.exec(html)?.[1];
+		expect(html).toContain(
+			'content="https://scontent.example.cdninstagram.com/reel.mp4?one=1&two=2"',
+		);
+		const componentJson =
+			/<script id="discord:component-embed" type="application\/json">([\s\S]*?)<\/script>/.exec(
+				html,
+			)?.[1];
 		expect(componentJson).toBeDefined();
-		const component = JSON.parse(componentJson!) as { component: { type: number; components: Array<{ type: number; items?: Array<{ media: { url: string } }> }> } };
+		const component = JSON.parse(componentJson!) as {
+			component: {
+				type: number;
+				components: Array<{
+					type: number;
+					items?: Array<{ media: { url: string } }>;
+				}>;
+			};
+		};
 		expect(component.component.type).toBe(17);
-		expect(component.component.components.find((item) => item.type === 12)?.items?.map((item) => item.media.url)).toContain(
+		expect(
+			component.component.components
+				.find((item) => item.type === 12)
+				?.items?.map((item) => item.media.url),
+		).toContain(
 			"https://scontent.example.cdninstagram.com/reel.mp4?one=1&two=2",
 		);
 	});
@@ -660,13 +691,22 @@ describe("link shortener", () => {
 	});
 
 	test("keeps ordered generic Open Graph galleries within Discord's ten-item limit", () => {
-		const images = Array.from({ length: 12 }, (_, index) =>
-			`<meta property="og:image" content="https://cdn.example.test/${index}.jpg">`,
+		const images = Array.from(
+			{ length: 12 },
+			(_, index) =>
+				`<meta property="og:image" content="https://cdn.example.test/${index}.jpg">`,
 		).join("\n");
-		const metadata = extractEmbedMetadata(`<head>${images}</head>`, "https://example.test/post");
+		const metadata = extractEmbedMetadata(
+			`<head>${images}</head>`,
+			"https://example.test/post",
+		);
 		expect(metadata.embedMedia).toHaveLength(10);
-		expect(metadata.embedMedia?.[0]?.url).toBe("https://cdn.example.test/0.jpg");
-		expect(metadata.embedMedia?.[9]?.url).toBe("https://cdn.example.test/9.jpg");
+		expect(metadata.embedMedia?.[0]?.url).toBe(
+			"https://cdn.example.test/0.jpg",
+		);
+		expect(metadata.embedMedia?.[9]?.url).toBe(
+			"https://cdn.example.test/9.jpg",
+		);
 	});
 
 	test("keeps Instagram carousel media in source order", () => {
@@ -675,8 +715,18 @@ describe("link shortener", () => {
 			"https://www.instagram.com/p/Cat_123-/",
 		);
 		expect(metadata.embedMedia).toEqual([
-			{ kind: "image", url: "https://scontent.example.cdninstagram.com/one.jpg", width: 1080, height: 1080 },
-			{ kind: "video", url: "https://scontent.example.cdninstagram.com/two.mp4", width: 720, height: 1280 },
+			{
+				kind: "image",
+				url: "https://scontent.example.cdninstagram.com/one.jpg",
+				width: 1080,
+				height: 1080,
+			},
+			{
+				kind: "video",
+				url: "https://scontent.example.cdninstagram.com/two.mp4",
+				width: 720,
+				height: 1280,
+			},
 		]);
 	});
 
@@ -712,22 +762,28 @@ describe("link shortener", () => {
 		expect(typeof record).not.toBe("string");
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => new Response(
-				`<head><meta property="og:title" content="Fresh reel"><meta property="og:image" content="https://scontent.example.cdninstagram.com/fresh.jpg"></head>`,
-				{ headers: { "Content-Type": "text/html" } },
-			)),
+			vi.fn(
+				async () =>
+					new Response(
+						`<head><meta property="og:title" content="Fresh reel"><meta property="og:image" content="https://scontent.example.cdninstagram.com/fresh.jpg"></head>`,
+						{ headers: { "Content-Type": "text/html" } },
+					),
+			),
 		);
 
-		const response = await app.fetch(new Request("https://go.aitsys.dev/stale-reel"), envValue);
+		const response = await app.fetch(
+			new Request("https://go.aitsys.dev/stale-reel"),
+			envValue,
+		);
 		const html = await response.text();
 		expect(html).toContain("Fresh reel");
 		const stored = await app.fetch(
 			new Request("https://go.aitsys.dev/api/v1/links/stale-reel", authed()),
 			envValue,
 		);
-		expect(((await stored.json()) as { result: LinkRecord }).result.embedImageUrl).toBe(
-			"https://scontent.example.cdninstagram.com/fresh.jpg",
-		);
+		expect(
+			((await stored.json()) as { result: LinkRecord }).result.embedImageUrl,
+		).toBe("https://scontent.example.cdninstagram.com/fresh.jpg");
 	});
 
 	test("uses X's highest-bitrate public MP4 variant", () => {
@@ -760,7 +816,12 @@ describe("link shortener", () => {
 		);
 		expect(metadata.embedMedia).toEqual([
 			{ kind: "image", url: "https://pbs.twimg.com/media/one.jpg" },
-			{ kind: "video", url: "https://video.twimg.com/amplify_video/1/vid/avc1/640x360/two.mp4", width: 640, height: 360 },
+			{
+				kind: "video",
+				url: "https://video.twimg.com/amplify_video/1/vid/avc1/640x360/two.mp4",
+				width: 640,
+				height: 360,
+			},
 		]);
 	});
 
@@ -830,30 +891,58 @@ describe("link shortener", () => {
 				url: `https://cdn.example.test/${index}.jpg`,
 			})),
 		});
-		const response = await app.fetch(new Request("https://go.aitsys.dev/component-safe"), envValue);
+		const response = await app.fetch(
+			new Request("https://go.aitsys.dev/component-safe"),
+			envValue,
+		);
 		const html = await response.text();
 		expect(html).toContain('property="og:title"');
 		expect(html).not.toContain("</script> **hello**");
-		const json = /<script id="discord:component-embed" type="application\/json">([\s\S]*?)<\/script>/.exec(html)?.[1];
+		const json =
+			/<script id="discord:component-embed" type="application\/json">([\s\S]*?)<\/script>/.exec(
+				html,
+			)?.[1];
 		expect(json).toBeDefined();
 		const component = JSON.parse(json!) as {
-			component: { components: Array<{ type: number; content?: string; items?: unknown[]; components?: unknown[] }> };
+			component: {
+				components: Array<{
+					type: number;
+					content?: string;
+					items?: unknown[];
+					components?: unknown[];
+				}>;
+			};
 		};
 		const components = component.component.components;
 		expect(components.find((item) => item.type === 12)?.items).toHaveLength(10);
 		expect(components).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ type: 10, content: expect.stringMatching(/^## /) }),
-				expect.objectContaining({ type: 10, content: expect.stringContaining("not a link") }),
-				expect.objectContaining({ type: 10, content: expect.stringContaining("privacy-first") }),
+				expect.objectContaining({
+					type: 10,
+					content: expect.stringMatching(/^## /),
+				}),
+				expect.objectContaining({
+					type: 10,
+					content: expect.stringContaining("not a link"),
+				}),
+				expect.objectContaining({
+					type: 10,
+					content: expect.stringContaining("privacy-first"),
+				}),
 			]),
 		);
 		const actionRow = components.find((item) => item.type === 1);
 		expect(actionRow?.components).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ label: "Open" }),
-				expect.objectContaining({ label: "Privacy", url: "https://go.aitsys.dev/privacy" }),
-				expect.objectContaining({ label: "Selfhost", url: "https://github.com/Aiko-IT-Systems/cloudflare-link-shortener" }),
+				expect.objectContaining({
+					label: "Privacy",
+					url: "https://go.aitsys.dev/privacy",
+				}),
+				expect.objectContaining({
+					label: "Selfhost",
+					url: "https://github.com/Aiko-IT-Systems/cloudflare-link-shortener",
+				}),
 			]),
 		);
 
@@ -868,10 +957,18 @@ describe("link shortener", () => {
 				envValue,
 			)
 		).text();
-		const fallbackJson = /<script id="discord:component-embed" type="application\/json">([\s\S]*?)<\/script>/.exec(fallbackHtml)?.[1];
-		const fallback = JSON.parse(fallbackJson!) as { component: { components: Array<{ type: number; content?: string }> } };
-		expect(fallback.component.components.find((item) => item.content?.startsWith("A transparent"))?.content)
-			.toContain("No click analytics");
+		const fallbackJson =
+			/<script id="discord:component-embed" type="application\/json">([\s\S]*?)<\/script>/.exec(
+				fallbackHtml,
+			)?.[1];
+		const fallback = JSON.parse(fallbackJson!) as {
+			component: { components: Array<{ type: number; content?: string }> };
+		};
+		expect(
+			fallback.component.components.find((item) =>
+				item.content?.startsWith("A transparent"),
+			)?.content,
+		).toContain("No click analytics");
 
 		await createStoredLink(envValue, {
 			slug: "component-byte-limit",
@@ -883,17 +980,42 @@ describe("link shortener", () => {
 			})),
 		});
 		const byteLimitedHtml = await (
-			await app.fetch(new Request("https://go.aitsys.dev/component-byte-limit"), envValue)
+			await app.fetch(
+				new Request("https://go.aitsys.dev/component-byte-limit"),
+				envValue,
+			)
 		).text();
-		const byteLimitedJson = /<script id="discord:component-embed" type="application\/json">([\s\S]*?)<\/script>/.exec(byteLimitedHtml)?.[1];
+		const byteLimitedJson =
+			/<script id="discord:component-embed" type="application\/json">([\s\S]*?)<\/script>/.exec(
+				byteLimitedHtml,
+			)?.[1];
 		expect(byteLimitedJson).toBeDefined();
-		expect(new TextEncoder().encode(byteLimitedJson).byteLength).toBeLessThanOrEqual(3_000);
+		expect(
+			new TextEncoder().encode(byteLimitedJson).byteLength,
+		).toBeLessThanOrEqual(3_000);
 		const byteLimited = JSON.parse(byteLimitedJson!) as {
-			component: { components: Array<{ type: number; items?: unknown[] }> };
+			component: {
+				components: Array<{
+					type: number;
+					content?: string;
+					items?: unknown[];
+				}>;
+			};
 		};
-		const boundedGallery = byteLimited.component.components.find((item) => item.type === 12)?.items;
+		const boundedGallery = byteLimited.component.components.find(
+			(item) => item.type === 12,
+		)?.items;
 		expect(boundedGallery?.length).toBeGreaterThan(0);
 		expect(boundedGallery?.length).toBeLessThan(6);
+		expect(byteLimited.component.components).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					content: expect.stringMatching(
+						/^\-# \+\d+ more images at the destination\.$/,
+					),
+				}),
+			]),
+		);
 	});
 
 	test("refreshes target embed metadata", async () => {
@@ -944,7 +1066,9 @@ describe("link shortener", () => {
 			embedTitle: "Still here",
 			metadataFetchedAt: "2026-08-01T00:00:00.000Z",
 		});
-		vi.mocked(fetch).mockResolvedValueOnce(new Response("nope", { status: 503 }));
+		vi.mocked(fetch).mockResolvedValueOnce(
+			new Response("nope", { status: 503 }),
+		);
 		const response = await app.fetch(
 			new Request(
 				"https://go.aitsys.dev/api/v1/links/refresh-failure/refresh-metadata",
@@ -953,7 +1077,10 @@ describe("link shortener", () => {
 			envValue,
 		);
 		expect(response.status).toBe(502);
-		expect((await envValue.LINKS.get<LinkRecord>("link:refresh-failure", "json"))?.embedTitle).toBe("Still here");
+		expect(
+			(await envValue.LINKS.get<LinkRecord>("link:refresh-failure", "json"))
+				?.embedTitle,
+		).toBe("Still here");
 	});
 
 	test("requires a password before rendering the destination splash", async () => {
@@ -1194,8 +1321,8 @@ describe("link shortener", () => {
 		);
 		expect(html).toContain("automatically deleted");
 		expect(response.headers.get("Content-Security-Policy")).toContain(
-		"frame-ancestors 'none'",
-	);
+			"frame-ancestors 'none'",
+		);
 		expect(response.headers.get("X-Frame-Options")).toBe("DENY");
 		expect(html).toContain("excludes it from Android backup");
 		expect(html).toContain("up to 15 minutes");
@@ -1461,9 +1588,9 @@ describe("link shortener", () => {
 					discordUserId,
 				}),
 			});
-		expect((await app.fetch(createAccountRequest("first-cat"), envValue)).status).toBe(
-			201,
-		);
+		expect(
+			(await app.fetch(createAccountRequest("first-cat"), envValue)).status,
+		).toBe(201);
 		expect(
 			(
 				await app.fetch(
@@ -1475,9 +1602,9 @@ describe("link shortener", () => {
 				)
 			).status,
 		).toBe(200);
-		expect((await app.fetch(createAccountRequest("second-cat"), envValue)).status).toBe(
-			201,
-		);
+		expect(
+			(await app.fetch(createAccountRequest("second-cat"), envValue)).status,
+		).toBe(201);
 	});
 
 	test("lists all links and sanitized token records for administrators", async () => {
@@ -1742,12 +1869,16 @@ describe("link shortener", () => {
 				expect(body.data.content).toContain(
 					"keyed one-way client-address identifier",
 				);
-				expect(body.data.content).toContain("Instagram preview is over three days old");
+				expect(body.data.content).toContain(
+					"Instagram preview is over three days old",
+				);
 				expect(body.data.content).toContain("automatically deleted");
 				expect(body.data.content).toContain(
 					"Google Play-distributed Android installs use Google Play's in-app update service",
 				);
-				expect(body.data.content).toContain("does not receive that update-check data");
+				expect(body.data.content).toContain(
+					"does not receive that update-check data",
+				);
 			}
 		}
 	});

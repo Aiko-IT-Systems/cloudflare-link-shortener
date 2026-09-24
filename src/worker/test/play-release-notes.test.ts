@@ -39,9 +39,7 @@ describe("Play release-note normalizer", () => {
 			operatorNotes: "- Important update",
 			locale: "de-DE",
 		});
-		expect(result).toBe(
-			"• Important update\n• Generated fix",
-		);
+		expect(result).toBe("• Important update\n• Generated fix");
 	});
 
 	it("truncates by Unicode characters at a word boundary", () => {
@@ -76,7 +74,9 @@ describe("Play release-note normalizer", () => {
 
 	it("expands escaped workflow input line breaks", () => {
 		expect(
-			composeOperatorNotes({ text: "First line\\nSecond line\\r\\nThird line" }),
+			composeOperatorNotes({
+				text: "First line\\nSecond line\\r\\nThird line",
+			}),
 		).toBe("First line\nSecond line\nThird line");
 	});
 });

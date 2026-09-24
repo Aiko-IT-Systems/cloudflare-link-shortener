@@ -50,7 +50,9 @@ export async function readLimitedJson(
 	request: Request,
 	limit: number,
 ): Promise<unknown> {
-	return JSON.parse(new TextDecoder().decode(await readLimitedBody(request, limit)));
+	return JSON.parse(
+		new TextDecoder().decode(await readLimitedBody(request, limit)),
+	);
 }
 
 export async function readLimitedFormValue(
@@ -58,7 +60,9 @@ export async function readLimitedFormValue(
 	name: string,
 	limit: number,
 ): Promise<string | undefined> {
-	const contentType = request.headers.get("content-type")?.split(";", 1)[0]
+	const contentType = request.headers
+		.get("content-type")
+		?.split(";", 1)[0]
 		?.trim()
 		.toLowerCase();
 	if (contentType !== "application/x-www-form-urlencoded") return undefined;

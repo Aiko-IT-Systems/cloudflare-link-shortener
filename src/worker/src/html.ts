@@ -50,7 +50,8 @@ function scriptSafeJson(value: unknown): string {
 		.replace(/\u2029/g, "\\u2029");
 }
 
-const AITSYS_GO_REPOSITORY = "https://github.com/Aiko-IT-Systems/cloudflare-link-shortener";
+const AITSYS_GO_REPOSITORY =
+	"https://github.com/Aiko-IT-Systems/cloudflare-link-shortener";
 // Discord rejects an entire Component Embed when its JSON document exceeds this
 // limit. Signed social-CDN URLs can be hundreds of bytes each, so the renderer
 // must choose a fitting prefix rather than blindly emitting ten gallery items.
@@ -64,57 +65,93 @@ function discordComponentEmbed(
 	if (record.suppressSocialPreview) return "";
 	const seen = new Set<string>();
 	const media = [
-		...(record.embedImageUrl ? [{ kind: "image" as const, url: record.embedImageUrl }] : []),
+		...(record.embedImageUrl
+			? [{ kind: "image" as const, url: record.embedImageUrl }]
+			: []),
 		...(record.embedMedia ?? []),
-		...(record.embedVideoUrl ? [{
-			kind: "video" as const,
-			url: record.embedVideoUrl,
-			...(record.embedVideoWidth ? { width: record.embedVideoWidth } : {}),
-			...(record.embedVideoHeight ? { height: record.embedVideoHeight } : {}),
-		}] : []),
-	].filter((item) => {
-		if (seen.has(item.url)) return false;
-		seen.add(item.url);
-		return true;
-	}).slice(0, 10);
-	const title = escapeDiscordMarkdown(record.embedTitle ?? record.title ?? record.destinationUrl);
+		...(record.embedVideoUrl
+			? [
+					{
+						kind: "video" as const,
+						url: record.embedVideoUrl,
+						...(record.embedVideoWidth
+							? { width: record.embedVideoWidth }
+							: {}),
+						...(record.embedVideoHeight
+							? { height: record.embedVideoHeight }
+							: {}),
+					},
+				]
+			: []),
+	]
+		.filter((item) => {
+			if (seen.has(item.url)) return false;
+			seen.add(item.url);
+			return true;
+		})
+		.slice(0, 10);
+	const title = escapeDiscordMarkdown(
+		record.embedTitle ?? record.title ?? record.destinationUrl,
+	);
 	const description = escapeDiscordMarkdown(
 		record.embedDescription ??
 			`A transparent ${config.siteName} short link. No click analytics, cookies, or tracking pixels.`,
 	);
 	const privacyUrl = new URL("/privacy", pageUrl).toString();
-	const buildComponent = (gallery: typeof media) => ({
-		component: {
-			type: 17,
-			accent_color: Number.parseInt(config.brandColor.slice(1), 16),
-			components: [
-				{ type: 10, content: `## ${title}` },
-				{ type: 10, content: description },
-				...(gallery.length
-					? [{
-							type: 12,
-							items: gallery.map((item) => ({
-								media: { url: item.url },
-								...(item.description ? { description: escapeDiscordMarkdown(item.description) } : {}),
-							})),
-						}]
-					: []),
-				{ type: 14, spacing: 1 },
-				{
-					type: 10,
-					content: "-# AITSYS Go is a privacy-first, self-hostable link shortener.",
-				},
-				{
-					type: 1,
-					components: [
-						{ type: 2, style: 5, label: "Open", url: record.destinationUrl },
-						{ type: 2, style: 5, label: "Privacy", url: privacyUrl },
-						{ type: 2, style: 5, label: "Selfhost", url: AITSYS_GO_REPOSITORY },
-					],
-				},
-			],
-		},
-	});
+	const extraMediaText = (gallery: typeof media): string | undefined => {
+		const omitted = media.slice(gallery.length);
+		if (!omitted.length) return undefined;
+		const noun = omitted.every((item) => item.kind === "image")
+			? "image"
+			: "media item";
+		return `-# +${omitted.length} more ${noun}${omitted.length === 1 ? "" : "s"} at the destination.`;
+	};
+	const buildComponent = (gallery: typeof media) => {
+		const extra = extraMediaText(gallery);
+		return {
+			component: {
+				type: 17,
+				accent_color: Number.parseInt(config.brandColor.slice(1), 16),
+				components: [
+					{ type: 10, content: `## ${title}` },
+					{ type: 10, content: description },
+					...(gallery.length
+						? [
+								{
+									type: 12,
+									items: gallery.map((item) => ({
+										media: { url: item.url },
+										...(item.description
+											? { description: escapeDiscordMarkdown(item.description) }
+											: {}),
+									})),
+								},
+							]
+						: []),
+					...(extra ? [{ type: 10, content: extra }] : []),
+					{ type: 14, spacing: 1 },
+					{
+						type: 10,
+						content:
+							"-# AITSYS Go is a privacy-first, self-hostable link shortener.",
+					},
+					{
+						type: 1,
+						components: [
+							{ type: 2, style: 5, label: "Open", url: record.destinationUrl },
+							{ type: 2, style: 5, label: "Privacy", url: privacyUrl },
+							{
+								type: 2,
+								style: 5,
+								label: "Selfhost",
+								url: AITSYS_GO_REPOSITORY,
+							},
+						],
+					},
+				],
+			},
+		};
+	};
 	const encoder = new TextEncoder();
 	const fits = (candidate: typeof media) =>
 		encoder.encode(scriptSafeJson(buildComponent(candidate))).byteLength <=
@@ -491,7 +528,8 @@ function page(
 			headers: {
 				"Cache-Control": "no-store",
 				"Content-Type": "text/html; charset=utf-8",
-				"Content-Security-Policy": "default-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; img-src https: data:; object-src 'none'; script-src 'none'; style-src 'unsafe-inline'",
+				"Content-Security-Policy":
+					"default-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; img-src https: data:; object-src 'none'; script-src 'none'; style-src 'unsafe-inline'",
 				"Permissions-Policy": "camera=(), geolocation=(), microphone=()",
 				"Referrer-Policy": "no-referrer",
 				"X-Content-Type-Options": "nosniff",
