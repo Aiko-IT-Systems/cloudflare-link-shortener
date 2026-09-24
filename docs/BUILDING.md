@@ -84,14 +84,25 @@ Connect GitHub under **Settings → Builds** and configure only production:
 | Setting | Value |
 | --- | --- |
 | Production branch | `main` |
-| Build command | none |
+| Build command | `npm ci` |
 | Deploy command | `npm run deploy` |
 | Root directory | `/` |
 | Non-production branch builds | disabled |
 | Build cache | enabled |
-| Build variables/secrets | none required |
+| Build variable | `SKIP_DEPENDENCY_INSTALL` = `1` |
 
-`npm run deploy` derives build metadata from the root `package.json` and the checked-out commit, then invokes Wrangler. In Workers Builds it uses Cloudflare's injected `WORKERS_CI_COMMIT_SHA`, so `/api/v1/metadata` identifies the deployed version, commit, and repository without dashboard variables. Do not set the dashboard root directory to `src/worker` while retaining that command; doing both resolves paths incorrectly. Workers Builds deploys production Worker changes only; it does not replace GitHub Actions artifact workflows.
+`SKIP_DEPENDENCY_INSTALL=1` deliberately bypasses Workers Builds' automatic
+dependency installer. The explicit `npm ci` build command installs exactly the
+root lockfile with visible logs; then `npm run deploy` derives build metadata
+from the root `package.json` and the checked-out commit, then invokes Wrangler.
+Keep the build cache enabled: npm's download cache still restores, but the
+platform does not perform a hidden duplicate installation before the build
+command. In Workers Builds the deploy script uses Cloudflare's injected
+`WORKERS_CI_COMMIT_SHA`, so `/api/v1/metadata` identifies the deployed version,
+commit, and repository without dashboard variables. Do not set the dashboard
+root directory to `src/worker` while retaining that command; doing both resolves
+paths incorrectly. Workers Builds deploys production Worker changes only; it
+does not replace GitHub Actions artifact workflows.
 
 ### Local validation and deployment
 

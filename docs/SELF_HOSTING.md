@@ -43,18 +43,25 @@ a secure origin.
 Connect your fork under **Workers & Pages → Create → Connect to Git**. Select
 `main` as the production branch and use these production-only settings:
 
-| Setting                      | Value            |
-|------------------------------|------------------|
-| Build command                | none             |
-| Deploy command               | `npm run deploy` |
-| Root directory               | `/`              |
-| Non-production branch builds | disabled         |
-| Build cache                  | enabled          |
+| Setting                      | Value                                |
+|------------------------------|--------------------------------------|
+| Build command                | `npm ci`                             |
+| Deploy command               | `npm run deploy`                     |
+| Root directory               | `/`                                  |
+| Non-production branch builds | disabled                             |
+| Build cache                  | enabled                              |
+| Build variable               | `SKIP_DEPENDENCY_INSTALL` = `1`      |
 
 Do not configure a preview deploy command or preview environment. The Worker
 configuration automatically provisions and binds its `LINKS` KV namespace on
 first deployment. It holds links, accounts, token hashes, ownership indexes,
 and short-lived Discord batch state; it is not disposable cache.
+
+`SKIP_DEPENDENCY_INSTALL=1` disables Workers Builds' automatic dependency
+installer. The explicit `npm ci` build command then performs the same
+lockfile-strict installation with visible output before `npm run deploy` runs.
+Keep the build cache enabled: it still caches npm's download cache, while
+avoiding an opaque pre-build install failure or a duplicate installation.
 
 The deployment automatically provisions a SQLite-backed `LinkCoordinator`
 Durable Object as well. It coordinates creation-time uniqueness and temporary,
