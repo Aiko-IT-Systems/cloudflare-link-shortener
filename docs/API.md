@@ -475,8 +475,11 @@ Content-Type: application/json
 The Worker fetches automatic metadata when creating a link; manually supplied
 embed fields override its primary title, description, and image. Responses can
 also contain automatic `embedMedia`: up to ten ordered public image/video items
-for Discord Component Embed galleries. It is response-only metadata, not a
-manual request field. A duplicate slug returns `409` with `duplicate_slug`.
+for Discord Component Embed galleries. Discord's component document has a
+3,000-byte limit, so the rendered gallery uses the longest source-ordered prefix
+that fits; long signed media URLs can mean fewer than ten items are displayed.
+It is response-only metadata, not a manual request field. A duplicate slug
+returns `409` with `duplicate_slug`.
 
 ### `GET /api/v1/links`
 
@@ -652,8 +655,10 @@ Content-Type: application/json
 ### `POST /api/v1/links/:slug/refresh-metadata`
 
 Fetches and stores fresh automatic metadata for the current destination,
-including the up-to-ten-item `embedMedia` gallery. A failed source fetch returns
-`502` with `metadata_fetch_failed` and preserves the last known preview.
+including the up-to-ten-item `embedMedia` gallery. Discord rendering may display
+fewer items when its 3,000-byte component-document limit is reached. A failed
+source fetch returns `502` with `metadata_fetch_failed` and preserves the last
+known preview.
 
 **Request**
 

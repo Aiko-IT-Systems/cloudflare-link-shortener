@@ -231,7 +231,9 @@ bot challenge. If your zone uses WAF or bot-protection rules, allow the
 `Discordbot` crawler to fetch public `/:slug` pages and their public media URLs;
 do not weaken the separate signed interaction endpoint protection. Discord falls
 back to ordinary Open Graph metadata when the component payload or an asset is
-unavailable.
+unavailable. The Worker stores at most ten gallery items, but emits only the
+longest ordered prefix that fits Discord's 3,000-byte component-document limit;
+signed social-CDN URLs can therefore reduce the displayed number of images.
 
 ### Configure the Discord application
 

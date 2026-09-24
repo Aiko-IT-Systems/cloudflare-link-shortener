@@ -51,6 +51,10 @@ function scriptSafeJson(value: unknown): string {
 }
 
 const AITSYS_GO_REPOSITORY = "https://github.com/Aiko-IT-Systems/cloudflare-link-shortener";
+// Discord rejects an entire Component Embed when its JSON document exceeds this
+// limit. Signed social-CDN URLs can be hundreds of bytes each, so the renderer
+// must choose a fitting prefix rather than blindly emitting ten gallery items.
+const DISCORD_COMPONENT_EMBED_MAX_BYTES = 3_000;
 
 function discordComponentEmbed(
 	config: SiteConfig,
@@ -79,17 +83,17 @@ function discordComponentEmbed(
 			`A transparent ${config.siteName} short link. No click analytics, cookies, or tracking pixels.`,
 	);
 	const privacyUrl = new URL("/privacy", pageUrl).toString();
-	const component = {
+	const buildComponent = (gallery: typeof media) => ({
 		component: {
 			type: 17,
 			accent_color: Number.parseInt(config.brandColor.slice(1), 16),
 			components: [
 				{ type: 10, content: `## ${title}` },
 				{ type: 10, content: description },
-				...(media.length
+				...(gallery.length
 					? [{
 							type: 12,
-							items: media.map((item) => ({
+							items: gallery.map((item) => ({
 								media: { url: item.url },
 								...(item.description ? { description: escapeDiscordMarkdown(item.description) } : {}),
 							})),
@@ -110,8 +114,21 @@ function discordComponentEmbed(
 				},
 			],
 		},
-	};
-	return `<script id="discord:component-embed" type="application/json">${scriptSafeJson(component)}</script>`;
+	});
+	const encoder = new TextEncoder();
+	const fits = (candidate: typeof media) =>
+		encoder.encode(scriptSafeJson(buildComponent(candidate))).byteLength <=
+		DISCORD_COMPONENT_EMBED_MAX_BYTES;
+	const gallery: typeof media = [];
+	for (const item of media) {
+		if (!fits([...gallery, item])) break;
+		gallery.push(item);
+	}
+	const component = buildComponent(gallery);
+	const json = scriptSafeJson(component);
+	return encoder.encode(json).byteLength <= DISCORD_COMPONENT_EMBED_MAX_BYTES
+		? `<script id="discord:component-embed" type="application/json">${json}</script>`
+		: "";
 }
 
 function metaTags(

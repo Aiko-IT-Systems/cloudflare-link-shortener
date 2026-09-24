@@ -872,6 +872,28 @@ describe("link shortener", () => {
 		const fallback = JSON.parse(fallbackJson!) as { component: { components: Array<{ type: number; content?: string }> } };
 		expect(fallback.component.components.find((item) => item.content?.startsWith("A transparent"))?.content)
 			.toContain("No click analytics");
+
+		await createStoredLink(envValue, {
+			slug: "component-byte-limit",
+			destinationUrl: "https://example.test/large-gallery",
+			creator: "Lulalaby",
+			embedMedia: Array.from({ length: 6 }, (_, index) => ({
+				kind: "image" as const,
+				url: `https://cdn.example.test/${index}/${"signed-media-token-".repeat(28)}image.jpg`,
+			})),
+		});
+		const byteLimitedHtml = await (
+			await app.fetch(new Request("https://go.aitsys.dev/component-byte-limit"), envValue)
+		).text();
+		const byteLimitedJson = /<script id="discord:component-embed" type="application\/json">([\s\S]*?)<\/script>/.exec(byteLimitedHtml)?.[1];
+		expect(byteLimitedJson).toBeDefined();
+		expect(new TextEncoder().encode(byteLimitedJson).byteLength).toBeLessThanOrEqual(3_000);
+		const byteLimited = JSON.parse(byteLimitedJson!) as {
+			component: { components: Array<{ type: number; items?: unknown[] }> };
+		};
+		const boundedGallery = byteLimited.component.components.find((item) => item.type === 12)?.items;
+		expect(boundedGallery?.length).toBeGreaterThan(0);
+		expect(boundedGallery?.length).toBeLessThan(6);
 	});
 
 	test("refreshes target embed metadata", async () => {
