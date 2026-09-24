@@ -588,6 +588,8 @@ function extractEmbedMedia(
 			: provider === "x"
 				? xMedia(fullHtml, destinationUrl)
 				: [];
+	if (provider === "instagram" && providerMedia.length && !instagramCarousel(fullHtml))
+		return providerMedia;
 	return uniqueMedia([
 		...providerMedia,
 		...openGraphMedia(headHtml, destinationUrl),

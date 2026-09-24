@@ -64,26 +64,41 @@ function discordComponentEmbed(
 ): string {
 	if (record.suppressSocialPreview) return "";
 	const seen = new Set<string>();
-	const media = [
-		...(record.embedImageUrl
-			? [{ kind: "image" as const, url: record.embedImageUrl }]
-			: []),
-		...(record.embedMedia ?? []),
-		...(record.embedVideoUrl
-			? [
-					{
-						kind: "video" as const,
-						url: record.embedVideoUrl,
-						...(record.embedVideoWidth
-							? { width: record.embedVideoWidth }
-							: {}),
-						...(record.embedVideoHeight
-							? { height: record.embedVideoHeight }
-							: {}),
-					},
-				]
-			: []),
-	]
+	const gallerySource = record.embedMedia?.length
+		? record.embedMedia
+		: [
+				...(record.embedImageUrl
+					? [{ kind: "image" as const, url: record.embedImageUrl }]
+					: []),
+				...(record.embedVideoUrl
+					? [
+							{
+								kind: "video" as const,
+								url: record.embedVideoUrl,
+								...(record.embedVideoWidth
+									? { width: record.embedVideoWidth }
+									: {}),
+								...(record.embedVideoHeight
+									? { height: record.embedVideoHeight }
+									: {}),
+							},
+						]
+					: []),
+			];
+	const isInstagramReel = (() => {
+		try {
+			const url = new URL(record.destinationUrl);
+			return (url.hostname === "instagram.com" || url.hostname === "www.instagram.com") &&
+				url.pathname.startsWith("/reel/");
+		} catch {
+			return false;
+		}
+	})();
+	const componentMedia =
+		isInstagramReel && gallerySource.some((item) => item.kind === "video")
+			? gallerySource.filter((item) => item.kind === "video")
+			: gallerySource;
+	const media = componentMedia
 		.filter((item) => {
 			if (seen.has(item.url)) return false;
 			seen.add(item.url);

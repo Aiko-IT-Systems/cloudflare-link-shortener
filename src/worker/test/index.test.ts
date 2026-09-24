@@ -666,9 +666,9 @@ describe("link shortener", () => {
 			component.component.components
 				.find((item) => item.type === 12)
 				?.items?.map((item) => item.media.url),
-		).toContain(
+		).toEqual([
 			"https://scontent.example.cdninstagram.com/reel.mp4?one=1&two=2",
-		);
+		]);
 	});
 
 	test("does not turn an image-first Instagram carousel into a video embed", () => {
