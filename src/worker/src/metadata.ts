@@ -13,6 +13,7 @@ type EmbedMetadata = Pick<
 	| "embedMedia"
 	| "embedSiteName"
 	| "metadataFetchedAt"
+	| "metadataVersion"
 >;
 
 // Instagram's public embedded video state can arrive hundreds of KiB after the
@@ -24,6 +25,7 @@ const MAX_REDIRECTS = 3;
 const MAX_EMBED_MEDIA = 10;
 const MAX_MEDIA_URL_LENGTH = 2048;
 const MAX_MEDIA_DESCRIPTION_LENGTH = 1024;
+export const METADATA_EXTRACTOR_VERSION = 2;
 
 function trimForMeta(
 	value: string | undefined,
@@ -48,8 +50,19 @@ function decodeHtml(value: string): string {
 		["&#39;", "'"],
 		["&#x27;", "'"],
 	]);
-	return value.replace(/&(?:amp|lt|gt|quot|#39|#x27);/gi, (entity) =>
-		entities.get(entity.toLowerCase()) ?? entity,
+	return value.replace(
+		/&(?:amp|lt|gt|quot|#39|#x27|#\d+|#x[\da-f]+);/gi,
+		(entity) => {
+			const named = entities.get(entity.toLowerCase());
+			if (named) return named;
+			const raw = entity.slice(2, -1);
+			const codePoint = raw[0]?.toLowerCase() === "x"
+				? Number.parseInt(raw.slice(1), 16)
+				: Number.parseInt(raw, 10);
+			return Number.isSafeInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff
+				? String.fromCodePoint(codePoint)
+				: entity;
+		},
 	);
 }
 
@@ -88,6 +101,21 @@ function metaContents(headHtml: string, names: string[]): string[] {
 function titleContent(headHtml: string): string | undefined {
 	const match = /<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(headHtml);
 	return match ? decodeHtml(match[1]) : undefined;
+}
+
+function instagramTitle(value: string | undefined): string | undefined {
+	if (!value) return undefined;
+	// Instagram commonly appends a quoted caption to the title. Keep the account
+	// identity as the compact heading and put that caption in the description.
+	return /^(.+?\s+on Instagram):\s*["“]/i.exec(value)?.[1] ?? value;
+}
+
+function instagramCaption(value: string | undefined): string | undefined {
+	if (!value) return undefined;
+	// Public Instagram OG descriptions are typically "likes, comments - account
+	// on date: \"caption\".". The caption is the visitor-useful part; the
+	// engagement counters and date are neither a description nor stable metadata.
+	return /:\s*["“]([\s\S]*?)["”]\.?(?:\s*)$/i.exec(value)?.[1] ?? value;
 }
 
 function resolveHttpsUrl(
@@ -522,17 +550,20 @@ export function extractEmbedMetadata(
 ): Omit<EmbedMetadata, "metadataFetchedAt"> {
 	const headHtml = /<head\b[^>]*>([\s\S]*?)<\/head>/i.exec(html)?.[1] ?? html;
 	const embedMedia = extractEmbedMedia(headHtml, html, destinationUrl);
+	const provider = socialProvider(destinationUrl);
+	const rawTitle =
+		metaContent(headHtml, ["og:title", "twitter:title"]) ?? titleContent(headHtml);
+	const rawDescription = metaContent(headHtml, [
+		"og:description",
+		"twitter:description",
+		"description",
+	]);
 	const embedTitle = trimForMeta(
-		metaContent(headHtml, ["og:title", "twitter:title"]) ??
-			titleContent(headHtml),
+		provider === "instagram" ? instagramTitle(rawTitle) : rawTitle,
 		120,
 	);
 	const embedDescription = trimForMeta(
-		metaContent(headHtml, [
-			"og:description",
-			"twitter:description",
-			"description",
-		]),
+		provider === "instagram" ? instagramCaption(rawDescription) : rawDescription,
 		240,
 	);
 	const embedImageUrl = resolveHttpsUrl(
@@ -608,7 +639,11 @@ export async function fetchTargetMetadata(
 		const metadata = extractEmbedMetadata(html, fetchUrl);
 
 		return Object.keys(metadata).length > 0
-			? { ...metadata, metadataFetchedAt: new Date().toISOString() }
+			? {
+					...metadata,
+					metadataFetchedAt: new Date().toISOString(),
+					metadataVersion: METADATA_EXTRACTOR_VERSION,
+				}
 			: {};
 	} catch {
 		return {};

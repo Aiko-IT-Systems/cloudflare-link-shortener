@@ -204,6 +204,7 @@ export async function refreshLinkMetadata(
 			| "embedMedia"
 			| "embedSiteName"
 			| "metadataFetchedAt"
+			| "metadataVersion"
 		>
 	>,
 ): Promise<LinkRecord | null> {
@@ -220,6 +221,7 @@ export async function refreshLinkMetadata(
 		embedMedia: metadata.embedMedia,
 		embedSiteName: metadata.embedSiteName,
 		metadataFetchedAt: metadata.metadataFetchedAt ?? new Date().toISOString(),
+		metadataVersion: metadata.metadataVersion,
 	});
 }
 
@@ -664,6 +666,7 @@ async function toRecord(
 		...(input.metadataFetchedAt
 			? { metadataFetchedAt: input.metadataFetchedAt }
 			: {}),
+		...(input.metadataVersion ? { metadataVersion: input.metadataVersion } : {}),
 		...(password
 			? {
 					passwordVerifier: await hashLinkPassword(

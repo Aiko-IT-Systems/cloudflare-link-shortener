@@ -21,7 +21,11 @@ import {
 	splash,
 	unavailable,
 } from "./html";
-import { fetchTargetMetadata, isInstagramUrl } from "./metadata";
+import {
+	fetchTargetMetadata,
+	isInstagramUrl,
+	METADATA_EXTRACTOR_VERSION,
+} from "./metadata";
 import {
 	hasLinkPassword,
 	passwordThrottleIdentifier,
@@ -99,7 +103,12 @@ function managedLink(
 }
 
 function publicLink(record: LinkRecord) {
-	const { password: _password, passwordVerifier: _verifier, ...safe } = record;
+	const {
+		password: _password,
+		passwordVerifier: _verifier,
+		metadataVersion: _metadataVersion,
+		...safe
+	} = record;
 	return { ...safe, hasPassword: hasLinkPassword(record) };
 }
 
@@ -138,6 +147,7 @@ async function passwordAttemptCoordinator(
 
 function hasStaleInstagramMetadata(record: LinkRecord, now = Date.now()): boolean {
 	if (record.suppressSocialPreview || !isInstagramUrl(record.destinationUrl)) return false;
+	if (record.metadataVersion !== METADATA_EXTRACTOR_VERSION) return true;
 	const fetchedAt = record.metadataFetchedAt ? Date.parse(record.metadataFetchedAt) : Number.NaN;
 	return Number.isNaN(fetchedAt) || now - fetchedAt >= INSTAGRAM_METADATA_TTL_MS;
 }
@@ -443,6 +453,7 @@ app.post("/api/v1/links", async (c) => {
 		embedMedia: fetchedMetadata.embedMedia,
 		embedSiteName: parsed.data.embedSiteName ?? fetchedMetadata.embedSiteName,
 		metadataFetchedAt: fetchedMetadata.metadataFetchedAt,
+		metadataVersion: fetchedMetadata.metadataVersion,
 	});
 	if (result === "duplicate")
 		return jsonError("That slug already exists.", "duplicate_slug", 409);

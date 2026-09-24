@@ -28,6 +28,8 @@ export type LinkRecord = {
 	embedMedia?: EmbedMedia[];
 	embedSiteName?: string;
 	metadataFetchedAt?: string;
+	/** Internal metadata extractor revision; used to refresh legacy social previews once. */
+	metadataVersion?: number;
 	/** @deprecated Legacy plaintext value; upgraded after a successful unlock. */
 	password?: string;
 	passwordVerifier?: PasswordVerifier;

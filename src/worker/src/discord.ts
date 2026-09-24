@@ -616,6 +616,7 @@ async function handleModal(
 		embedMedia: metadata.embedMedia,
 		embedSiteName: metadata.embedSiteName,
 		metadataFetchedAt: metadata.metadataFetchedAt,
+		metadataVersion: metadata.metadataVersion,
 	});
 	if (created === "duplicate")
 		return ephemeral("That custom slug is already in use.");
