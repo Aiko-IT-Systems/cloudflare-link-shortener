@@ -89,6 +89,16 @@ const linkOwner = z
 	.object({ kind: z.enum(["account", "discord"]), id: z.string() })
 	.openapi("LinkOwner");
 
+const embedMedia = z
+	.object({
+		kind: z.enum(["image", "video"]),
+		url: z.url().max(2048),
+		width: z.number().int().positive().optional(),
+		height: z.number().int().positive().optional(),
+		description: z.string().max(1024).optional(),
+	})
+	.openapi("EmbedMedia");
+
 const link = z
 	.object({
 		slug: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{1,63}$/),
@@ -103,6 +113,7 @@ const link = z
 		embedVideoUrl: z.url().optional(),
 		embedVideoWidth: z.number().int().positive().optional(),
 		embedVideoHeight: z.number().int().positive().optional(),
+		embedMedia: z.array(embedMedia).max(10).optional(),
 		embedSiteName: z.string().max(80).optional(),
 		metadataFetchedAt: z.iso.datetime().optional(),
 		expiresAt: z.iso.datetime().optional(),

@@ -456,6 +456,14 @@ Content-Type: application/json
 		"embedTitle": "Example documentation",
 		"embedDescription": "Safe fake documentation link.",
 		"embedImageUrl": "https://www.example.com/preview.png",
+		"embedMedia": [
+			{
+				"kind": "image",
+				"url": "https://www.example.com/preview.png",
+				"width": 1200,
+				"height": 630
+			}
+		],
 		"embedSiteName": "Example",
 		"metadataFetchedAt": "2026-08-26T20:10:00.000Z",
 		"hasPassword": true,
@@ -465,7 +473,10 @@ Content-Type: application/json
 ```
 
 The Worker fetches automatic metadata when creating a link; manually supplied
-embed fields override it. A duplicate slug returns `409` with `duplicate_slug`.
+embed fields override its primary title, description, and image. Responses can
+also contain automatic `embedMedia`: up to ten ordered public image/video items
+for Discord Component Embed galleries. It is response-only metadata, not a
+manual request field. A duplicate slug returns `409` with `duplicate_slug`.
 
 ### `GET /api/v1/links`
 
@@ -598,7 +609,8 @@ Updates an accessible link. Include at least one field. Supported fields are
 `embedSiteName`. Omit `password` to leave current protection unchanged, send a
 non-empty string to replace it, or send `null` to remove it. Use `null` to clear
 other optional text, expiry, or manual metadata. A changed destination refreshes
-automatic metadata for fields not provided in the same request.
+automatic metadata, including response-only `embedMedia`, for fields not
+provided in the same request.
 
 **Request**
 
@@ -639,7 +651,9 @@ Content-Type: application/json
 
 ### `POST /api/v1/links/:slug/refresh-metadata`
 
-Fetches and stores fresh automatic metadata for the current destination.
+Fetches and stores fresh automatic metadata for the current destination,
+including the up-to-ten-item `embedMedia` gallery. A failed source fetch returns
+`502` with `metadata_fetch_failed` and preserves the last known preview.
 
 **Request**
 
@@ -716,7 +730,10 @@ redirecting.
 
 `GET /`, `GET /privacy`, `GET /robots.txt`, and `GET /:slug` are browser-facing
 routes rather than JSON management endpoints. `POST /:slug` accepts the HTML
-password form for password-protected links.
+password form for password-protected links. Eligible public short-link pages
+emit conventional Open Graph/Twitter metadata and an inline Discord Component
+Embed payload; the component embed is progressive enhancement and the standard
+metadata remains the fallback.
 
 `POST /api/v1/discord/interactions` is reserved for Discord. Discord signs the raw
 request with Ed25519, so it is not a general client endpoint. Configure and

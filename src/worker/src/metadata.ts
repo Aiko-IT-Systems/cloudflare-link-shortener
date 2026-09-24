@@ -1,5 +1,5 @@
 import { buildInfo } from "./build-info";
-import { LinkRecord } from "./types";
+import { EmbedMedia, LinkRecord } from "./types";
 import { isPublicHttpsUrl } from "./validation";
 
 type EmbedMetadata = Pick<
@@ -10,6 +10,7 @@ type EmbedMetadata = Pick<
 	| "embedVideoUrl"
 	| "embedVideoWidth"
 	| "embedVideoHeight"
+	| "embedMedia"
 	| "embedSiteName"
 	| "metadataFetchedAt"
 >;
@@ -20,6 +21,9 @@ type EmbedMetadata = Pick<
 const MAX_HTML_BYTES = 1024 * 1024;
 const FETCH_TIMEOUT_MS = 2500;
 const MAX_REDIRECTS = 3;
+const MAX_EMBED_MEDIA = 10;
+const MAX_MEDIA_URL_LENGTH = 2048;
+const MAX_MEDIA_DESCRIPTION_LENGTH = 1024;
 
 function trimForMeta(
 	value: string | undefined,
@@ -62,7 +66,12 @@ function attributesFor(tag: string): Map<string, string> {
 }
 
 function metaContent(headHtml: string, names: string[]): string | undefined {
+	return metaContents(headHtml, names)[0];
+}
+
+function metaContents(headHtml: string, names: string[]): string[] {
 	const wanted = new Set(names.map((name) => name.toLowerCase()));
+	const values: string[] = [];
 	const metaPattern = /<meta\b[^>]*>/gi;
 	let match: RegExpExecArray | null;
 
@@ -71,12 +80,9 @@ function metaContent(headHtml: string, names: string[]): string | undefined {
 		const name = attributes.get("property") ?? attributes.get("name");
 		const content = attributes.get("content");
 
-		if (name && content && wanted.has(name.toLowerCase())) {
-			return content;
-		}
+		if (name && content && wanted.has(name.toLowerCase())) values.push(content);
 	}
-
-	return undefined;
+	return values;
 }
 
 function titleContent(headHtml: string): string | undefined {
@@ -126,6 +132,10 @@ function socialProvider(destinationUrl: string): SocialProvider | undefined {
 	return undefined;
 }
 
+export function isInstagramUrl(destinationUrl: string): boolean {
+	return socialProvider(destinationUrl) === "instagram";
+}
+
 function directHttpsMp4(
 	value: string | undefined,
 	destinationUrl: string,
@@ -154,6 +164,43 @@ function publicSocialMp4(
 				? host === "fbcdn.net" || host.endsWith(".fbcdn.net")
 				: host === "video.twimg.com";
 	return knownCdn ? resolved : undefined;
+}
+
+function publicMediaUrl(value: string | undefined, destinationUrl: string): string | undefined {
+	const resolved = resolveHttpsUrl(value, destinationUrl);
+	return resolved && resolved.length <= MAX_MEDIA_URL_LENGTH && isPublicHttpsUrl(resolved)
+		? resolved
+		: undefined;
+}
+
+function mediaDescription(value: string | undefined): string | undefined {
+	return trimForMeta(value, MAX_MEDIA_DESCRIPTION_LENGTH);
+}
+
+function mediaItem(
+	kind: EmbedMedia["kind"],
+	value: string | undefined,
+	destinationUrl: string,
+	options: Omit<EmbedMedia, "kind" | "url"> = {},
+): EmbedMedia | undefined {
+	const url =
+		kind === "video"
+			? directHttpsMp4(value, destinationUrl)
+			: publicMediaUrl(value, destinationUrl);
+	if (!url || url.length > MAX_MEDIA_URL_LENGTH || !isPublicHttpsUrl(url)) return undefined;
+	return { kind, url, ...options };
+}
+
+function uniqueMedia(items: Iterable<EmbedMedia>): EmbedMedia[] {
+	const seen = new Set<string>();
+	const result: EmbedMedia[] = [];
+	for (const item of items) {
+		if (seen.has(item.url)) continue;
+		seen.add(item.url);
+		result.push(item);
+		if (result.length === MAX_EMBED_MEDIA) break;
+	}
+	return result;
 }
 
 function positiveInteger(value: string | undefined): number | undefined {
@@ -193,8 +240,14 @@ function embeddedInstagramVideo(
 }
 
 function primaryInstagramCarouselIsImage(html: string): boolean {
+	const carousel = instagramCarousel(html);
+	const first = carousel?.[0];
+	return Boolean(first && first.media_type === 1);
+}
+
+function instagramCarousel(html: string): Array<Record<string, unknown>> | undefined {
 	const marker = /"carousel_media"\s*:\s*\[/.exec(html);
-	if (!marker || marker.index === undefined) return false;
+	if (!marker || marker.index === undefined) return undefined;
 	const start = marker.index + marker[0].lastIndexOf("[");
 	let depth = 0;
 	let quoted = false;
@@ -212,14 +265,18 @@ function primaryInstagramCarouselIsImage(html: string): boolean {
 		else if (character === "]" && --depth === 0) {
 			try {
 				const carousel: unknown = JSON.parse(html.slice(start, index + 1));
-				const first = Array.isArray(carousel) ? carousel[0] : undefined;
-				return typeof first === "object" && first !== null && (first as Record<string, unknown>).media_type === 1;
+				return Array.isArray(carousel)
+					? carousel.filter(
+						(item): item is Record<string, unknown> =>
+							typeof item === "object" && item !== null,
+					)
+					: undefined;
 			} catch {
-				return false;
+				return undefined;
 			}
 		}
 	}
-	return false;
+	return undefined;
 }
 
 function embeddedXVideo(
@@ -260,6 +317,144 @@ function embeddedXVideo(
 		width: positiveInteger(dimensions?.[1]),
 		height: positiveInteger(dimensions?.[2]),
 	};
+}
+
+function instagramImage(item: Record<string, unknown>): string | undefined {
+	if (typeof item.display_url === "string") return item.display_url;
+	if (typeof item.image_url === "string") return item.image_url;
+	const imageVersions = item.image_versions2;
+	if (!imageVersions || typeof imageVersions !== "object") return undefined;
+	const candidates = (imageVersions as { candidates?: unknown }).candidates;
+	if (!Array.isArray(candidates)) return undefined;
+	return candidates
+		.filter((candidate): candidate is Record<string, unknown> => typeof candidate === "object" && candidate !== null)
+		.map((candidate) => candidate.url)
+		.find((url): url is string => typeof url === "string");
+}
+
+function instagramMedia(html: string, destinationUrl: string): EmbedMedia[] {
+	const carousel = instagramCarousel(html);
+	if (carousel) {
+		return uniqueMedia(
+			carousel.flatMap((item) => {
+				const width = typeof item.original_width === "number" ? item.original_width : undefined;
+				const height = typeof item.original_height === "number" ? item.original_height : undefined;
+				if (item.media_type === 1)
+					return [mediaItem("image", instagramImage(item), destinationUrl, { width, height })].filter(
+						(value): value is EmbedMedia => Boolean(value),
+					);
+				const versions = item.video_versions;
+				const video = Array.isArray(versions)
+					? versions
+							.filter((value): value is Record<string, unknown> => typeof value === "object" && value !== null)
+							.map((value) => (typeof value.url === "string" ? publicSocialMp4(value.url, "instagram", destinationUrl) : undefined))
+							.find((value): value is string => Boolean(value))
+					: undefined;
+				return [mediaItem("video", video, destinationUrl, { width, height })].filter(
+					(value): value is EmbedMedia => Boolean(value),
+				);
+			}),
+		);
+	}
+
+	const video = embeddedInstagramVideo(html, destinationUrl);
+	return video
+		? [
+				{
+					kind: "video",
+					url: video.url,
+					...(video.width ? { width: video.width } : {}),
+					...(video.height ? { height: video.height } : {}),
+				},
+			]
+		: [];
+}
+
+function xMedia(html: string, destinationUrl: string): EmbedMedia[] {
+	let statusId: string | undefined;
+	try {
+		statusId = /^\/[^/]+\/status\/(\d+)\/?$/.exec(new URL(destinationUrl).pathname)?.[1];
+	} catch {
+		return [];
+	}
+	if (!statusId) return [];
+	const entityPrefix = `client:${btoa(`Tweet:${statusId}`)}:media_entities2:`;
+	const escapedPrefix = escapeRegExp(entityPrefix);
+	const videos = new Map<number, Array<{ url: string; bitrate: number }>>();
+	const variants = new RegExp(
+		`${escapedPrefix}(\\d+):video_info:variants:\\d+"\\s*:\\$R\\[\\d+\\]\\s*=\\s*\\{[^{}]{0,600}?bitrate:(\\d+),content_type:"video\\/mp4",url:"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)"`,
+		"g",
+	);
+	for (const match of html.matchAll(variants)) {
+		try {
+			const url: unknown = JSON.parse(`"${match[3]}"`);
+			const publicUrl = typeof url === "string" ? publicSocialMp4(url, "x", destinationUrl) : undefined;
+			if (!publicUrl) continue;
+			const index = Number(match[1]);
+			const values = videos.get(index) ?? [];
+			values.push({ url: publicUrl, bitrate: Number(match[2]) });
+			videos.set(index, values);
+		} catch {
+			// X's hydrated state is an implementation detail and may change shape.
+		}
+	}
+	const images = new Map<number, string>();
+	const imagePattern = new RegExp(
+		`${escapedPrefix}(\\d+)"\\s*:\\$R\\[\\d+\\]\\s*=\\s*\\{[^{}]{0,1200}?type:"photo"[^{}]{0,1200}?(?:media_url_https|media_url):"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)"`,
+		"g",
+	);
+	for (const match of html.matchAll(imagePattern)) {
+		try {
+			const url: unknown = JSON.parse(`"${match[2]}"`);
+			const publicUrl = typeof url === "string" ? publicMediaUrl(url, destinationUrl) : undefined;
+			if (publicUrl) images.set(Number(match[1]), publicUrl);
+		} catch {
+			// Ignore malformed hydrated image records.
+		}
+	}
+	return uniqueMedia(
+		[...new Set([...videos.keys(), ...images.keys()])]
+			.sort((left, right) => left - right)
+			.flatMap<EmbedMedia>((index) => {
+				const image = images.get(index);
+				if (image) return [{ kind: "image" as const, url: image }];
+				const best = videos.get(index)?.sort((left, right) => right.bitrate - left.bitrate)[0];
+				if (!best) return [];
+				const dimensions = /\/vid\/[^/]+\/(\d+)x(\d+)\//.exec(new URL(best.url).pathname);
+				return [{
+					kind: "video" as const,
+					url: best.url,
+					...(positiveInteger(dimensions?.[1]) ? { width: positiveInteger(dimensions?.[1]) } : {}),
+					...(positiveInteger(dimensions?.[2]) ? { height: positiveInteger(dimensions?.[2]) } : {}),
+				}];
+			}),
+	);
+}
+
+function openGraphMedia(headHtml: string, destinationUrl: string): EmbedMedia[] {
+	const description = mediaDescription(metaContent(headHtml, ["og:image:alt", "twitter:image:alt"]));
+	const imageWidth = positiveInteger(metaContent(headHtml, ["og:image:width"]));
+	const imageHeight = positiveInteger(metaContent(headHtml, ["og:image:height"]));
+	const images = metaContents(headHtml, ["og:image:secure_url", "og:image", "twitter:image", "twitter:image:src"])
+		.map((url) => mediaItem("image", url, destinationUrl, { width: imageWidth, height: imageHeight, description }))
+		.filter((value): value is EmbedMedia => Boolean(value));
+	const videos = metaContents(headHtml, ["og:video:secure_url", "og:video"])
+		.map((url) => mediaItem("video", url, destinationUrl, {
+			width: positiveInteger(metaContent(headHtml, ["og:video:width"])),
+			height: positiveInteger(metaContent(headHtml, ["og:video:height"])),
+		}))
+		.filter((value): value is EmbedMedia => Boolean(value));
+	return uniqueMedia([...images, ...videos]);
+}
+
+function extractEmbedMedia(headHtml: string, fullHtml: string, destinationUrl: string): EmbedMedia[] {
+	const provider = socialProvider(destinationUrl);
+	const providerMedia = provider === "instagram"
+		? instagramMedia(fullHtml, destinationUrl)
+		: provider === "x"
+			? xMedia(fullHtml, destinationUrl)
+			: [];
+	return uniqueMedia([...providerMedia, ...openGraphMedia(headHtml, destinationUrl)]);
 }
 
 function extractVideoMetadata(
@@ -326,6 +521,7 @@ export function extractEmbedMetadata(
 	destinationUrl: string,
 ): Omit<EmbedMetadata, "metadataFetchedAt"> {
 	const headHtml = /<head\b[^>]*>([\s\S]*?)<\/head>/i.exec(html)?.[1] ?? html;
+	const embedMedia = extractEmbedMedia(headHtml, html, destinationUrl);
 	const embedTitle = trimForMeta(
 		metaContent(headHtml, ["og:title", "twitter:title"]) ??
 			titleContent(headHtml),
@@ -353,11 +549,26 @@ export function extractEmbedMetadata(
 		80,
 	);
 
+	const videoMetadata = extractVideoMetadata(headHtml, html, destinationUrl);
+	const primaryImage = embedImageUrl ?? embedMedia.find((item) => item.kind === "image")?.url;
+	const primaryVideo =
+		socialProvider(destinationUrl) === "instagram" && primaryInstagramCarouselIsImage(html)
+			? undefined
+			: embedMedia.find((item) => item.kind === "video");
 	return {
 		...(embedTitle ? { embedTitle } : {}),
 		...(embedDescription ? { embedDescription } : {}),
-		...(embedImageUrl ? { embedImageUrl } : {}),
-		...extractVideoMetadata(headHtml, html, destinationUrl),
+		...(primaryImage ? { embedImageUrl: primaryImage } : {}),
+		...(videoMetadata.embedVideoUrl
+			? videoMetadata
+			: primaryVideo
+				? {
+					embedVideoUrl: primaryVideo.url,
+					...(primaryVideo.width ? { embedVideoWidth: primaryVideo.width } : {}),
+					...(primaryVideo.height ? { embedVideoHeight: primaryVideo.height } : {}),
+				  }
+				: videoMetadata),
+		...(embedMedia.length ? { embedMedia } : {}),
 		...(embedSiteName ? { embedSiteName } : {}),
 	};
 }

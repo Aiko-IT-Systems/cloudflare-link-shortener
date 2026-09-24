@@ -6,6 +6,8 @@ type Reservation = {
 };
 
 const RESERVATION_TTL_MS = 60_000;
+const METADATA_REFRESH_LEASE_MS = 30_000;
+const METADATA_REFRESH_RETRY_MS = 60 * 60_000;
 
 /** Per-identity coordination, sharded by the caller's deterministic name. */
 export class LinkCoordinator extends DurableObject<Env> {
@@ -89,6 +91,26 @@ export class LinkCoordinator extends DurableObject<Env> {
 	async clearPasswordFailures(): Promise<void> {
 		await this.ctx.storage.delete(["windowStart", "failures", "lockedUntil"]);
 		await this.ctx.storage.deleteAlarm();
+	}
+
+	/**
+	 * Allows one stale-preview fetch per link at a time. The Worker which wins
+	 * the lease waits for the fresh metadata so Discord receives it immediately;
+	 * other concurrent callers retain the last known safe preview.
+	 */
+	async beginMetadataRefresh(now: number): Promise<boolean> {
+		const retryAt = await this.ctx.storage.get<number>("metadataRetryAt");
+		if (retryAt && retryAt > now) return false;
+		const leaseUntil = await this.ctx.storage.get<number>("metadataLeaseUntil");
+		if (leaseUntil && leaseUntil > now) return false;
+		await this.ctx.storage.put("metadataLeaseUntil", now + METADATA_REFRESH_LEASE_MS);
+		return true;
+	}
+
+	async finishMetadataRefresh(now: number, succeeded: boolean): Promise<void> {
+		await this.ctx.storage.delete("metadataLeaseUntil");
+		if (succeeded) await this.ctx.storage.delete("metadataRetryAt");
+		else await this.ctx.storage.put("metadataRetryAt", now + METADATA_REFRESH_RETRY_MS);
 	}
 
 	async alarm(): Promise<void> {

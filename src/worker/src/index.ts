@@ -21,7 +21,7 @@ import {
 	splash,
 	unavailable,
 } from "./html";
-import { fetchTargetMetadata } from "./metadata";
+import { fetchTargetMetadata, isInstagramUrl } from "./metadata";
 import {
 	hasLinkPassword,
 	passwordThrottleIdentifier,
@@ -71,6 +71,7 @@ type AppEnv = { Bindings: Env; Variables: { principal: AuthPrincipal } };
 const app = new OpenAPIHono<AppEnv>();
 const API_BODY_LIMIT_BYTES = 32 * 1024;
 const PASSWORD_BODY_LIMIT_BYTES = 8 * 1024;
+const INSTAGRAM_METADATA_TTL_MS = 3 * 24 * 60 * 60_000;
 
 function isExpired(record: { expiresAt?: string }): boolean {
 	return record.expiresAt ? Date.parse(record.expiresAt) <= Date.now() : false;
@@ -133,6 +134,34 @@ async function passwordAttemptCoordinator(
 	return env.LINK_COORDINATOR.getByName(
 		`password:${slug}:${clientHash}`,
 	);
+}
+
+function hasStaleInstagramMetadata(record: LinkRecord, now = Date.now()): boolean {
+	if (record.suppressSocialPreview || !isInstagramUrl(record.destinationUrl)) return false;
+	const fetchedAt = record.metadataFetchedAt ? Date.parse(record.metadataFetchedAt) : Number.NaN;
+	return Number.isNaN(fetchedAt) || now - fetchedAt >= INSTAGRAM_METADATA_TTL_MS;
+}
+
+async function refreshPublicInstagramMetadata(
+	env: Env,
+	record: LinkRecord,
+): Promise<LinkRecord> {
+	if (!hasStaleInstagramMetadata(record)) return record;
+	const coordinator = env.LINK_COORDINATOR.getByName(`metadata:${record.slug}`);
+	const now = Date.now();
+	if (!(await coordinator.beginMetadataRefresh(now))) return record;
+	let succeeded = false;
+	try {
+		const metadata = await fetchTargetMetadata(record.destinationUrl);
+		if (!metadata.metadataFetchedAt) return record;
+		const refreshed = await refreshLinkMetadata(env, record.slug, metadata);
+		succeeded = refreshed !== null;
+		return refreshed ?? record;
+	} finally {
+		// A failed fetch preserves the old preview and asks the coordinator to
+		// prevent a public-request retry storm for one hour.
+		await coordinator.finishMetadataRefresh(Date.now(), succeeded);
+	}
 }
 
 function cleanUpdates(
@@ -411,6 +440,7 @@ app.post("/api/v1/links", async (c) => {
 		embedVideoUrl: fetchedMetadata.embedVideoUrl,
 		embedVideoWidth: fetchedMetadata.embedVideoWidth,
 		embedVideoHeight: fetchedMetadata.embedVideoHeight,
+		embedMedia: fetchedMetadata.embedMedia,
 		embedSiteName: parsed.data.embedSiteName ?? fetchedMetadata.embedSiteName,
 		metadataFetchedAt: fetchedMetadata.metadataFetchedAt,
 	});
@@ -476,15 +506,10 @@ app.post("/api/v1/links/:slug/refresh-metadata", async (c) => {
 		return jsonError("Invalid slug.", "invalid_slug", 400);
 	const record = managedLink(c.get("principal"), await getLink(c.env, slug));
 	if (!record) return jsonError("Link not found.", "not_found", 404);
-	return jsonSuccess(
-		publicLink(
-			(await refreshLinkMetadata(
-				c.env,
-				slug,
-				await fetchTargetMetadata(record.destinationUrl),
-			))!,
-		),
-	);
+	const metadata = await fetchTargetMetadata(record.destinationUrl);
+	if (!metadata.metadataFetchedAt)
+		return jsonError("Could not fetch destination metadata.", "metadata_fetch_failed", 502);
+	return jsonSuccess(publicLink((await refreshLinkMetadata(c.env, slug, metadata))!));
 });
 
 app.get("/:slug", async (c) => {
@@ -497,7 +522,7 @@ app.get("/:slug", async (c) => {
 	if (record.disabledAt) return unavailable(siteConfig, record);
 	if (isExpired(record)) return expired(siteConfig, record);
 	if (hasLinkPassword(record)) return passwordPrompt(siteConfig, record);
-	return splash(siteConfig, record, c.req.url);
+	return splash(siteConfig, await refreshPublicInstagramMetadata(c.env, record), c.req.url);
 });
 
 app.post("/:slug", async (c) => {
@@ -509,7 +534,8 @@ app.post("/:slug", async (c) => {
 	if (!record) return notFound(siteConfig);
 	if (record.disabledAt) return unavailable(siteConfig, record);
 	if (isExpired(record)) return expired(siteConfig, record);
-	if (!hasLinkPassword(record)) return splash(siteConfig, record, c.req.url);
+	if (!hasLinkPassword(record))
+		return splash(siteConfig, await refreshPublicInstagramMetadata(c.env, record), c.req.url);
 	const coordinator = await passwordAttemptCoordinator(
 		c.env,
 		c.req.raw,
@@ -550,7 +576,7 @@ app.post("/:slug", async (c) => {
 			};
 			await putLink(c.env, upgraded);
 		}
-		return splash(siteConfig, record, c.req.url);
+		return splash(siteConfig, await refreshPublicInstagramMetadata(c.env, record), c.req.url);
 	}
 	const failure = await coordinator.recordPasswordFailure(Date.now());
 	return passwordPrompt(siteConfig, record, true, failure.retryAfterSeconds);

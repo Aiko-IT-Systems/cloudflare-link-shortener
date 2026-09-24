@@ -10,6 +10,7 @@ type PageMeta = {
 	pageUrl?: string;
 	siteName?: string;
 	suppressSocialPreview?: boolean;
+	discordComponentEmbed?: string;
 };
 
 function escapeHtml(value: string): string {
@@ -30,6 +31,87 @@ function escapeMediaUrl(value: string): string {
 		.replace(/>/g, "&gt;")
 		.replace(/"/g, "&quot;")
 		.replace(/'/g, "&#39;");
+}
+
+function escapeDiscordMarkdown(value: string): string {
+	return value
+		.replace(/\\/g, "\\\\")
+		.replace(/([*_~`\[\]<>])/g, "\\$1")
+		.replace(/@/g, "@\u200b")
+		.replace(/\r?\n/g, " ");
+}
+
+function scriptSafeJson(value: unknown): string {
+	return JSON.stringify(value)
+		.replace(/</g, "\\u003c")
+		.replace(/>/g, "\\u003e")
+		.replace(/&/g, "\\u0026")
+		.replace(/\u2028/g, "\\u2028")
+		.replace(/\u2029/g, "\\u2029");
+}
+
+const AITSYS_GO_REPOSITORY = "https://github.com/Aiko-IT-Systems/cloudflare-link-shortener";
+
+function discordComponentEmbed(
+	config: SiteConfig,
+	record: LinkRecord,
+	pageUrl: string,
+): string {
+	if (record.suppressSocialPreview) return "";
+	const seen = new Set<string>();
+	const media = [
+		...(record.embedImageUrl ? [{ kind: "image" as const, url: record.embedImageUrl }] : []),
+		...(record.embedMedia ?? []),
+		...(record.embedVideoUrl ? [{
+			kind: "video" as const,
+			url: record.embedVideoUrl,
+			...(record.embedVideoWidth ? { width: record.embedVideoWidth } : {}),
+			...(record.embedVideoHeight ? { height: record.embedVideoHeight } : {}),
+		}] : []),
+	].filter((item) => {
+		if (seen.has(item.url)) return false;
+		seen.add(item.url);
+		return true;
+	}).slice(0, 10);
+	const title = escapeDiscordMarkdown(record.embedTitle ?? record.title ?? record.destinationUrl);
+	const description = escapeDiscordMarkdown(
+		record.embedDescription ??
+			`A transparent ${config.siteName} short link. No click analytics, cookies, or tracking pixels.`,
+	);
+	const privacyUrl = new URL("/privacy", pageUrl).toString();
+	const component = {
+		component: {
+			type: 17,
+			accent_color: Number.parseInt(config.brandColor.slice(1), 16),
+			components: [
+				{ type: 10, content: `## ${title}` },
+				{ type: 10, content: description },
+				...(media.length
+					? [{
+							type: 12,
+							items: media.map((item) => ({
+								media: { url: item.url },
+								...(item.description ? { description: escapeDiscordMarkdown(item.description) } : {}),
+							})),
+						}]
+					: []),
+				{ type: 14, spacing: 1 },
+				{
+					type: 10,
+					content: "-# AITSYS Go is a privacy-first, self-hostable link shortener.",
+				},
+				{
+					type: 1,
+					components: [
+						{ type: 2, style: 5, label: "Open", url: record.destinationUrl },
+						{ type: 2, style: 5, label: "Privacy", url: privacyUrl },
+						{ type: 2, style: 5, label: "Selfhost", url: AITSYS_GO_REPOSITORY },
+					],
+				},
+			],
+		},
+	};
+	return `<script id="discord:component-embed" type="application/json">${scriptSafeJson(component)}</script>`;
 }
 
 function metaTags(
@@ -53,6 +135,7 @@ function metaTags(
 		["name", "twitter:card", meta.imageUrl ? "summary_large_image" : "summary"],
 		["name", "twitter:title", title],
 		["name", "twitter:description", description],
+		["name", "theme-color", config.brandColor],
 	];
 
 	if (meta.pageUrl) {
@@ -97,6 +180,7 @@ function page(
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<meta name="robots" content="noindex, nofollow">
 		${metaTags(title, config, meta)}
+		${meta.discordComponentEmbed ?? ""}
 		<title>${escapeHtml(title)} · ${escapeHtml(config.siteName)}</title>
 		<link rel="icon" href="${escapeHtml(config.faviconUrl)}">
 		<style>
@@ -430,7 +514,11 @@ export function privacyPolicy(config: SiteConfig, pageUrl: string): Response {
 		<dl>
 			<div class="meta">
 				<dt>Service and hosting</dt>
-				<dd>The service runs on Cloudflare Workers and uses Cloudflare KV plus SQLite-backed Durable Objects to store and coordinate the application data needed to operate it. Cloudflare may process normal technical request data while providing that infrastructure under its own privacy policy. AITSYS Go stores link destinations, slugs, optional settings, public creator names, ownership, and preview metadata. A short link and its preview details may be publicly visible. Issued API tokens are stored only as hashes.</dd>
+				<dd>The service runs on Cloudflare Workers and uses Cloudflare KV plus SQLite-backed Durable Objects to store and coordinate the application data needed to operate it. Cloudflare may process normal technical request data while providing that infrastructure under its own privacy policy. AITSYS Go stores link destinations, slugs, optional settings, public creator names, ownership, and preview metadata, including a bounded list of public image/video URLs for Discord preview galleries. A short link and its preview details may be publicly visible. Issued API tokens are stored only as hashes.</dd>
+			</div>
+			<div class="meta">
+				<dt>Preview fetching</dt>
+				<dd>The Worker fetches a public destination page when a link is created, when an authorised person refreshes metadata, and when a public Instagram short link has metadata older than three days. The source sees a Worker request, not the visitor's IP address. AITSYS Go does not proxy or rehost social media and does not log clicks.</dd>
 			</div>
 			<div class="meta">
 				<dt>Link passwords and abuse prevention</dt>
@@ -502,6 +590,7 @@ export function splash(
 			pageUrl,
 			siteName: record.embedSiteName,
 			suppressSocialPreview: record.suppressSocialPreview,
+			discordComponentEmbed: discordComponentEmbed(config, record, pageUrl),
 		},
 	);
 }

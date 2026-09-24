@@ -147,6 +147,7 @@ async function handlePublicCommand(
 			[
 				`## ${config.siteName} privacy`,
 				"AITSYS Go does not use advertising, analytics, click tracking, cookies, or telemetry.",
+				"For previews, the Worker can fetch a public destination when a link is created, manually refreshed, or an Instagram preview is over three days old. It does not forward a visitor's IP address, proxy media, or log clicks.",
 				"Password-protected links store a randomly salted, keyed verifier instead of the password. Management APIs never return password material. Failed unlocks use a keyed one-way client-address identifier for per-client throttling, and that temporary state is automatically deleted after its window or cooldown.",
 				"Google Play-distributed Android installs use Google Play's in-app update service. Google Play processes device metadata, the installed app version, and installed module or asset-pack information to check for and install updates; AITSYS Go does not receive that update-check data.",
 				`Read the full policy: ${privacyUrl}`,
@@ -609,6 +610,10 @@ async function handleModal(
 		embedTitle: metadata.embedTitle,
 		embedDescription: metadata.embedDescription,
 		embedImageUrl: metadata.embedImageUrl,
+		embedVideoUrl: metadata.embedVideoUrl,
+		embedVideoWidth: metadata.embedVideoWidth,
+		embedVideoHeight: metadata.embedVideoHeight,
+		embedMedia: metadata.embedMedia,
 		embedSiteName: metadata.embedSiteName,
 		metadataFetchedAt: metadata.metadataFetchedAt,
 	});
@@ -720,11 +725,10 @@ async function handleComponent(
 		return modal(session, id, record.title, `short:edit-submit:${record.slug}`);
 	}
 	if (action === "refresh") {
-		await refreshLinkMetadata(
-			env,
-			record.slug,
-			await fetchTargetMetadata(record.destinationUrl),
-		);
+		const metadata = await fetchTargetMetadata(record.destinationUrl);
+		if (!metadata.metadataFetchedAt)
+			return ephemeral("Could not fetch fresh metadata; the existing preview was kept.");
+		await refreshLinkMetadata(env, record.slug, metadata);
 		return ephemeral(
 			`Metadata refreshed for ${shortUrl(origin, record.slug)}.`,
 		);

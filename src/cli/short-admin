@@ -18,6 +18,7 @@ Usage: short-admin [command]
   read SLUG
   disable SLUG [REASON]
   refresh SLUG
+  migrate-embed-media    Refresh older preview records sequentially after confirmation
 EOF
 }
 
@@ -66,7 +67,7 @@ command -v jq >/dev/null || { echo "jq is required." >&2; exit 1; }
 
 case "$command" in
   list-links)
-    list_pages '/api/v1/admin/links?limit=100' '.result.items[] | "\(.slug): \(.destinationUrl)" + (if .hasPassword then " [password protected]" else "" end) + (if .disabledAt then " [disabled]" else "" end)' ;;
+	list_pages '/api/v1/admin/links?limit=25' '.result.items[] | "\(.slug): \(.destinationUrl)" + (if .hasPassword then " [password protected]" else "" end) + (if .disabledAt then " [disabled]" else "" end)' ;;
   list-tokens)
     list_pages '/api/v1/tokens?limit=100' '.result.items[] | "\(.id) -> account \(.accountId)" + (if .label then "; label \(.label)" else "" end) + " (created \(.createdAt); " + (if .revokedAt then "revoked \(.revokedAt)" else "active" end) + ")"' ;;
   list-accounts)
@@ -98,5 +99,26 @@ case "$command" in
   refresh)
     [[ $# -eq 1 ]] || { usage >&2; exit 2; }
     api POST "/api/v1/links/$(encode "$1")/refresh-metadata" '{}' | refresh_summary ;;
+  migrate-embed-media)
+    [[ $# -eq 0 ]] || { usage >&2; exit 2; }
+    read -r -p "This refreshes older public preview metadata one link at a time. Type REFRESH to continue: " confirmation
+    [[ "$confirmation" == "REFRESH" ]] || { echo "Migration cancelled."; exit 0; }
+    cursor=""; refreshed=0; skipped=0; failed=0
+    while :; do
+      response="$(api GET "/api/v1/admin/links?limit=25${cursor:+&cursor=$(encode "$cursor")}")"
+      while IFS= read -r slug; do
+        [[ -n "$slug" ]] || continue
+        if api POST "/api/v1/links/$(encode "$slug")/refresh-metadata" '{}' >/dev/null; then
+          echo "Refreshed: $slug"; refreshed=$((refreshed + 1))
+        else
+          echo "Failed (existing preview kept): $slug" >&2; failed=$((failed + 1))
+        fi
+        sleep 1
+      done < <(jq -r '.result.items[] | select(.disabledAt == null and .suppressSocialPreview != true and ((.embedMedia // []) | length == 0)) | .slug' <<<"$response")
+      skipped=$((skipped + $(jq '[.result.items[] | select(.disabledAt != null or .suppressSocialPreview == true or ((.embedMedia // []) | length > 0)] | length' <<<"$response")))
+      cursor="$(jq -r '.result.cursor // empty' <<<"$response")"
+      [[ -n "$cursor" ]] || break
+    done
+    echo "Migration complete: $refreshed refreshed, $skipped skipped, $failed failed." ;;
   *) echo "Unknown command: $command" >&2; usage >&2; exit 2 ;;
 esac

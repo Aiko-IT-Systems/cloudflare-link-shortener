@@ -215,6 +215,17 @@ Configure Discord only after the Worker is live at your final HTTPS origin. This
 project uses Discord's **User Install** context and exposes commands only in
 private channels (DMs and group DMs), not as a server-installed bot.
 
+### Discord link previews
+
+Public short-link pages include conventional Open Graph/Twitter metadata and a
+server-rendered Discord Component Embed payload. Discord's crawler must receive
+the HTML and every linked image/video without a login, JavaScript challenge, or
+bot challenge. If your zone uses WAF or bot-protection rules, allow the
+`Discordbot` crawler to fetch public `/:slug` pages and their public media URLs;
+do not weaken the separate signed interaction endpoint protection. Discord falls
+back to ordinary Open Graph metadata when the component payload or an asset is
+unavailable.
+
 ### Configure the Discord application
 
 1. Create your own Discord application. On **Installation**, enable **User

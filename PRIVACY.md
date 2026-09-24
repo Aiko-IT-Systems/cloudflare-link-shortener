@@ -8,7 +8,9 @@ AITSYS Go creates and manages short links. AITSYS Go does not use advertising, a
 
 The service is hosted on Cloudflare Workers and uses Cloudflare KV plus SQLite-backed Durable Objects to store and coordinate the application data needed to operate the shortener. Cloudflare may process normal technical request data while providing that infrastructure under its own privacy policy.
 
-When a link is created or managed, AITSYS Go stores its destination URL, slug, creation time, public creator name, ownership information, optional fallback title, expiry, preview choices, disable status, and fetched or manually supplied preview metadata. A short link and its preview details may be publicly visible to anyone who opens that short link.
+When a link is created or managed, AITSYS Go stores its destination URL, slug, creation time, public creator name, ownership information, optional fallback title, expiry, preview choices, disable status, and fetched or manually supplied preview metadata. Automatic preview metadata can include a bounded list of public image or video URLs for Discord link-preview galleries. A short link and its preview details may be publicly visible to anyone who opens that short link.
+
+The Worker fetches a public destination page to obtain preview metadata when a link is created, when an authorised person explicitly refreshes it, and when a public Instagram short link has metadata older than three days. These source requests originate from the Worker; AITSYS Go does not forward a visitor's IP address to the destination. It does not log clicks or proxy/rehost social media.
 
 For a password-protected link, AITSYS Go stores a randomly salted, keyed cryptographic verifier rather than the password itself. The secret key used for that verifier is stored separately as an encrypted Worker secret. Existing plaintext passwords written by an older Worker are replaced with keyed verifiers after the first successful unlock. Link-management API responses disclose only whether a password exists; they never return the password or verifier.
 

@@ -1,7 +1,8 @@
 param(
 	[switch] $Help,
 	[switch] $List,
-	[switch] $ListTokens
+	[switch] $ListTokens,
+	[switch] $MigrateEmbedMedia
 )
 
 $ErrorActionPreference = "Stop"
@@ -322,6 +323,44 @@ function Get-ShortLinks {
 	}
 }
 
+function Invoke-EmbedMediaMigration {
+	$confirmation = Read-Host "This refreshes older public preview metadata one link at a time. Type REFRESH to continue"
+	if ($confirmation -cne "REFRESH") {
+		Write-Host "Migration cancelled." -ForegroundColor DarkGray
+		return
+	}
+
+	$cursor = $null
+	$refreshed = 0
+	$failed = 0
+	$skipped = 0
+	do {
+		$path = "/api/v1/admin/links?limit=25"
+		if ($cursor) { $path += "&cursor=$([uri]::EscapeDataString($cursor))" }
+		$page = Invoke-LinkApi -Method GET -Path $path
+		if (-not $page -or -not $page.success) { return }
+		foreach ($record in @($page.result.items)) {
+			if ($record.disabledAt -or $record.suppressSocialPreview -or $record.embedMedia) {
+				$skipped++
+				continue
+			}
+			Write-Host "Refreshing $($record.slug)..." -NoNewline
+			$result = Invoke-LinkApi -Method POST -Path "/api/v1/links/$($record.slug)/refresh-metadata" -Body @{}
+			if ($result -and $result.success) {
+				$refreshed++
+				Write-Host " ok" -ForegroundColor Green
+			} else {
+				$failed++
+				Write-Host " failed; kept existing preview" -ForegroundColor Yellow
+			}
+			Start-Sleep -Seconds 1
+		}
+		$cursor = $page.result.cursor
+	} while ($cursor)
+
+	Write-Host "Migration complete: $refreshed refreshed, $skipped skipped, $failed failed." -ForegroundColor Cyan
+}
+
 function Show-Help {
 	Write-Host "AITSYS GO admin"
 	Write-Host ""
@@ -331,6 +370,7 @@ function Show-Help {
 	Write-Host "Commands:"
 	Write-Host "  short-admin -List"
 	Write-Host "  short-admin -ListTokens"
+	Write-Host "  short-admin -MigrateEmbedMedia"
 	Write-Host "  short-admin -Help"
 	Write-Host ""
 	Write-Host "Note:"
@@ -341,6 +381,7 @@ function Show-Help {
 if ($Help) { Show-Help; exit 0 }
 if ($List) { Get-ShortLinks; exit 0 }
 if ($ListTokens) { Get-ShortLinkUserTokens; exit 0 }
+if ($MigrateEmbedMedia) { Invoke-EmbedMediaMigration; exit 0 }
 
 $running = $true
 while ($running) {
@@ -358,6 +399,7 @@ while ($running) {
 	Write-Host "10. List user accounts"
 	Write-Host "11. Remove user account"
 	Write-Host "12. Link Discord user to account"
+	Write-Host "13. Migrate preview galleries (one-shot)"
 	Write-Host "0. Exit"
 
 	$choice = Read-Host "Choose"
@@ -374,7 +416,8 @@ while ($running) {
 		"10" { Get-ShortLinkAccounts }
 		"11" { Remove-ShortLinkAccount }
 		"12" { Set-ShortLinkAccountDiscordUser }
+		"13" { Invoke-EmbedMediaMigration }
 		"0" { $running = $false }
-		default { Write-Host "Pick 1 through 12, or 0." -ForegroundColor DarkYellow }
+		default { Write-Host "Pick 1 through 13, or 0." -ForegroundColor DarkYellow }
 	}
 }
