@@ -136,7 +136,7 @@ jobs:
           bash -n src/cli/short src/cli/short-admin
           echo "- ✅ Bash cli syntax validation" >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
         with:
           distribution: temurin
           java-version: "17"
