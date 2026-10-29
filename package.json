@@ -11,7 +11,7 @@
 		"type": "git",
 		"url": "https://github.com/Aiko-IT-Systems/cloudflare-link-shortener"
 	},
-	"packageManager": "npm@12.2.0",
+	"packageManager": "npm@12.2.1",
 	"license": "Apache-2.0",
 	"private": true,
 	"scripts": {
@@ -36,17 +36,17 @@
 	},
 	"dependencies": {
 		"@hono/zod-openapi": "1.6.3",
-		"hono": "4.13.13",
+		"hono": "4.13.14",
 		"nanoid": "6.0.2",
 		"zod": "4.6.7"
 	},
 	"devDependencies": {
-		"@cloudflare/vitest-plugin": "1.4.4",
+		"@cloudflare/vitest-plugin": "1.4.11",
 		"@types/node": "24.19.2",
 		"typescript": "7.0.2",
-		"vite": "8.3.4",
+		"vite": "8.3.5",
 		"vitest": "4.1.12",
-		"wrangler": "4.151.1"
+		"wrangler": "4.156.0"
 	},
 	"allowScripts": {
 		"esbuild": true,
