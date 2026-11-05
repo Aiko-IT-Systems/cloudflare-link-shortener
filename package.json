@@ -41,12 +41,12 @@
 		"zod": "4.6.7"
 	},
 	"devDependencies": {
-		"@cloudflare/vitest-plugin": "1.5.1",
+		"@cloudflare/vitest-plugin": "1.6.0",
 		"@types/node": "26.6.6",
 		"typescript": "7.0.2",
 		"vite": "8.3.6",
 		"vitest": "5.1.0",
-		"wrangler": "4.157.0"
+		"wrangler": "4.158.0"
 	},
 	"allowScripts": {
 		"esbuild": true,
